@@ -3,6 +3,7 @@ import { emptyMetrics, emptySession } from '../src/constants';
 import {
 	createSavedSession,
 	formatSessionTime,
+	formatSessionTimeRange,
 	groupSessionsByDate,
 	sessionSummary,
 } from '../src/lib/saved-sessions';
@@ -13,7 +14,17 @@ const snapshot: SessionSnapshot = {
 	calories: 120,
 	distance: 10,
 	elapsedSeconds: 1800,
-	history: [],
+	endedAt: new Date(2026, 6, 18, 9).getTime(),
+	history: [
+		{
+			cadence: 85,
+			elapsedSeconds: 1,
+			heartRate: 140,
+			power: 180,
+			resistance: 42,
+			speed: 30,
+		},
+	],
 	maximums: emptyMetrics,
 	startedAt: new Date(2026, 6, 18, 8, 30).getTime(),
 };
@@ -33,6 +44,7 @@ describe('saved session utilities', () => {
 			id: 'session-1',
 		});
 		expect(session.distance).toBe(10);
+		expect(session.history[0]?.resistance).toBe(42);
 	});
 
 	test('creates a lightweight summary without sample history', () => {
@@ -72,6 +84,11 @@ describe('saved session utilities', () => {
 	});
 
 	test('formats a timestamp as a readable time', () => {
-		expect(formatSessionTime(snapshot.startedAt)).not.toBe('');
+		expect(formatSessionTime(snapshot.startedAt)).toBe('8:30am');
+	});
+
+	test('shows an end time only when recorded time exists', () => {
+		expect(formatSessionTimeRange(snapshot)).toBe('8:30am – 9:00am');
+		expect(formatSessionTimeRange({ ...snapshot, elapsedSeconds: 0 })).toBe('8:30am');
 	});
 });

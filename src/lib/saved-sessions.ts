@@ -1,10 +1,12 @@
 import type { SavedSession, SavedSessionSummary, SessionMetadata, SessionSnapshot } from '../types';
+import { aggregateResistance } from './session';
 
 const DATABASE_NAME = 'ridecontrol-sessions';
 const DATABASE_VERSION = 1;
 const SESSION_STORE = 'sessions';
 const SUMMARY_STORE = 'session-summaries';
 const ENDED_AT_INDEX = 'endedAt';
+const MERIDIEM_SUFFIX = /\s*(AM|PM)$/i;
 
 let databasePromise: Promise<IDBDatabase> | undefined;
 
@@ -52,7 +54,7 @@ function openDatabase(): Promise<IDBDatabase> {
 export function createSavedSession(
 	snapshot: SessionSnapshot,
 	metadata: SessionMetadata,
-	endedAt = Date.now(),
+	endedAt = snapshot.endedAt || Date.now(),
 	id: string = crypto.randomUUID()
 ): SavedSession {
 	return {
@@ -85,6 +87,15 @@ export async function saveSession(session: SavedSession): Promise<void> {
 	await completed;
 }
 
+export async function deleteSavedSession(id: string): Promise<void> {
+	const database = await openDatabase();
+	const transaction = database.transaction([SESSION_STORE, SUMMARY_STORE], 'readwrite');
+	const completed = transactionComplete(transaction);
+	transaction.objectStore(SESSION_STORE).delete(id);
+	transaction.objectStore(SUMMARY_STORE).delete(id);
+	await completed;
+}
+
 export async function getSavedSession(id: string): Promise<SavedSession | undefined> {
 	const database = await openDatabase();
 	const transaction = database.transaction(SESSION_STORE, 'readonly');
@@ -93,7 +104,18 @@ export async function getSavedSession(id: string): Promise<SavedSession | undefi
 		transaction.objectStore(SESSION_STORE).get(id) as IDBRequest<SavedSession | undefined>
 	);
 	await completed;
-	return session;
+	if (!session) {
+		return;
+	}
+	return {
+		...session,
+		aggregates: {
+			...session.aggregates,
+			resistance:
+				(session.aggregates as Partial<SavedSession['aggregates']>).resistance ??
+				aggregateResistance(session.history),
+		},
+	};
 }
 
 export async function countSavedSessions(): Promise<number> {
@@ -162,8 +184,21 @@ export function groupSessionsByDate(sessions: SavedSessionSummary[]): SessionGro
 export function formatSessionTime(timestamp: number): string {
 	return new Intl.DateTimeFormat(undefined, {
 		hour: 'numeric',
+		hour12: true,
 		minute: '2-digit',
-	}).format(timestamp);
+	})
+		.format(timestamp)
+		.replace(MERIDIEM_SUFFIX, (suffix) => suffix.trim().toLowerCase());
+}
+
+export function formatSessionTimeRange(
+	session: Pick<SavedSession, 'elapsedSeconds' | 'endedAt' | 'startedAt'>
+): string {
+	const started = formatSessionTime(session.startedAt);
+	if (!(session.elapsedSeconds > 0 && session.endedAt > session.startedAt)) {
+		return started;
+	}
+	return `${started} – ${formatSessionTime(session.endedAt)}`;
 }
 
 export async function requestPersistentSessionStorage(): Promise<boolean> {

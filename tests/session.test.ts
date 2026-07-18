@@ -3,6 +3,7 @@ import { emptySession } from '../src/constants';
 import {
 	addAggregate,
 	addMetricAggregates,
+	aggregateResistance,
 	loadStoredSession,
 	nonNegativeNumber,
 	restoreAggregate,
@@ -28,17 +29,26 @@ describe('session utilities', () => {
 		expect(addAggregate(initial, 0, true)).toEqual({ count: 3, sum: 10 });
 	});
 
-	test('aggregates cadence, heart rate, and power', () => {
+	test('aggregates cadence, heart rate, power, and resistance', () => {
 		expect(
 			addMetricAggregates(emptySession.aggregates, {
 				cadence: 0,
 				heartRate: 145,
 				power: 0,
+				resistance: 42,
 			})
 		).toEqual({
 			cadence: { count: 0, sum: 0 },
 			heartRate: { count: 1, sum: 145 },
 			power: { count: 1, sum: 0 },
+			resistance: { count: 1, sum: 42 },
+		});
+	});
+
+	test('aggregates recorded resistance samples and ignores missing legacy data', () => {
+		expect(aggregateResistance([{}, { resistance: 25 }, { resistance: 125 }])).toEqual({
+			count: 2,
+			sum: 125,
 		});
 	});
 
@@ -64,6 +74,7 @@ describe('session utilities', () => {
 					elapsedSeconds: 65,
 					heartRate: 150,
 					power: 200,
+					resistance: 42,
 					speed: Number.NaN,
 				},
 			],
@@ -73,7 +84,9 @@ describe('session utilities', () => {
 		expect(session.calories).toBe(0);
 		expect(session.distance).toBe(12);
 		expect(session.history[0]?.speed).toBe(0);
+		expect(session.history[0]?.resistance).toBe(42);
 		expect(session.aggregates.power).toEqual({ count: 1, sum: 200 });
+		expect(session.aggregates.resistance).toEqual({ count: 1, sum: 42 });
 		expect(session.maximums.speed).toBe(35);
 	});
 

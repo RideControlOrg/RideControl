@@ -6,11 +6,12 @@ export const chartModes: { label: string; value: ChartMode }[] = [
 	{ label: 'Power', value: 'power' },
 	{ label: 'Cadence', value: 'cadence' },
 	{ label: 'Heart rate', value: 'heartRate' },
+	{ label: 'Resistance', value: 'resistance' },
 ];
 
 export function storedChartMode(storage: Pick<Storage, 'getItem'> = localStorage): ChartMode {
 	const saved = storage.getItem('trainer-chart-mode');
-	return ['all', 'speed', 'power', 'cadence', 'heartRate'].includes(saved ?? '')
+	return ['all', 'speed', 'power', 'cadence', 'heartRate', 'resistance'].includes(saved ?? '')
 		? (saved as ChartMode)
 		: 'all';
 }

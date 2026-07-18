@@ -35,6 +35,7 @@ describe('chart utilities', () => {
 
 	test('restores only supported chart modes', () => {
 		expect(storedChartMode({ getItem: () => 'power' })).toBe('power');
+		expect(storedChartMode({ getItem: () => 'resistance' })).toBe('resistance');
 		expect(storedChartMode({ getItem: () => 'elevation' })).toBe('all');
 	});
 });

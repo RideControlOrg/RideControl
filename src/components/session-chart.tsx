@@ -64,10 +64,12 @@ export function ChartPlot({
 
 export function SessionChart({
 	history,
+	keyboardEnabled = true,
 	route,
 	speedUnit,
 }: {
 	history: MetricSample[];
+	keyboardEnabled?: boolean;
 	route: RoutePoint[];
 	speedUnit: SpeedUnit;
 }) {
@@ -134,6 +136,15 @@ export function SessionChart({
 				unit: 'bpm',
 				values: history.map((sample) => sample.heartRate),
 			},
+			{
+				chartMaximum: 100,
+				color: '#adf5bd',
+				decimals: 0,
+				key: 'resistance' as const,
+				label: 'Resistance',
+				unit: '%',
+				values: history.map((sample) => Math.max(0, Math.min(100, sample.resistance ?? 0))),
+			},
 		],
 		[history, speedUnit]
 	);
@@ -160,6 +171,9 @@ export function SessionChart({
 	}, []);
 
 	useEffect(() => {
+		if (!keyboardEnabled) {
+			return;
+		}
 		const handleKeys = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
 			if (
@@ -186,7 +200,7 @@ export function SessionChart({
 		};
 		window.addEventListener('keydown', handleKeys);
 		return () => window.removeEventListener('keydown', handleKeys);
-	}, [availableModes, effectiveMode, selectMode]);
+	}, [availableModes, effectiveMode, keyboardEnabled, selectMode]);
 
 	return (
 		<div className="mt-6 overflow-hidden rounded-xl border border-line bg-[#12171d] p-4">

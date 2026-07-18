@@ -22,6 +22,7 @@ export interface MetricSample {
 	elapsedSeconds: number;
 	heartRate: number;
 	power: number;
+	resistance: number;
 	speed: number;
 }
 
@@ -34,6 +35,7 @@ export interface SessionAggregates {
 	cadence: MetricAggregate;
 	heartRate: MetricAggregate;
 	power: MetricAggregate;
+	resistance: MetricAggregate;
 }
 
 export interface StoredSession {
@@ -42,6 +44,7 @@ export interface StoredSession {
 	distance: number;
 	elapsedSeconds: number;
 	ended: boolean;
+	endedAt: number;
 	history: MetricSample[];
 	maximums: Metrics;
 	savedSessionId?: string;
@@ -60,13 +63,13 @@ export interface SessionSnapshot {
 	calories: number;
 	distance: number;
 	elapsedSeconds: number;
+	endedAt: number;
 	history: MetricSample[];
 	maximums: Metrics;
 	startedAt: number;
 }
 
 export interface SavedSession extends SessionSnapshot, SessionMetadata {
-	endedAt: number;
 	id: string;
 }
 
@@ -80,6 +83,13 @@ export interface SavedSessionSummary {
 	startedAt: number;
 }
 
-export type ChartMode = 'all' | 'cadence' | 'elevation' | 'heartRate' | 'power' | 'speed';
+export type ChartMode =
+	| 'all'
+	| 'cadence'
+	| 'elevation'
+	| 'heartRate'
+	| 'power'
+	| 'resistance'
+	| 'speed';
 
 export type SpeedUnit = 'kmh' | 'mph';

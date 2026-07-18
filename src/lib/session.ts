@@ -1,5 +1,11 @@
 import { emptyMetrics, emptySession } from '../constants';
-import type { MetricAggregate, Metrics, SessionAggregates, StoredSession } from '../types';
+import type {
+	MetricAggregate,
+	MetricSample,
+	Metrics,
+	SessionAggregates,
+	StoredSession,
+} from '../types';
 
 type ReadableStorage = Pick<Storage, 'getItem'>;
 
@@ -23,13 +29,28 @@ export function addAggregate(
 
 export function addMetricAggregates(
 	aggregates: SessionAggregates,
-	metrics: Pick<Metrics, 'cadence' | 'heartRate' | 'power'>
+	metrics: Pick<Metrics, 'cadence' | 'heartRate' | 'power'> & Pick<MetricSample, 'resistance'>
 ): SessionAggregates {
 	return {
 		cadence: addAggregate(aggregates.cadence, metrics.cadence, false),
 		heartRate: addAggregate(aggregates.heartRate, metrics.heartRate, false),
 		power: addAggregate(aggregates.power, metrics.power, true),
+		resistance: addAggregate(aggregates.resistance, metrics.resistance, true),
 	};
+}
+
+export function aggregateResistance(
+	samples: Partial<Pick<MetricSample, 'resistance'>>[]
+): MetricAggregate {
+	return samples.reduce<MetricAggregate>(
+		(aggregate, sample) => {
+			if (typeof sample.resistance !== 'number' || !Number.isFinite(sample.resistance)) {
+				return aggregate;
+			}
+			return addAggregate(aggregate, Math.min(100, Math.max(0, sample.resistance)), true);
+		},
+		{ count: 0, sum: 0 }
+	);
 }
 
 export function restoreAggregate(
@@ -59,6 +80,7 @@ export function loadStoredSession(storage: ReadableStorage = localStorage): Stor
 					elapsedSeconds: nonNegativeNumber(sample.elapsedSeconds),
 					heartRate: nonNegativeNumber(sample.heartRate),
 					power: nonNegativeNumber(sample.power),
+					resistance: Math.min(100, nonNegativeNumber(sample.resistance)),
 					speed: nonNegativeNumber(sample.speed),
 				}))
 			: [];
@@ -71,11 +93,16 @@ export function loadStoredSession(storage: ReadableStorage = localStorage): Stor
 					historyAggregates.heartRate
 				),
 				power: restoreAggregate(parsed.aggregates?.power, historyAggregates.power),
+				resistance: restoreAggregate(
+					parsed.aggregates?.resistance,
+					historyAggregates.resistance
+				),
 			},
 			calories: nonNegativeNumber(parsed.calories),
 			distance: nonNegativeNumber(parsed.distance),
 			elapsedSeconds: nonNegativeNumber(parsed.elapsedSeconds),
 			ended: parsed.ended === true,
+			endedAt: nonNegativeNumber(parsed.endedAt),
 			history,
 			maximums: {
 				cadence: nonNegativeNumber(maximums.cadence),
