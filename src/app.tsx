@@ -1,14 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ConnectionControl } from './components/connection-control';
 import { Icon } from './components/icon';
+import { KeyboardShortcutsDialog } from './components/keyboard-shortcuts-dialog';
 import { Metric, SmallMetric } from './components/metrics';
 import { Notification } from './components/notification';
 import { ResistanceControl } from './components/resistance-control';
 import { SessionChart } from './components/session-chart';
+import { SessionHistory } from './components/session-history';
+import { SessionSaveDialog } from './components/session-save-dialog';
 import { useSession } from './hooks/use-session';
 import { useTrainer } from './hooks/use-trainer';
 import { formatAggregateAverage, formatDuration } from './lib/format';
-import type { RoutePoint, SpeedUnit } from './types';
+import { appShortcutForKey } from './lib/keyboard';
+import {
+	createSavedSession,
+	requestPersistentSessionStorage,
+	saveSession,
+} from './lib/saved-sessions';
+import type { RoutePoint, SessionMetadata, SpeedUnit } from './types';
 
 const EMPTY_ROUTE: RoutePoint[] = [];
 
@@ -24,30 +33,82 @@ export function App() {
 	const [speedUnit, setSpeedUnit] = useState<SpeedUnit>(() =>
 		localStorage.getItem('speed-unit') === 'kmh' ? 'kmh' : 'mph'
 	);
+	const [historyOpen, setHistoryOpen] = useState(false);
+	const [shortcutsOpen, setShortcutsOpen] = useState(false);
+	const [saveDialogOpen, setSaveDialogOpen] = useState(
+		() => session.ended && !session.savedSessionId
+	);
+	const [saving, setSaving] = useState(false);
+
 	useEffect(() => {
-		const handlePauseKey = (event: KeyboardEvent) => {
+		requestPersistentSessionStorage().catch(() => false);
+	}, []);
+
+	useEffect(() => {
+		const handleShortcut = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
 			if (
 				event.defaultPrevented ||
 				event.altKey ||
 				event.ctrlKey ||
 				event.metaKey ||
-				event.code !== 'Space' ||
 				target?.matches("button, a, input, textarea, select, [contenteditable='true']")
 			) {
 				return;
 			}
-			event.preventDefault();
-			session.togglePause();
+			const shortcut = appShortcutForKey(event);
+			if (shortcut === 'history' && !saveDialogOpen) {
+				event.preventDefault();
+				setShortcutsOpen(false);
+				setHistoryOpen(true);
+			} else if (shortcut === 'shortcuts' && !saveDialogOpen) {
+				event.preventDefault();
+				setHistoryOpen(false);
+				setShortcutsOpen(true);
+			} else if (shortcut === 'pause' && !(historyOpen || saveDialogOpen || shortcutsOpen)) {
+				event.preventDefault();
+				session.togglePause();
+			}
 		};
-		window.addEventListener('keydown', handlePauseKey);
-		return () => window.removeEventListener('keydown', handlePauseKey);
-	}, [session.togglePause]);
+		window.addEventListener('keydown', handleShortcut);
+		return () => window.removeEventListener('keydown', handleShortcut);
+	}, [historyOpen, saveDialogOpen, session.togglePause, shortcutsOpen]);
 
 	function selectSpeedUnit(unit: SpeedUnit) {
 		setSpeedUnit(unit);
 		localStorage.setItem('speed-unit', unit);
 	}
+
+	function endSession() {
+		session.endSession();
+		setSaveDialogOpen(true);
+	}
+
+	async function saveCurrentSession(metadata: SessionMetadata) {
+		setSaving(true);
+		try {
+			const saved = createSavedSession(session.snapshot, metadata);
+			await saveSession(saved);
+			session.markSaved(saved.id);
+			setSaveDialogOpen(false);
+			trainer.setNotice('Session saved.');
+		} catch (error) {
+			trainer.setNotice(
+				`Session could not be saved: ${error instanceof Error ? error.message : String(error)}`
+			);
+		} finally {
+			setSaving(false);
+		}
+	}
+
+	function startNewSession() {
+		session.startNew();
+		setSaveDialogOpen(false);
+		trainer.setNotice('New session ready.');
+	}
+
+	const closeHistory = useCallback(() => setHistoryOpen(false), []);
+	const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
 
 	const unitFactor = speedUnit === 'mph' ? 0.621_371 : 1;
 	const distanceUnit = speedUnit === 'mph' ? 'mi' : 'km';
@@ -73,31 +134,75 @@ export function App() {
 			<div className="mx-auto max-w-7xl px-5 py-7 sm:px-8">
 				<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 					<div className="flex flex-wrap items-center gap-2">
-						<button
-							className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold text-xs transition ${isRiding ? 'border-mint/40 bg-mint/10 text-mint' : 'border-line bg-[#12171d] text-slate-400'}`}
-							onClick={session.togglePause}
-							type="button"
-						>
-							<Icon className="h-4 w-4" name={sessionControlIcon} />
-							{sessionControlLabel}
-							{isRiding || manuallyPaused ? null : (
-								<span className="border-line border-l pl-2 text-slate-200">
-									Stop
+						{session.ended ? (
+							<>
+								<span className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-300 text-xs">
+									<span className="h-2 w-2 rounded-full bg-slate-500" />
+									Session ended
 								</span>
-							)}
-						</button>
+								{session.savedSessionId ? null : (
+									<button
+										className="rounded-lg border border-mint/40 bg-mint/10 px-3 py-2 font-semibold text-mint text-xs hover:bg-mint/15"
+										onClick={() => setSaveDialogOpen(true)}
+										type="button"
+									>
+										Save session
+									</button>
+								)}
+								<button
+									className="rounded-lg border border-line bg-[#12171d] px-3 py-2 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
+									onClick={() =>
+										session.savedSessionId
+											? startNewSession()
+											: setSaveDialogOpen(true)
+									}
+									type="button"
+								>
+									Start new session
+								</button>
+							</>
+						) : (
+							<>
+								<button
+									className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold text-xs transition ${isRiding ? 'border-mint/40 bg-mint/10 text-mint' : 'border-line bg-[#12171d] text-slate-400'}`}
+									onClick={session.togglePause}
+									type="button"
+								>
+									<Icon className="h-4 w-4" name={sessionControlIcon} />
+									{sessionControlLabel}
+								</button>
+								<button
+									className="rounded-lg border border-line bg-[#12171d] px-3 py-2 font-semibold text-slate-400 text-xs hover:border-rose-400/50 hover:text-rose-300"
+									onClick={endSession}
+									type="button"
+								>
+									End session
+								</button>
+							</>
+						)}
+					</div>
+					<div className="flex items-center gap-3">
 						<button
-							className="rounded-lg border border-line bg-[#12171d] px-3 py-2 font-semibold text-slate-400 text-xs hover:text-rose-300"
+							className="rounded-lg border border-line bg-[#12171d] px-3 py-2 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
 							onClick={() => {
-								session.reset();
-								trainer.setNotice('Session reset.');
+								setShortcutsOpen(false);
+								setHistoryOpen(true);
 							}}
 							type="button"
 						>
-							Reset
+							History
 						</button>
-					</div>
-					<div className="flex items-center gap-3">
+						<button
+							aria-label="Show keyboard controls"
+							className="grid h-10 w-10 place-items-center rounded-lg border border-line bg-[#12171d] font-bold text-slate-400 text-sm hover:border-slate-500 hover:text-white"
+							onClick={() => {
+								setHistoryOpen(false);
+								setShortcutsOpen(true);
+							}}
+							type="button"
+						>
+							?
+						</button>
 						<div className="flex rounded-lg border border-line bg-[#10151a] p-1">
 							<button
 								className={`rounded px-2.5 py-1 font-bold text-[11px] ${speedUnit === 'kmh' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
@@ -115,9 +220,12 @@ export function App() {
 							</button>
 						</div>
 						<ConnectionControl
+							busy={trainer.connectionBusy}
 							connected={connected}
 							deviceName={trainer.deviceName}
-							onClick={connected ? trainer.disconnect : trainer.connect}
+							onCancel={trainer.cancelConnection}
+							onConnect={trainer.connect}
+							onDisconnect={trainer.disconnect}
 							status={trainer.status}
 						/>
 					</div>
@@ -208,6 +316,17 @@ export function App() {
 				notice={trainer.notice}
 				onDismiss={() => trainer.setNotice('')}
 			/>
+			<SessionSaveDialog
+				onClose={() => setSaveDialogOpen(false)}
+				onSave={saveCurrentSession}
+				onStartWithoutSaving={startNewSession}
+				open={saveDialogOpen}
+				saving={saving}
+				session={session.snapshot}
+				speedUnit={speedUnit}
+			/>
+			<SessionHistory onClose={closeHistory} open={historyOpen} speedUnit={speedUnit} />
+			<KeyboardShortcutsDialog onClose={closeShortcuts} open={shortcutsOpen} />
 		</main>
 	);
 }

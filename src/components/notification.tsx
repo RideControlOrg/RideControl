@@ -17,9 +17,9 @@ export function Notification({
 			className="fixed bottom-5 left-1/2 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-slate-600 bg-[#20262e]/95 p-3 text-slate-100 text-sm shadow-2xl"
 			role="status"
 		>
-			<div className="flex items-start gap-3">
+			<div className="flex items-center gap-3">
 				<span
-					className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${connected ? 'bg-mint' : 'bg-lime'}`}
+					className={`h-2 w-2 shrink-0 rounded-full ${connected ? 'bg-mint' : 'bg-lime'}`}
 				/>
 				<div className="min-w-0 flex-1 leading-5">
 					{notice === CHROME_BLUETOOTH_PERMISSION_MESSAGE ? (
