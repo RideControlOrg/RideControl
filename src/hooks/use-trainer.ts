@@ -23,6 +23,7 @@ import {
 	recordPedaling,
 	resistanceCommand,
 } from '../lib/bluetooth';
+import { scheduleNoticeDismissal } from '../lib/notification';
 import { storedResistance } from '../lib/session';
 import type { Metrics, Range } from '../types';
 
@@ -65,13 +66,7 @@ export function useTrainer() {
 		rangeRef.current = resistanceRange;
 	}, [resistanceRange]);
 
-	useEffect(() => {
-		if (!notice) {
-			return;
-		}
-		const timeout = window.setTimeout(() => setNotice(''), 30_000);
-		return () => window.clearTimeout(timeout);
-	}, [notice]);
+	useEffect(() => scheduleNoticeDismissal(notice, () => setNotice('')), [notice]);
 
 	const writeControl = useCallback(
 		async (characteristic: BluetoothRemoteGATTCharacteristic | undefined, bytes: number[]) => {

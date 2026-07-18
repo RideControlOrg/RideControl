@@ -66,6 +66,17 @@ describe('view components', () => {
 		expect(html).toContain('text-3xl');
 		expect(html).toContain('bg-yellow-400');
 		expect(html).toContain('<title>bolt</title>');
+		const averageOnly = render(
+			<SessionMetric
+				accent="mint"
+				average="42"
+				icon="resistance"
+				label="RESISTANCE"
+				unit="%"
+			/>
+		);
+		expect(averageOnly).toContain('text-mint');
+		expect(averageOnly).not.toContain('MAX');
 	});
 
 	test('renders enabled and disabled resistance controls', () => {
@@ -120,11 +131,26 @@ describe('view components', () => {
 		expect(busy).toContain('role="status"');
 		expect(busy).toContain('Connecting…');
 		expect(busy).toContain('Cancel');
+		expect(busy).toContain('inline-flex h-10 items-center gap-2 px-1');
+		expect(busy).not.toContain('bg-[#10151a]');
 		expect(busy).not.toContain('Connect trainer');
 		expect(
 			render(
 				<ConnectionControl
 					busy={false}
+					connected
+					deviceName="KICKR"
+					onCancel={() => undefined}
+					onConnect={() => undefined}
+					onDisconnect={() => undefined}
+					status="Connected"
+				/>
+			)
+		).toContain('Disconnect');
+		expect(
+			render(
+				<ConnectionControl
+					busy
 					connected
 					deviceName="KICKR"
 					onCancel={() => undefined}
@@ -140,11 +166,12 @@ describe('view components', () => {
 		expect(
 			render(<Notification connected={false} notice="" onDismiss={() => undefined} />)
 		).toBe('');
-		expect(
-			render(
-				<Notification connected notice="Trainer connected." onDismiss={() => undefined} />
-			)
-		).toContain('flex items-center gap-3');
+		const notice = render(
+			<Notification connected notice="Trainer connected." onDismiss={() => undefined} />
+		);
+		expect(notice).toContain('flex items-center gap-3');
+		expect(notice).toContain('role="timer"');
+		expect(notice).toContain('15 seconds remaining');
 		const html = render(
 			<Notification
 				connected={false}
@@ -152,6 +179,7 @@ describe('view components', () => {
 				onDismiss={() => undefined}
 			/>
 		);
+		expect(html).toContain('15 seconds remaining');
 		expect(html).toContain('persistent Bluetooth permissions');
 		expect(html).toContain('chrome://flags/');
 	});
@@ -176,9 +204,11 @@ describe('view components', () => {
 	});
 
 	test('renders the keyboard controls reference', () => {
+		expect(render(<KeyboardShortcutsDialog onClose={() => undefined} open={false} />)).toBe('');
 		const html = render(<KeyboardShortcutsDialog onClose={() => undefined} open />);
 		expect(html).toContain('Keyboard controls');
 		expect(html).toContain('Open session history');
+		expect(html).toContain('Start a new session after ending');
 		expect(html).toContain('Increase or decrease resistance');
 		expect(html).toContain('Change the chart view');
 		const historyHtml = render(
@@ -190,9 +220,13 @@ describe('view components', () => {
 			/>
 		);
 		expect(historyHtml).toContain('History keyboard controls');
+		expect(historyHtml).toContain('Select the previous or next session');
 		expect(historyHtml).toContain('Change the session chart view');
+		expect(historyHtml).toContain('Delete the selected session');
+		expect(historyHtml).toContain('Confirm session deletion');
 		expect(historyHtml).not.toContain('Increase or decrease resistance');
 		expect(historyHtml).not.toContain('Pause or resume');
+		expect(historyHtml).not.toContain('Start a new session after ending');
 	});
 
 	test('graphs resistance with the other session data', () => {
@@ -224,6 +258,19 @@ describe('view components', () => {
 	});
 
 	test('renders the session save workflow', () => {
+		expect(
+			render(
+				<SessionSaveDialog
+					onClose={() => undefined}
+					onSave={async () => undefined}
+					onStartWithoutSaving={() => undefined}
+					open={false}
+					saving={false}
+					session={{ ...emptySession, maximums: emptyMetrics }}
+					speedUnit="kmh"
+				/>
+			)
+		).toBe('');
 		const html = render(
 			<SessionSaveDialog
 				onClose={() => undefined}
@@ -255,6 +302,7 @@ describe('view components', () => {
 		expect(html).toContain('No saved sessions yet');
 		expect(html).toContain('ml-auto');
 		expect(html).toContain('translate-x-0');
+		expect(html).toContain('Show history keyboard controls');
 	});
 
 	test('renders session deletion confirmation as a modal', () => {
@@ -271,11 +319,34 @@ describe('view components', () => {
 		expect(html).toContain('Delete permanently');
 		expect(html).toContain('absolute top-0 right-0');
 		expect(html).not.toContain('bg-black/65');
+		expect(
+			render(
+				<DeleteSessionDialog
+					deleting
+					onCancel={() => undefined}
+					onConfirm={() => undefined}
+					open
+				/>
+			)
+		).toContain('Deleting…');
+		expect(
+			render(
+				<DeleteSessionDialog
+					deleting={false}
+					onCancel={() => undefined}
+					onConfirm={() => undefined}
+					open={false}
+				/>
+			)
+		).toBe('');
 	});
 
 	test('styles an unrecorded feeling like the comments value', () => {
 		const html = render(
 			<SessionDetail
+				deleteConfirmationOpen
+				onCancelDelete={() => undefined}
+				onConfirmDelete={() => undefined}
 				onDelete={() => undefined}
 				session={{
 					aggregates: emptySession.aggregates,
@@ -294,6 +365,7 @@ describe('view components', () => {
 		);
 		expect(html).toContain('FELT');
 		expect(html).toContain('Delete session');
+		expect(html).toContain('role="alertdialog"');
 		expect(html).not.toContain('until');
 		expect(html).toContain(
 			'<p class="mt-1 whitespace-pre-wrap text-slate-300 text-sm">Not recorded</p>'

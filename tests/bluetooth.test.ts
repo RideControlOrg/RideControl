@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+	characteristicValue,
 	connectGatt,
 	findRememberedKickr,
 	parseCrankCadence,
@@ -18,6 +19,13 @@ describe('Bluetooth data utilities', () => {
 		expect(last.current).toBe(20);
 		recordMetricActivity(last, { power: 6 }, 30);
 		expect(last.current).toBe(30);
+		recordMetricActivity(last, { cadence: 1, power: 5 }, 40);
+		expect(last.current).toBe(30);
+	});
+
+	test('reads the value from a characteristic event', () => {
+		const value = new DataView(new ArrayBuffer(2));
+		expect(characteristicValue({ target: { value } } as unknown as Event)).toBe(value);
 	});
 
 	test('parses an FTMS indoor bike packet', () => {
@@ -61,6 +69,8 @@ describe('Bluetooth data utilities', () => {
 			cadence: 120,
 			current: { revolutions: 12, time: 2024 },
 		});
+		view.setUint8(0, 0);
+		expect(parseCrankCadence(view)).toEqual({});
 	});
 
 	test('encodes resistance using the trainer range', () => {
@@ -77,6 +87,12 @@ describe('Bluetooth data utilities', () => {
 		} as Bluetooth;
 		expect(await findRememberedKickr(bluetooth, { getItem: () => 'one' })).toBe(devices[0]);
 		expect(await findRememberedKickr(bluetooth, { getItem: () => null })).toBe(devices[1]);
+		expect(
+			await findRememberedKickr({ getDevices: async () => [devices[0]] } as Bluetooth, {
+				getItem: () => null,
+			})
+		).toBe(devices[0]);
+		expect(await findRememberedKickr({} as Bluetooth, { getItem: () => null })).toBeUndefined();
 	});
 
 	test('connects GATT and reports status', async () => {
@@ -87,6 +103,45 @@ describe('Bluetooth data utilities', () => {
 		} as unknown as BluetoothDevice;
 		expect(await connectGatt(device, false, (status) => statuses.push(status))).toBe(server);
 		expect(statuses).toEqual(['Connecting…']);
+	});
+
+	test('rediscovers and retries a failed GATT connection', async () => {
+		const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+		Object.defineProperty(globalThis, 'window', {
+			configurable: true,
+			value: {
+				clearTimeout,
+				setTimeout,
+			},
+		});
+		const server = {} as BluetoothRemoteGATTServer;
+		const statuses: string[] = [];
+		let attempts = 0;
+		const device = {
+			addEventListener: () => undefined,
+			gatt: {
+				connect: () => {
+					attempts += 1;
+					if (attempts === 1) {
+						return Promise.reject(new Error('temporarily unavailable'));
+					}
+					return Promise.resolve(server);
+				},
+			},
+			removeEventListener: () => undefined,
+			watchAdvertisements: () => Promise.reject(new Error('advertisement already fresh')),
+		} as unknown as BluetoothDevice;
+		try {
+			expect(await connectGatt(device, true, (status) => statuses.push(status))).toBe(server);
+			expect(attempts).toBe(2);
+			expect(statuses).toEqual(['Connecting…', 'Finding trainer…', 'Connecting…']);
+		} finally {
+			if (originalWindow) {
+				Object.defineProperty(globalThis, 'window', originalWindow);
+			} else {
+				Reflect.deleteProperty(globalThis, 'window');
+			}
+		}
 	});
 
 	test('rejects devices without a GATT server', async () => {

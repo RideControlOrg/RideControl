@@ -22,7 +22,7 @@ export function ConnectionControl({
 			<div className="flex items-center gap-2">
 				<div
 					aria-live="polite"
-					className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-[#10151a] px-3.5 font-semibold text-slate-300 text-sm"
+					className="inline-flex h-10 items-center gap-2 px-1 font-medium text-slate-400 text-sm"
 					role="status"
 				>
 					<span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-lime" />
