@@ -1,11 +1,16 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatAggregateAverage, formatDuration } from '../lib/format';
-import { type HistoryShortcut, historyShortcutForKey } from '../lib/keyboard';
+import {
+	type HistoryShortcut,
+	historyKeyboardShortcuts,
+	historyShortcutForKey,
+} from '../lib/keyboard';
 import {
 	adjacentSession,
 	countSavedSessions,
 	deleteSavedSession,
+	feelingLabel,
 	formatSessionTime,
 	formatSessionTimeRange,
 	getSavedSession,
@@ -13,11 +18,8 @@ import {
 	listSavedSessions,
 	sessionListAfterDelete,
 } from '../lib/saved-sessions';
-import type { SavedSession, SavedSessionSummary, SessionFeeling, SpeedUnit } from '../types';
-import {
-	type KeyboardShortcutDescription,
-	KeyboardShortcutsDialog,
-} from './keyboard-shortcuts-dialog';
+import type { SavedSession, SavedSessionSummary, SpeedUnit } from '../types';
+import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import { SessionMetric, SmallMetric } from './metrics';
 import { SessionChart } from './session-chart';
 
@@ -33,22 +35,6 @@ function shouldIgnoreHistoryAction(event: KeyboardEvent) {
 		event.metaKey ||
 		target?.matches("input, textarea, select, [contenteditable='true']")
 	);
-}
-
-export const HISTORY_KEYBOARD_SHORTCUTS: KeyboardShortcutDescription[] = [
-	{ keys: ['↑', '↓'], label: 'Select the previous or next session' },
-	{ keys: ['←', '→'], label: 'Change the session chart view' },
-	{ keys: ['D'], label: 'Delete the selected session' },
-	{ keys: ['Enter'], label: 'Confirm session deletion' },
-	{ keys: ['?'], label: 'Show history keyboard controls' },
-	{ keys: ['Esc'], label: 'Close help or session history' },
-];
-
-export function feelingLabel(feeling?: SessionFeeling): string {
-	if (!feeling) {
-		return 'Not recorded';
-	}
-	return feeling[0].toUpperCase() + feeling.slice(1);
 }
 
 export function DeleteSessionDialog({
@@ -581,7 +567,7 @@ export function SessionHistory({
 				handleEscape={false}
 				onClose={() => setHistoryHelpOpen(false)}
 				open={historyHelpOpen}
-				shortcuts={HISTORY_KEYBOARD_SHORTCUTS}
+				shortcuts={historyKeyboardShortcuts}
 				title="History keyboard controls"
 			/>
 		</div>

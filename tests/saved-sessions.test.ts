@@ -4,6 +4,7 @@ import {
 	adjacentSession,
 	createSavedSession,
 	deleteSessionRecords,
+	feelingLabel,
 	formatSessionTime,
 	formatSessionTimeRange,
 	groupSessionsByDate,
@@ -36,6 +37,11 @@ const snapshot: SessionSnapshot = {
 };
 
 describe('saved session utilities', () => {
+	test('formats recorded and missing session feelings', () => {
+		expect(feelingLabel('great')).toBe('Great');
+		expect(feelingLabel()).toBe('Not recorded');
+	});
+
 	test('creates a saved session with trimmed metadata', () => {
 		const session = createSavedSession(
 			snapshot,

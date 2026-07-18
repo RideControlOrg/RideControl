@@ -16,12 +16,12 @@ import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionChart } from '../src/components/session-chart';
 import {
 	DeleteSessionDialog,
-	HISTORY_KEYBOARD_SHORTCUTS,
 	SessionDetail,
 	SessionHistory,
 } from '../src/components/session-history';
 import { SessionSaveDialog } from '../src/components/session-save-dialog';
 import { CHROME_BLUETOOTH_PERMISSION_MESSAGE, emptyMetrics, emptySession } from '../src/constants';
+import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 
 const render = (element: React.ReactNode) => renderToStaticMarkup(element);
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
@@ -215,7 +215,7 @@ describe('view components', () => {
 			<KeyboardShortcutsDialog
 				onClose={() => undefined}
 				open
-				shortcuts={HISTORY_KEYBOARD_SHORTCUTS}
+				shortcuts={historyKeyboardShortcuts}
 				title="History keyboard controls"
 			/>
 		);

@@ -17,6 +17,15 @@ const historyShortcuts: Record<string, HistoryShortcut> = {
 	Escape: 'close',
 };
 
+export const historyKeyboardShortcuts = [
+	{ keys: ['↑', '↓'], label: 'Select the previous or next session' },
+	{ keys: ['←', '→'], label: 'Change the session chart view' },
+	{ keys: ['D'], label: 'Delete the selected session' },
+	{ keys: ['Enter'], label: 'Confirm session deletion' },
+	{ keys: ['?'], label: 'Show history keyboard controls' },
+	{ keys: ['Esc'], label: 'Close help or session history' },
+];
+
 export function appShortcutForKey({ code, key }: Pick<KeyboardEvent, 'code' | 'key'>) {
 	if (key.toLowerCase() === 'h') {
 		return 'history' satisfies AppShortcut;

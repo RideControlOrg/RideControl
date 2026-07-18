@@ -1,4 +1,10 @@
-import type { SavedSession, SavedSessionSummary, SessionMetadata, SessionSnapshot } from '../types';
+import type {
+	SavedSession,
+	SavedSessionSummary,
+	SessionFeeling,
+	SessionMetadata,
+	SessionSnapshot,
+} from '../types';
 import { aggregateResistance } from './session';
 
 const DATABASE_NAME = 'ridecontrol-sessions';
@@ -64,6 +70,13 @@ export function createSavedSession(
 		feeling: metadata.feeling,
 		id,
 	};
+}
+
+export function feelingLabel(feeling?: SessionFeeling): string {
+	if (!feeling) {
+		return 'Not recorded';
+	}
+	return feeling[0].toUpperCase() + feeling.slice(1);
 }
 
 export function sessionSummary(session: SavedSession): SavedSessionSummary {
