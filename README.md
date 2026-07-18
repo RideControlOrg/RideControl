@@ -33,3 +33,10 @@ Persistent Web Bluetooth permissions are disabled by default in current Chromium
 1. Open `chrome://flags/#enable-web-bluetooth-new-permissions-backend`.
 2. Enable **Use the new permissions backend for Web Bluetooth**.
 3. Relaunch Chrome and pair the device once more from the app.
+
+## License
+
+Copyright (C) 2026 Public Profile.
+
+Ride Control is licensed under version 3 of the GNU General Public License. See
+[LICENSE](LICENSE) for the complete license terms.
