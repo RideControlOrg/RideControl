@@ -17,6 +17,9 @@ export function metricAccentClass(accent: string): string {
 }
 
 export function metricIconClass(accent: string): string {
+	if (accent === 'mint') {
+		return 'text-mint';
+	}
 	if (accent === 'yellow') {
 		return 'text-yellow-400';
 	}
@@ -76,6 +79,47 @@ export function SmallMetric({ label, value }: { label: string; value: string }) 
 		<div className="p-4 sm:p-5">
 			<p className="font-bold text-[11px] text-slate-500 tracking-[.12em]">{label}</p>
 			<p className="mt-1 font-semibold text-lg tracking-tight sm:text-2xl">{value}</p>
+		</div>
+	);
+}
+
+export function SessionMetric({
+	accent,
+	average,
+	icon,
+	label,
+	maximum,
+	unit,
+}: {
+	accent: string;
+	average: string;
+	icon: string;
+	label: string;
+	maximum?: string;
+	unit: string;
+}) {
+	return (
+		<div className="rounded-xl border border-line bg-[#12171d] p-4">
+			<div className="flex items-center justify-between gap-3">
+				<p className="font-bold text-[10px] text-slate-500 tracking-[.14em]">{label}</p>
+				<Icon className={`h-4 w-4 ${metricIconClass(accent)}`} name={icon} />
+			</div>
+			<div className="mt-3 flex items-baseline gap-2">
+				<span className="font-semibold text-3xl tracking-tight sm:text-4xl">{average}</span>
+				<span className="text-slate-400 text-xs">{unit}</span>
+			</div>
+			<div className="mt-2 flex items-center justify-between gap-3 text-[11px]">
+				<span className="font-bold text-slate-600 tracking-[.08em]">AVERAGE</span>
+				{maximum === undefined ? null : (
+					<span className="text-right text-slate-400">
+						<strong className="mr-1 font-bold text-slate-600 tracking-[.08em]">
+							MAX
+						</strong>
+						{maximum} {unit}
+					</span>
+				)}
+			</div>
+			<div className={`mt-3 h-1 rounded-full ${metricAccentClass(accent)}`} />
 		</div>
 	);
 }

@@ -8,6 +8,7 @@ const paths: Record<string, string> = {
 	pause: 'M9 5v14m6-14v14',
 	play: 'm9 5 10 7-10 7V5Z',
 	plus: 'M12 5v14M5 12h14',
+	resistance: 'M4 7h10m4 0h2M14 4v6M4 17h2m4 0h10M8 14v6',
 	route: 'M4 17c3-7 5-9 9-9 3 0 4 2 7 2M4 17h4m-4 0v-4M20 7h-4m4 0v4',
 	speed: 'M4 16a8 8 0 1 1 16 0M12 16l4-5M7 20h10',
 	stop: 'M6 6h12v12H6z',
