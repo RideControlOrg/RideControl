@@ -1,0 +1,91 @@
+import { describe, expect, test } from 'bun:test';
+import { emptySession } from '../src/constants';
+import {
+	addAggregate,
+	addMetricAggregates,
+	loadStoredSession,
+	nonNegativeNumber,
+	restoreAggregate,
+	storedResistance,
+} from '../src/lib/session';
+
+const storageWith = (value: string | null) => ({
+	getItem: () => value,
+});
+
+describe('session utilities', () => {
+	test('accepts only finite non-negative numbers', () => {
+		expect(nonNegativeNumber(4.5)).toBe(4.5);
+		expect(nonNegativeNumber(-1)).toBe(0);
+		expect(nonNegativeNumber(Number.NaN)).toBe(0);
+		expect(nonNegativeNumber('4')).toBe(0);
+	});
+
+	test('adds aggregate samples according to zero policy', () => {
+		const initial = { count: 2, sum: 10 };
+		expect(addAggregate(initial, 5, false)).toEqual({ count: 3, sum: 15 });
+		expect(addAggregate(initial, 0, false)).toBe(initial);
+		expect(addAggregate(initial, 0, true)).toEqual({ count: 3, sum: 10 });
+	});
+
+	test('aggregates cadence, heart rate, and power', () => {
+		expect(
+			addMetricAggregates(emptySession.aggregates, {
+				cadence: 0,
+				heartRate: 145,
+				power: 0,
+			})
+		).toEqual({
+			cadence: { count: 0, sum: 0 },
+			heartRate: { count: 1, sum: 145 },
+			power: { count: 1, sum: 0 },
+		});
+	});
+
+	test('restores valid aggregate values and falls back when absent', () => {
+		expect(restoreAggregate({ count: -2, sum: 20 }, { count: 1, sum: 2 })).toEqual({
+			count: 0,
+			sum: 20,
+		});
+		expect(restoreAggregate(undefined, { count: 1, sum: 2 })).toEqual({
+			count: 1,
+			sum: 2,
+		});
+	});
+
+	test('loads and sanitizes a stored session', () => {
+		const stored = JSON.stringify({
+			calories: -10,
+			distance: 12,
+			elapsedSeconds: 65,
+			history: [
+				{
+					cadence: 90,
+					elapsedSeconds: 65,
+					heartRate: 150,
+					power: 200,
+					speed: Number.NaN,
+				},
+			],
+			maximums: { cadence: 95, heartRate: 160, power: 250, speed: 35 },
+		});
+		const session = loadStoredSession(storageWith(stored));
+		expect(session.calories).toBe(0);
+		expect(session.distance).toBe(12);
+		expect(session.history[0]?.speed).toBe(0);
+		expect(session.aggregates.power).toEqual({ count: 1, sum: 200 });
+		expect(session.maximums.speed).toBe(35);
+	});
+
+	test('uses an empty session for absent or malformed storage', () => {
+		expect(loadStoredSession(storageWith(null))).toBe(emptySession);
+		expect(loadStoredSession(storageWith('not-json'))).toBe(emptySession);
+	});
+
+	test('loads and clamps stored resistance', () => {
+		expect(storedResistance(storageWith(null))).toBe(10);
+		expect(storedResistance(storageWith('72'))).toBe(72);
+		expect(storedResistance(storageWith('120'))).toBe(100);
+		expect(storedResistance(storageWith('invalid'))).toBe(10);
+	});
+});

@@ -1,0 +1,48 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"extends": ["ultracite/biome/core", "ultracite/biome/react"],
+	"files": {
+		"includes": [
+			"!.*",
+			"!**/*.svg",
+			"!dist",
+			"!node_modules",
+			"!package.json"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineWidth": 100
+	},
+	"javascript": {
+		"globals": ["WebSocketPair"],
+		"formatter": {
+			"enabled": true,
+			"indentStyle": "tab",
+			"indentWidth": 4,
+			"quoteStyle": "single"
+		}
+	},
+	"json": {
+		"formatter": {
+			"enabled": true,
+			"indentStyle": "tab",
+			"indentWidth": 4
+		}
+	},
+	"linter": {
+		"rules": {
+			"performance": {
+				// Reconnect attempts must be sequential, and these leaf event handlers are not memoized consumers.
+				"noAwaitInLoops": "off",
+				"noJsxPropsBind": "off"
+			},
+			"suspicious": {
+				// Bluetooth FTMS and CSC payloads are defined as packed bit fields.
+				"noBitwiseOperators": "off"
+			}
+		}
+	}
+}

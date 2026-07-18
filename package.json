@@ -1,0 +1,31 @@
+{
+  "name": "ridecontrol",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host localhost --port 4200",
+    "build": "tsc && vite build",
+    "check": "biome check .",
+    "fix": "biome check --write .",
+    "test": "bun test",
+    "ci": "biome check . && bun test && tsc --noEmit && vite build",
+    "preview": "vite preview --host localhost --port 4200"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/vite": "^5.0.20"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.4",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.7",
+    "@types/web-bluetooth": "^0.0.21",
+    "typescript": "^7.0.2",
+    "ultracite": "^7.9.4",
+    "vite": "^8.1.5"
+  }
+}

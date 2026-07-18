@@ -1,0 +1,33 @@
+const paths: Record<string, string> = {
+	bike: 'M5 17a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm14 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM9 13h6l-3-7-2 4h4M15 13l2-4',
+	bluetooth: 'm7 7 10 10-5 5V2l5 5L7 17',
+	bolt: 'm13 2-8 11h6l-1 9 8-12h-6l1-7Z',
+	cadence: 'M20 11a8 8 0 0 0-15.5-2M4 4v5h5M4 13a8 8 0 0 0 15.5 2M20 20v-5h-5',
+	heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6a5.5 5.5 0 0 0 1-8.8Z',
+	minus: 'M5 12h14',
+	pause: 'M9 5v14m6-14v14',
+	play: 'm9 5 10 7-10 7V5Z',
+	plus: 'M12 5v14M5 12h14',
+	route: 'M4 17c3-7 5-9 9-9 3 0 4 2 7 2M4 17h4m-4 0v-4M20 7h-4m4 0v4',
+	speed: 'M4 16a8 8 0 1 1 16 0M12 16l4-5M7 20h10',
+	stop: 'M6 6h12v12H6z',
+	upload: 'M12 16V4m0 0 4 4m-4-4L8 8M5 20h14',
+};
+
+export function Icon({ name, className = '' }: { name: string; className?: string }) {
+	return (
+		<svg
+			aria-hidden="true"
+			className={`h-5 w-5 ${className}`}
+			fill="none"
+			stroke="currentColor"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth="1.8"
+			viewBox="0 0 24 24"
+		>
+			<title>{name}</title>
+			<path d={paths[name] ?? paths.bike} />
+		</svg>
+	);
+}
