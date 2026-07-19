@@ -3,7 +3,8 @@
 - After making any changes, always run `bun run ci` before handing work back.
 - `bun run ci` must run the Ultracite-configured Biome checks automatically, followed by the TypeScript check and production build.
 - Fix all reported issues rather than bypassing or disabling checks unless the project requirements explicitly demand an exception.
-- Do not reference the AI name used (codex, openai, etc...) in any commits, pr's, issue titles or anywhere else.
+- Never include AI assistant, product, vendor, or model names (such as `codex` or `openai`) in branch names, commit messages, pull request titles or descriptions, issue titles or descriptions, tags, release notes, or any other repository-visible metadata or content.
+- Name branches only after the work being performed, such as `refactor/tanstack-store`; do not apply a tool's default branch prefix when that prefix would violate the naming rule above.
 - When the user says "add, commit", group all existing changes into logical sets, stage and commit each group, and repeat until every change is committed and the working tree is clean.
 - At the start of every new work request, check the current Git branch before changing files. If the current branch is `main`, create and switch to a descriptively named task branch first.
 - Never push work directly to `main`. If `main` already contains uncommitted changes or commits that have not been pushed, create the task branch from its current state so all of that work moves forward on the new branch, then continue the normal workflow there.
