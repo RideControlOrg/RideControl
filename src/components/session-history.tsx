@@ -1,11 +1,19 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { formatAggregateAverage, formatDuration } from '../lib/format';
+import { EMPTY_ROUTE } from '../constants';
+import {
+	eventTargetsEditableControl,
+	eventTargetsInteractiveControl,
+	keyboardEventHasModifiers,
+} from '../lib/dom';
+import { errorMessage } from '../lib/errors';
+import { formatAggregateAverage, formatDuration, formatWholeNumber } from '../lib/format';
 import {
 	type HistoryShortcut,
 	historyKeyboardShortcuts,
 	historyShortcutForKey,
 } from '../lib/keyboard';
+import { METRIC_PRESENTATION, STANDARD_METRIC_KEYS } from '../lib/metric-presentation';
 import {
 	adjacentSession,
 	countSavedSessions,
@@ -20,22 +28,20 @@ import {
 	sessionListAfterDelete,
 } from '../lib/saved-sessions';
 import { downloadSessionTcx } from '../lib/tcx';
+import { formatDistance } from '../lib/units';
 import type { SavedSession, SavedSessionSummary, SpeedUnit } from '../types';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
-import { SessionMetric, SmallMetric } from './metrics';
+import { SessionMetric } from './metrics';
 import { SessionChart } from './session-chart';
+import { SessionSummary } from './session-summary';
 
 const PAGE_SIZE = 30;
-const EMPTY_ROUTE: [] = [];
 
 function shouldIgnoreHistoryAction(event: KeyboardEvent) {
-	const target = event.target as HTMLElement | null;
 	return (
 		event.defaultPrevented ||
-		event.altKey ||
-		event.ctrlKey ||
-		event.metaKey ||
-		target?.matches("input, textarea, select, [contenteditable='true']")
+		keyboardEventHasModifiers(event) ||
+		eventTargetsEditableControl(event)
 	);
 }
 
@@ -120,8 +126,6 @@ export function SessionDetail({
 	session: SavedSession;
 	speedUnit: SpeedUnit;
 }) {
-	const unitFactor = speedUnit === 'mph' ? 0.621_371 : 1;
-	const distanceUnit = speedUnit === 'mph' ? 'mi' : 'km';
 	const usesGear = session.controlMode === 'gear';
 	const controlMetric = usesGear
 		? {
@@ -138,6 +142,17 @@ export function SessionDetail({
 				label: 'RESISTANCE',
 				unit: '%',
 			};
+	const standardMetrics = STANDARD_METRIC_KEYS.map((key) => {
+		const presentation = METRIC_PRESENTATION[key];
+		return {
+			accent: presentation.accent,
+			average: formatAggregateAverage(session.aggregates[key], 0),
+			icon: presentation.icon,
+			label: presentation.label.toUpperCase(),
+			maximum: formatWholeNumber(session.maximums[key]),
+			unit: presentation.unit,
+		};
+	});
 
 	return (
 		<div className="min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
@@ -191,41 +206,16 @@ export function SessionDetail({
 				) : null}
 			</div>
 			<div className="mt-5 grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-[#12171d]">
-				<SmallMetric label="RECORDED" value={formatDuration(session.elapsedSeconds)} />
-				<SmallMetric
-					label="DISTANCE"
-					value={`${(session.distance * unitFactor).toFixed(2)} ${distanceUnit}`}
+				<SessionSummary
+					calories={session.calories}
+					distance={session.distance}
+					elapsedSeconds={session.elapsedSeconds}
+					speedUnit={speedUnit}
+					timeLabel="RECORDED"
 				/>
-				<SmallMetric label="CALORIES" value={`${Math.round(session.calories)} kcal`} />
 			</div>
 			<div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-				{[
-					{
-						accent: 'yellow',
-						average: formatAggregateAverage(session.aggregates.power, 0),
-						icon: 'bolt',
-						label: 'POWER',
-						maximum: String(Math.round(session.maximums.power)),
-						unit: 'W',
-					},
-					{
-						accent: 'violet',
-						average: formatAggregateAverage(session.aggregates.cadence, 0),
-						icon: 'cadence',
-						label: 'CADENCE',
-						maximum: String(Math.round(session.maximums.cadence)),
-						unit: 'rpm',
-					},
-					{
-						accent: 'rose',
-						average: formatAggregateAverage(session.aggregates.heartRate, 0),
-						icon: 'heart',
-						label: 'HEART RATE',
-						maximum: String(Math.round(session.maximums.heartRate)),
-						unit: 'bpm',
-					},
-					controlMetric,
-				].map((metric) => (
+				{[...standardMetrics, controlMetric].map((metric) => (
 					<SessionMetric key={metric.label} {...metric} />
 				))}
 			</div>
@@ -280,8 +270,6 @@ export function SessionHistory({
 	const [error, setError] = useState('');
 	const deleteInProgress = useRef(false);
 	const groups = useMemo(() => groupSessionsByDate(summaries), [summaries]);
-	const unitFactor = speedUnit === 'mph' ? 0.621_371 : 1;
-	const distanceUnit = speedUnit === 'mph' ? 'mi' : 'km';
 
 	useEffect(() => {
 		let frame: number | undefined;
@@ -314,7 +302,7 @@ export function SessionHistory({
 			setSelected(await getSavedSession(id));
 			setError('');
 		} catch (loadError) {
-			setError(loadError instanceof Error ? loadError.message : String(loadError));
+			setError(errorMessage(loadError));
 		} finally {
 			setLoading(false);
 		}
@@ -347,7 +335,7 @@ export function SessionHistory({
 		}
 		loadHistory().catch((loadError: unknown) => {
 			if (!cancelled) {
-				setError(loadError instanceof Error ? loadError.message : String(loadError));
+				setError(errorMessage(loadError));
 			}
 		});
 		return () => {
@@ -375,7 +363,7 @@ export function SessionHistory({
 				setSelectedId(undefined);
 			}
 		} catch (deleteError) {
-			setError(deleteError instanceof Error ? deleteError.message : String(deleteError));
+			setError(errorMessage(deleteError));
 		} finally {
 			deleteInProgress.current = false;
 			setDeleting(false);
@@ -408,11 +396,7 @@ export function SessionHistory({
 				}
 			},
 			confirmDelete: (event) => {
-				const target = event.target as HTMLElement | null;
-				if (
-					!deleteConfirmationOpen ||
-					target?.matches("button, a, input, textarea, select, [contenteditable='true']")
-				) {
+				if (!deleteConfirmationOpen || eventTargetsInteractiveControl(event)) {
 					return;
 				}
 				event.preventDefault();
@@ -579,8 +563,7 @@ export function SessionHistory({
 												</span>
 											</div>
 											<p className="mt-1 text-slate-400 text-xs">
-												{(session.distance * unitFactor).toFixed(2)}{' '}
-												{distanceUnit}
+												{formatDistance(session.distance, speedUnit)}
 												{session.feeling
 													? ` · ${feelingLabel(session.feeling)}`
 													: null}

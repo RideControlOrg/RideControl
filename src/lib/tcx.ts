@@ -1,4 +1,7 @@
 import type { MetricSample, SavedSession } from '../types';
+import { aggregateAverage } from './format';
+import { nonNegativeNumber } from './numbers';
+import { metersForKilometers, metersPerSecond, millisecondsForSeconds } from './units';
 
 const TCX_NAMESPACE = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
 const ACTIVITY_EXTENSION_NAMESPACE = 'http://www.garmin.com/xmlschemas/ActivityExtension/v2';
@@ -14,32 +17,24 @@ function xmlEscape(value: string): string {
 		.replaceAll("'", '&apos;');
 }
 
-function nonNegative(value: unknown): number {
-	return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0;
-}
-
-function average({ count, sum }: { count: number; sum: number }): number {
-	return count > 0 ? sum / count : 0;
-}
-
 function trackpointDistances(session: SavedSession): number[] {
 	let elapsed = 0;
 	let distance = 0;
 	const integrated = session.history.map((sample) => {
-		const nextElapsed = nonNegative(sample.elapsedSeconds);
+		const nextElapsed = nonNegativeNumber(sample.elapsedSeconds);
 		const seconds = Math.max(0, nextElapsed - elapsed);
-		distance += (nonNegative(sample.speed) * seconds) / 3.6;
+		distance += metersPerSecond(nonNegativeNumber(sample.speed)) * seconds;
 		elapsed = nextElapsed;
 		return distance;
 	});
-	const totalMeters = nonNegative(session.distance) * 1000;
+	const totalMeters = metersForKilometers(nonNegativeNumber(session.distance));
 	if (distance > 0 && totalMeters > 0) {
 		return integrated.map((meters) => (meters / distance) * totalMeters);
 	}
 	if (totalMeters > 0 && session.elapsedSeconds > 0) {
 		return session.history.map(
 			(sample) =>
-				(Math.min(nonNegative(sample.elapsedSeconds), session.elapsedSeconds) /
+				(Math.min(nonNegativeNumber(sample.elapsedSeconds), session.elapsedSeconds) /
 					session.elapsedSeconds) *
 				totalMeters
 		);
@@ -48,11 +43,11 @@ function trackpointDistances(session: SavedSession): number[] {
 }
 
 function trackpointXml(sample: MetricSample, timestamp: number, distanceMeters: number): string {
-	const heartRate = nonNegative(sample.heartRate);
+	const heartRate = nonNegativeNumber(sample.heartRate);
 	const controlExtension =
 		typeof sample.gear === 'number'
-			? `<rc:Gear>${Math.round(nonNegative(sample.gear))}</rc:Gear>`
-			: `<rc:Resistance>${nonNegative(sample.resistance).toFixed(1)}</rc:Resistance>`;
+			? `<rc:Gear>${Math.round(nonNegativeNumber(sample.gear))}</rc:Gear>`
+			: `<rc:Resistance>${nonNegativeNumber(sample.resistance).toFixed(1)}</rc:Resistance>`;
 	return `
 					<Trackpoint>
 						<Time>${new Date(timestamp).toISOString()}</Time>
@@ -62,12 +57,12 @@ function trackpointXml(sample: MetricSample, timestamp: number, distanceMeters: 
 						<HeartRateBpm><Value>${Math.round(heartRate)}</Value></HeartRateBpm>`
 								: ''
 						}
-						<Cadence>${Math.min(255, Math.round(nonNegative(sample.cadence)))}</Cadence>
+						<Cadence>${Math.min(255, Math.round(nonNegativeNumber(sample.cadence)))}</Cadence>
 						<SensorState>Present</SensorState>
 						<Extensions>
 							<ns3:TPX>
-								<ns3:Speed>${(nonNegative(sample.speed) / 3.6).toFixed(3)}</ns3:Speed>
-								<ns3:Watts>${Math.round(nonNegative(sample.power))}</ns3:Watts>
+								<ns3:Speed>${metersPerSecond(nonNegativeNumber(sample.speed)).toFixed(3)}</ns3:Speed>
+								<ns3:Watts>${Math.round(nonNegativeNumber(sample.power))}</ns3:Watts>
 							</ns3:TPX>
 							${controlExtension}
 						</Extensions>
@@ -81,7 +76,8 @@ export function sessionToTcx(session: SavedSession): string {
 		.map((sample, index) =>
 			trackpointXml(
 				sample,
-				session.startedAt + nonNegative(sample.elapsedSeconds) * 1000,
+				session.startedAt +
+					millisecondsForSeconds(nonNegativeNumber(sample.elapsedSeconds)),
 				distances[index] ?? 0
 			)
 		)
@@ -92,16 +88,16 @@ export function sessionToTcx(session: SavedSession): string {
 	]
 		.filter(Boolean)
 		.join('\n');
-	const averageHeartRate = average(session.aggregates.heartRate);
-	const averageCadence = average(session.aggregates.cadence);
-	const averagePower = average(session.aggregates.power);
+	const averageHeartRate = aggregateAverage(session.aggregates.heartRate);
+	const averageCadence = aggregateAverage(session.aggregates.cadence);
+	const averagePower = aggregateAverage(session.aggregates.power);
 	const controlSummary =
 		session.controlMode === 'gear'
-			? `<rc:AverageGear>${average(session.aggregates.gear).toFixed(1)}</rc:AverageGear>
-						<rc:MaximumGear>${Math.max(0, ...session.history.map((sample) => nonNegative(sample.gear))).toFixed(0)}</rc:MaximumGear>`
-			: `<rc:AverageResistance>${average(session.aggregates.resistance).toFixed(1)}</rc:AverageResistance>
-						<rc:MaximumResistance>${Math.max(0, ...session.history.map((sample) => nonNegative(sample.resistance))).toFixed(1)}</rc:MaximumResistance>`;
-	const distanceMeters = nonNegative(session.distance) * 1000;
+			? `<rc:AverageGear>${aggregateAverage(session.aggregates.gear).toFixed(1)}</rc:AverageGear>
+						<rc:MaximumGear>${Math.max(0, ...session.history.map((sample) => nonNegativeNumber(sample.gear))).toFixed(0)}</rc:MaximumGear>`
+			: `<rc:AverageResistance>${aggregateAverage(session.aggregates.resistance).toFixed(1)}</rc:AverageResistance>
+						<rc:MaximumResistance>${Math.max(0, ...session.history.map((sample) => nonNegativeNumber(sample.resistance))).toFixed(1)}</rc:MaximumResistance>`;
+	const distanceMeters = metersForKilometers(nonNegativeNumber(session.distance));
 	const averageSpeed = session.elapsedSeconds > 0 ? distanceMeters / session.elapsedSeconds : 0;
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
@@ -110,10 +106,10 @@ export function sessionToTcx(session: SavedSession): string {
 		<Activity Sport="Biking">
 			<Id>${startedAt}</Id>
 			<Lap StartTime="${startedAt}">
-				<TotalTimeSeconds>${nonNegative(session.elapsedSeconds).toFixed(3)}</TotalTimeSeconds>
+				<TotalTimeSeconds>${nonNegativeNumber(session.elapsedSeconds).toFixed(3)}</TotalTimeSeconds>
 				<DistanceMeters>${distanceMeters.toFixed(3)}</DistanceMeters>
-				<MaximumSpeed>${(nonNegative(session.maximums.speed) / 3.6).toFixed(3)}</MaximumSpeed>
-				<Calories>${Math.round(nonNegative(session.calories))}</Calories>${
+				<MaximumSpeed>${metersPerSecond(nonNegativeNumber(session.maximums.speed)).toFixed(3)}</MaximumSpeed>
+				<Calories>${Math.round(nonNegativeNumber(session.calories))}</Calories>${
 					averageHeartRate > 0
 						? `
 				<AverageHeartRateBpm><Value>${Math.round(averageHeartRate)}</Value></AverageHeartRateBpm>`
@@ -121,7 +117,7 @@ export function sessionToTcx(session: SavedSession): string {
 				}${
 					session.maximums.heartRate > 0
 						? `
-				<MaximumHeartRateBpm><Value>${Math.round(nonNegative(session.maximums.heartRate))}</Value></MaximumHeartRateBpm>`
+				<MaximumHeartRateBpm><Value>${Math.round(nonNegativeNumber(session.maximums.heartRate))}</Value></MaximumHeartRateBpm>`
 						: ''
 				}
 				<Intensity>Active</Intensity>
@@ -133,7 +129,7 @@ export function sessionToTcx(session: SavedSession): string {
 					<ns3:LX>
 						<ns3:AvgSpeed>${averageSpeed.toFixed(3)}</ns3:AvgSpeed>
 						<ns3:AvgWatts>${Math.round(averagePower)}</ns3:AvgWatts>
-						<ns3:MaxWatts>${Math.round(nonNegative(session.maximums.power))}</ns3:MaxWatts>
+						<ns3:MaxWatts>${Math.round(nonNegativeNumber(session.maximums.power))}</ns3:MaxWatts>
 					</ns3:LX>
 					<rc:Summary>
 						${controlSummary}

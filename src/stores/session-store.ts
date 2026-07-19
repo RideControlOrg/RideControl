@@ -1,6 +1,12 @@
 import { createStore } from '@tanstack/react-store';
-import { emptyMetrics, emptySession } from '../constants';
-import { addMetricAggregates, sessionContinuation } from '../lib/session';
+import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
+import {
+	addMetricAggregates,
+	estimatedCyclingCalories,
+	SESSION_STORAGE_KEY,
+	sessionContinuation,
+} from '../lib/session';
+import { kilometersTraveled } from '../lib/units';
 import type { ControlMode, Metrics, SessionSnapshot, StoredSession } from '../types';
 
 interface RecordSessionTick {
@@ -53,7 +59,7 @@ export function storedSessionFromState(state: SessionStoreState): StoredSession 
 		elapsedSeconds: state.elapsedSeconds,
 		ended: state.ended,
 		endedAt: state.endedAt,
-		history: state.history.slice(-3600),
+		history: state.history.slice(-MAX_SESSION_HISTORY_SAMPLES),
 		maximums: state.maximums,
 		savedSessionId: state.savedSessionId,
 		startedAt: state.startedAt,
@@ -64,7 +70,7 @@ export function persistSessionState(
 	state: SessionStoreState,
 	storage: SessionStorage = localStorage
 ) {
-	storage.setItem('trainer-session', JSON.stringify(storedSessionFromState(state)));
+	storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(storedSessionFromState(state)));
 }
 
 export function createSessionStore(restored: StoredSession, now = Date.now()) {
@@ -143,12 +149,11 @@ export function createSessionStore(restored: StoredSession, now = Date.now()) {
 						...metrics,
 						...controlSample,
 					}),
-					calories:
-						current.calories +
-						(metrics.power > 0 ? (metrics.power * seconds) / (4184 * 0.24) : 0),
+					calories: current.calories + estimatedCyclingCalories(metrics.power, seconds),
 					controlMode: control.mode,
 					distance:
-						current.distance + (distanceDelta ?? (metrics.speed * seconds) / 3600),
+						current.distance +
+						(distanceDelta ?? kilometersTraveled(metrics.speed, seconds)),
 					elapsedSeconds,
 					history: [...current.history, sample],
 				};

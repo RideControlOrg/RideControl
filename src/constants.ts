@@ -16,7 +16,12 @@ export const CHROME_BLUETOOTH_FLAGS_URL =
 export const AUTOMATIC_RECONNECT_README_URL =
 	'https://github.com/lookfirst/RideControl#automatic-reconnect';
 export const CHROME_BLUETOOTH_PERMISSION_MESSAGE = 'Chrome returned no site-authorized.';
+export const WEB_BLUETOOTH_UNAVAILABLE_MESSAGE =
+	'Web Bluetooth requires current Chrome or Edge on localhost or HTTPS.';
 export const RECORDING_PAUSE_DELAY_MS = 10_000;
+export const CONTROL_FLASH_MS = 180;
+export const MAX_SESSION_HISTORY_SAMPLES = 3600;
+export const EMPTY_ROUTE = [] as const;
 
 export const optionalServices: BluetoothServiceUUID[] = [
 	FITNESS_MACHINE,

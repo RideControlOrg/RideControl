@@ -7,6 +7,9 @@ export const ZWIFT_ASYNC_CHARACTERISTIC = '00000002-19ca-4651-86e5-fa29dcdd09d1'
 export const ZWIFT_SYNC_RX_CHARACTERISTIC = '00000003-19ca-4651-86e5-fa29dcdd09d1';
 export const ZWIFT_SYNC_TX_CHARACTERISTIC = '00000004-19ca-4651-86e5-fa29dcdd09d1';
 export const ZWIFT_MANUFACTURER_ID = 2378;
+export const CLICK_DEVICE_IDS_STORAGE_KEY = 'zwift-click-v2-device-ids';
+export const CLICK_CONTROLLER_ROLES_STORAGE_KEY = 'zwift-click-v2-controller-roles';
+export const MAX_CLICK_CONTROLLERS = 2;
 
 const CONTROLLER_NOTIFICATION = 0x23;
 const MINUS_BUTTON_MASK = 0x01_00;
@@ -235,9 +238,11 @@ export function parseClickV2Shift(
 
 export function storedClickDeviceIds(storage: Pick<Storage, 'getItem'> = localStorage): string[] {
 	try {
-		const saved = JSON.parse(storage.getItem('zwift-click-v2-device-ids') ?? '[]');
+		const saved = JSON.parse(storage.getItem(CLICK_DEVICE_IDS_STORAGE_KEY) ?? '[]');
 		return Array.isArray(saved)
-			? saved.filter((value): value is string => typeof value === 'string').slice(0, 2)
+			? saved
+					.filter((value): value is string => typeof value === 'string')
+					.slice(0, MAX_CLICK_CONTROLLERS)
 			: [];
 	} catch {
 		return [];
@@ -248,7 +253,7 @@ export function storedClickControllerRoles(
 	storage: Pick<Storage, 'getItem'> = localStorage
 ): ClickControllerRoles {
 	try {
-		const saved = JSON.parse(storage.getItem('zwift-click-v2-controller-roles') ?? '{}');
+		const saved = JSON.parse(storage.getItem(CLICK_CONTROLLER_ROLES_STORAGE_KEY) ?? '{}');
 		if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
 			return {};
 		}

@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { emptySession } from '../src/constants';
+import { nonNegativeNumber } from '../src/lib/numbers';
 import {
 	addAggregate,
 	addMetricAggregates,
 	aggregateResistance,
 	loadStoredSession,
-	nonNegativeNumber,
 	requestUnloadConfirmation,
 	restoreAggregate,
 	sessionContinuation,

@@ -6,13 +6,7 @@ import { DevicePairingButton, DevicePairingPanel } from '../src/components/devic
 import { GearControl } from '../src/components/gear-control';
 import { Icon } from '../src/components/icon';
 import { KeyboardShortcutsDialog } from '../src/components/keyboard-shortcuts-dialog';
-import {
-	Metric,
-	metricAccentClass,
-	metricIconClass,
-	SessionMetric,
-	SmallMetric,
-} from '../src/components/metrics';
+import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
 import { Notification } from '../src/components/notification';
 import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionChart } from '../src/components/session-chart';
@@ -25,6 +19,7 @@ import { SessionSaveDialog } from '../src/components/session-save-dialog';
 import { WelcomeDialog } from '../src/components/welcome-dialog';
 import { CHROME_BLUETOOTH_PERMISSION_MESSAGE, emptyMetrics, emptySession } from '../src/constants';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
+import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
 
 const render = (element: React.ReactNode) => renderToStaticMarkup(element);
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;

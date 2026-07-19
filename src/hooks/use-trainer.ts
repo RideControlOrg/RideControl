@@ -1,20 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CHROME_BLUETOOTH_PERMISSION_MESSAGE, emptyMetrics, optionalServices } from '../constants';
-import { findRememberedKickr, recordMetricActivity, resistanceCommand } from '../lib/bluetooth';
+import {
+	CHROME_BLUETOOTH_PERMISSION_MESSAGE,
+	CONTROL_FLASH_MS,
+	emptyMetrics,
+	optionalServices,
+	WEB_BLUETOOTH_UNAVAILABLE_MESSAGE,
+} from '../constants';
+import {
+	findRememberedKickr,
+	isBluetoothChooserCancellation,
+	recordMetricActivity,
+	resistanceCommand,
+	TRAINER_DEVICE_STORAGE_KEY,
+} from '../lib/bluetooth';
 import { type DeviceConnectionPhase, deviceConnectionView } from '../lib/device-connection';
+import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
+import { errorMessage } from '../lib/errors';
 import { scheduleNoticeDismissal } from '../lib/notification';
+import { clamp } from '../lib/numbers';
 import { createReconnectController } from '../lib/reconnect-controller';
 import {
+	clampResistance,
+	MAX_RESISTANCE,
+	MIN_RESISTANCE,
 	resistanceDirectionForKey,
 	resistanceRampDuration,
 	smoothedResistance,
 } from '../lib/resistance';
-import { storedResistance } from '../lib/session';
+import { RESISTANCE_STORAGE_KEY, storedResistance } from '../lib/session';
 import { connectTrainerDevice } from '../lib/trainer-device';
 import type { Metrics, Range, ResistanceAdjustmentDirection, ResistanceRamp } from '../types';
 
 function pairingWasCancelled(error: unknown, connectionCancelled: boolean) {
-	return connectionCancelled || (error instanceof DOMException && error.name === 'NotFoundError');
+	return connectionCancelled || isBluetoothChooserCancellation(error);
 }
 
 export function useTrainer() {
@@ -33,8 +51,8 @@ export function useTrainer() {
 	const [connectionPhase, setConnectionPhase] = useState<DeviceConnectionPhase>('unpaired');
 	const [notice, setNotice] = useState('');
 	const [resistanceRange, setResistanceRange] = useState<Range>({
-		max: 100,
-		min: 0,
+		max: MAX_RESISTANCE,
+		min: MIN_RESISTANCE,
 	});
 	const commandQueue = useRef(Promise.resolve());
 	const resistanceTimer = useRef<number | undefined>(undefined);
@@ -99,9 +117,7 @@ export function useTrainer() {
 				try {
 					await characteristic.writeValueWithResponse(new Uint8Array(bytes));
 				} catch (error) {
-					setNotice(
-						`Trainer command failed: ${error instanceof Error ? error.message : String(error)}`
-					);
+					setNotice(`Trainer command failed: ${errorMessage(error)}`);
 				}
 			};
 			commandQueue.current = commandQueue.current.then(action, action);
@@ -121,7 +137,7 @@ export function useTrainer() {
 			setConnectionPhase('offline');
 		} else {
 			setConnectionPhase('offline');
-			setNotice(error instanceof Error ? error.message : String(error));
+			setNotice(errorMessage(error));
 		}
 	}
 
@@ -204,7 +220,7 @@ export function useTrainer() {
 				selected.gatt?.disconnect();
 				return false;
 			}
-			localStorage.setItem('trainer-device-id', selected.id);
+			localStorage.setItem(TRAINER_DEVICE_STORAGE_KEY, selected.id);
 			setDevice(selected);
 			setConnectionPhase('connected');
 			reconnectController.current.reset(selected.id);
@@ -227,7 +243,7 @@ export function useTrainer() {
 
 	async function connect() {
 		if (!navigator.bluetooth) {
-			setNotice('Web Bluetooth requires current Chrome or Edge on localhost or HTTPS.');
+			setNotice(WEB_BLUETOOTH_UNAVAILABLE_MESSAGE);
 			return;
 		}
 		connectionCancelled.current = false;
@@ -247,7 +263,7 @@ export function useTrainer() {
 		} catch (error) {
 			setConnectionPhase(pairedDevice ? 'offline' : 'unpaired');
 			if (!pairingWasCancelled(error, connectionCancelled.current)) {
-				setNotice(error instanceof Error ? error.message : String(error));
+				setNotice(errorMessage(error));
 			}
 		} finally {
 			pendingDevice.current = undefined;
@@ -301,7 +317,7 @@ export function useTrainer() {
 		try {
 			await pairedDevice?.forget();
 		} finally {
-			localStorage.removeItem('trainer-device-id');
+			localStorage.removeItem(TRAINER_DEVICE_STORAGE_KEY);
 			setDevice(undefined);
 			setPairedDevice(undefined);
 			setControlPoint(undefined);
@@ -345,7 +361,7 @@ export function useTrainer() {
 				to: target,
 			});
 			const advance = () => {
-				const progress = Math.min(1, (performance.now() - startedAt) / duration);
+				const progress = clamp((performance.now() - startedAt) / duration, 0, 1);
 				const current = smoothedResistance(start, target, progress);
 				appliedResistance.current = current;
 				setResistanceRamp({
@@ -355,9 +371,7 @@ export function useTrainer() {
 					progress,
 					to: target,
 				});
-				sendResistance(current).catch((error: unknown) =>
-					setNotice(error instanceof Error ? error.message : String(error))
-				);
+				sendResistance(current).catch((error: unknown) => setNotice(errorMessage(error)));
 				if (progress < 1) {
 					resistanceRampTimer.current = window.setTimeout(advance, 200);
 				}
@@ -369,10 +383,10 @@ export function useTrainer() {
 
 	const updateResistance = useCallback(
 		(value: number) => {
-			const next = Math.max(0, Math.min(100, value));
+			const next = clampResistance(value);
 			resistanceTarget.current = next;
 			setResistance(next);
-			localStorage.setItem('trainer-resistance-percent', String(next));
+			localStorage.setItem(RESISTANCE_STORAGE_KEY, String(next));
 			window.clearTimeout(resistanceTimer.current);
 			window.clearTimeout(resistanceRampTimer.current);
 			const { current } = appliedResistance;
@@ -392,7 +406,7 @@ export function useTrainer() {
 
 	const shiftResistanceBy = useCallback(
 		(change: number) => {
-			const next = Math.max(0, Math.min(100, resistanceTarget.current + change));
+			const next = clampResistance(resistanceTarget.current + change);
 			window.clearTimeout(resistanceTimer.current);
 			window.clearTimeout(resistanceRampTimer.current);
 			resistanceTarget.current = next;
@@ -405,10 +419,8 @@ export function useTrainer() {
 				progress: 1,
 				to: next,
 			});
-			localStorage.setItem('trainer-resistance-percent', String(next));
-			sendResistance(next).catch((error: unknown) =>
-				setNotice(error instanceof Error ? error.message : String(error))
-			);
+			localStorage.setItem(RESISTANCE_STORAGE_KEY, String(next));
+			sendResistance(next).catch((error: unknown) => setNotice(errorMessage(error)));
 		},
 		[sendResistance]
 	);
@@ -449,9 +461,7 @@ export function useTrainer() {
 			setConnectionPhase('reconnecting');
 			reconnectController.current.start(remembered.id, remembered, 1);
 		}
-		restore().catch((error: unknown) =>
-			setNotice(error instanceof Error ? error.message : String(error))
-		);
+		restore().catch((error: unknown) => setNotice(errorMessage(error)));
 		return () => {
 			cancelled = true;
 			autoReconnect.current = false;
@@ -462,15 +472,13 @@ export function useTrainer() {
 
 	useEffect(() => {
 		const handleKeys = (event: KeyboardEvent) => {
-			const target = event.target as HTMLElement | null;
-			const isResistanceControl = target?.matches('[data-resistance-control="true"]');
+			const isResistanceControl =
+				event.target instanceof HTMLElement &&
+				event.target.matches('[data-resistance-control="true"]');
 			if (
 				event.defaultPrevented ||
-				event.altKey ||
-				event.ctrlKey ||
-				event.metaKey ||
-				(!isResistanceControl &&
-					target?.matches("input, textarea, select, [contenteditable='true']"))
+				keyboardEventHasModifiers(event) ||
+				(!isResistanceControl && eventTargetsEditableControl(event))
 			) {
 				return;
 			}
@@ -500,7 +508,7 @@ export function useTrainer() {
 			window.clearTimeout(resistanceKeyFlashTimer.current);
 			resistanceKeyFlashTimer.current = window.setTimeout(
 				() => setResistanceKeyFlash(undefined),
-				180
+				CONTROL_FLASH_MS
 			);
 		};
 		const handleBlur = () => {

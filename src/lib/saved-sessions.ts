@@ -15,6 +15,14 @@ const ENDED_AT_INDEX = 'endedAt';
 const MERIDIEM_SUFFIX = /\s*(AM|PM)$/i;
 const SESSION_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' });
 
+export const SESSION_FEELING_OPTIONS: { label: string; value: SessionFeeling }[] = [
+	{ label: 'Great', value: 'great' },
+	{ label: 'Good', value: 'good' },
+	{ label: 'Okay', value: 'okay' },
+	{ label: 'Tough', value: 'tough' },
+	{ label: 'Exhausted', value: 'exhausted' },
+];
+
 type SessionTiming = Pick<SavedSessionSummary, 'elapsedSeconds' | 'endedAt' | 'startedAt'>;
 
 let databasePromise: Promise<IDBDatabase> | undefined;

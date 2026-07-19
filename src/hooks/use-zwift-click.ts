@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BATTERY } from '../constants';
+import { BATTERY, WEB_BLUETOOTH_UNAVAILABLE_MESSAGE } from '../constants';
+import { isBluetoothChooserCancellation } from '../lib/bluetooth';
 import {
 	aggregateConnectionPhase,
 	type DeviceConnectionPhase,
@@ -7,12 +8,16 @@ import {
 	removeConnectionPhase,
 	setConnectionPhase,
 } from '../lib/device-connection';
+import { errorMessage } from '../lib/errors';
 import { createReconnectController } from '../lib/reconnect-controller';
 import {
+	CLICK_CONTROLLER_ROLES_STORAGE_KEY,
+	CLICK_DEVICE_IDS_STORAGE_KEY,
 	type ClickControllerRoles,
 	type ClickShift,
 	filterAcceptedClickShifts,
 	filterClickShiftsForController,
+	MAX_CLICK_CONTROLLERS,
 	parseClickV2Shift,
 	registerClickControllerRole,
 	storedClickControllerRoles,
@@ -35,8 +40,6 @@ interface ClickConnectionOptions {
 	scheduleRetry?: boolean;
 }
 
-const STORAGE_KEY = 'zwift-click-v2-device-ids';
-const CONTROLLER_ROLES_STORAGE_KEY = 'zwift-click-v2-controller-roles';
 const CLICK_HOLD_DELAY_MS = 600;
 const CLICK_HOLD_REPEAT_MS = 220;
 const CLICK_CONTROLLER_FLASH_MS = 350;
@@ -45,11 +48,14 @@ const CLICK_SHIFTS: ClickShift[] = ['down', 'up'];
 type ClickConnectionCleanup = () => void;
 
 function saveDeviceIds(devices: BluetoothDevice[]) {
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(devices.map(({ id }) => id).slice(0, 2)));
+	localStorage.setItem(
+		CLICK_DEVICE_IDS_STORAGE_KEY,
+		JSON.stringify(devices.map(({ id }) => id).slice(0, MAX_CLICK_CONTROLLERS))
+	);
 }
 
 function saveControllerRoles(roles: ClickControllerRoles) {
-	localStorage.setItem(CONTROLLER_ROLES_STORAGE_KEY, JSON.stringify(roles));
+	localStorage.setItem(CLICK_CONTROLLER_ROLES_STORAGE_KEY, JSON.stringify(roles));
 }
 
 function controllerLabel(role: ClickShift | undefined) {
@@ -378,9 +384,7 @@ export function useZwiftClick(
 			);
 			if (!(shouldReconnect || reportedConnectionFailures.current.has(selected.id))) {
 				reportedConnectionFailures.current.add(selected.id);
-				setNotice(
-					`Zwift Click connection failed: ${error instanceof Error ? error.message : String(error)}`
-				);
+				setNotice(`Zwift Click connection failed: ${errorMessage(error)}`);
 			}
 			if (shouldReconnect && scheduleRetry) {
 				reconnectController.current.start(selected.id, selected);
@@ -438,7 +442,7 @@ export function useZwiftClick(
 
 	const pair = useCallback(async () => {
 		if (!navigator.bluetooth) {
-			setNotice('Web Bluetooth requires current Chrome or Edge on localhost or HTTPS.');
+			setNotice(WEB_BLUETOOTH_UNAVAILABLE_MESSAGE);
 			return;
 		}
 		setPairing(true);
@@ -453,7 +457,7 @@ export function useZwiftClick(
 			setDevices((current) => {
 				const next = current.some(({ id }) => id === selected.id)
 					? current
-					: [...current, selected].slice(0, 2);
+					: [...current, selected].slice(0, MAX_CLICK_CONTROLLERS);
 				devicesRef.current = next;
 				saveDeviceIds(next);
 				return next;
@@ -462,8 +466,8 @@ export function useZwiftClick(
 			// complete GATT setup. Its connection continues independently in the background.
 			connectDevice(selected);
 		} catch (error) {
-			if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
-				setNotice(error instanceof Error ? error.message : String(error));
+			if (!isBluetoothChooserCancellation(error)) {
+				setNotice(errorMessage(error));
 			}
 		} finally {
 			setPairing(false);
@@ -541,7 +545,7 @@ export function useZwiftClick(
 			const remembered = ids
 				.map((id) => permitted.find((candidate) => candidate.id === id))
 				.filter((candidate): candidate is BluetoothDevice => Boolean(candidate))
-				.slice(0, 2);
+				.slice(0, MAX_CLICK_CONTROLLERS);
 			if (cancelled) {
 				return;
 			}

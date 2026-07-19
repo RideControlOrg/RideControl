@@ -1,36 +1,5 @@
+import { metricAccentClass, metricIconClass } from '../lib/metric-presentation';
 import { Icon } from './icon';
-
-export function metricAccentClass(accent: string): string {
-	if (accent === 'sky') {
-		return 'bg-sky-400';
-	}
-	if (accent === 'yellow') {
-		return 'bg-yellow-400';
-	}
-	if (accent === 'violet') {
-		return 'bg-violet-400';
-	}
-	if (accent === 'rose') {
-		return 'bg-rose-400';
-	}
-	return 'bg-mint';
-}
-
-export function metricIconClass(accent: string): string {
-	if (accent === 'mint') {
-		return 'text-mint';
-	}
-	if (accent === 'yellow') {
-		return 'text-yellow-400';
-	}
-	if (accent === 'violet') {
-		return 'text-violet-400';
-	}
-	if (accent === 'rose') {
-		return 'text-rose-400';
-	}
-	return 'text-sky-400';
-}
 
 export function Metric({
 	average,

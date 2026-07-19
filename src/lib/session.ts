@@ -1,4 +1,4 @@
-import { emptyMetrics, emptySession } from '../constants';
+import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
 import type {
 	ControlMode,
 	MetricAggregate,
@@ -8,12 +8,17 @@ import type {
 	SessionSnapshot,
 	StoredSession,
 } from '../types';
+import { clampGear, MAX_GEAR, MIN_GEAR } from './gears';
+import { clamp, nonNegativeNumber } from './numbers';
+import { clampResistance, DEFAULT_RESISTANCE, MAX_RESISTANCE, MIN_RESISTANCE } from './resistance';
+
+export const SESSION_STORAGE_KEY = 'trainer-session';
+export const RESISTANCE_STORAGE_KEY = 'trainer-resistance-percent';
+
+const JOULES_PER_KILOCALORIE = 4184;
+const ESTIMATED_CYCLING_EFFICIENCY = 0.24;
 
 type ReadableStorage = Pick<Storage, 'getItem'>;
-
-export function nonNegativeNumber(value: unknown): number {
-	return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
-}
 
 export function sessionContinuation(snapshot: SessionSnapshot): StoredSession {
 	return {
@@ -32,6 +37,12 @@ export function sessionContinuation(snapshot: SessionSnapshot): StoredSession {
 
 export function sessionNeedsUnloadWarning(ended: boolean, elapsedSeconds: number): boolean {
 	return !ended && elapsedSeconds > 0;
+}
+
+export function estimatedCyclingCalories(powerWatts: number, seconds: number): number {
+	return powerWatts > 0
+		? (powerWatts * seconds) / (JOULES_PER_KILOCALORIE * ESTIMATED_CYCLING_EFFICIENCY)
+		: 0;
 }
 
 export function requestUnloadConfirmation(
@@ -81,11 +92,7 @@ export function aggregateGear(samples: Partial<Pick<MetricSample, 'gear'>>[]): M
 			if (typeof sample.gear !== 'number' || !Number.isFinite(sample.gear)) {
 				return aggregate;
 			}
-			return addAggregate(
-				aggregate,
-				Math.min(24, Math.max(1, Math.round(sample.gear))),
-				true
-			);
+			return addAggregate(aggregate, clampGear(sample.gear), true);
 		},
 		{ count: 0, sum: 0 }
 	);
@@ -99,7 +106,7 @@ export function aggregateResistance(
 			if (typeof sample.resistance !== 'number' || !Number.isFinite(sample.resistance)) {
 				return aggregate;
 			}
-			return addAggregate(aggregate, Math.min(100, Math.max(0, sample.resistance)), true);
+			return addAggregate(aggregate, clampResistance(sample.resistance), true);
 		},
 		{ count: 0, sum: 0 }
 	);
@@ -122,7 +129,7 @@ function optionalControlValue(value: unknown, minimum: number, maximum: number) 
 	if (typeof value !== 'number' || !Number.isFinite(value)) {
 		return;
 	}
-	return Math.min(maximum, Math.max(minimum, value));
+	return clamp(value, minimum, maximum);
 }
 
 export function controlModeForHistory(
@@ -136,7 +143,7 @@ export function controlModeForHistory(
 }
 
 export function loadStoredSession(storage: ReadableStorage = localStorage): StoredSession {
-	const saved = storage.getItem('trainer-session');
+	const saved = storage.getItem(SESSION_STORAGE_KEY);
 	if (!saved) {
 		return emptySession;
 	}
@@ -144,13 +151,17 @@ export function loadStoredSession(storage: ReadableStorage = localStorage): Stor
 		const parsed = JSON.parse(saved) as Partial<StoredSession>;
 		const maximums = parsed.maximums ?? emptyMetrics;
 		const history = Array.isArray(parsed.history)
-			? parsed.history.slice(-3600).map((sample) => ({
+			? parsed.history.slice(-MAX_SESSION_HISTORY_SAMPLES).map((sample) => ({
 					cadence: nonNegativeNumber(sample.cadence),
 					elapsedSeconds: nonNegativeNumber(sample.elapsedSeconds),
-					gear: optionalControlValue(sample.gear, 1, 24),
+					gear: optionalControlValue(sample.gear, MIN_GEAR, MAX_GEAR),
 					heartRate: nonNegativeNumber(sample.heartRate),
 					power: nonNegativeNumber(sample.power),
-					resistance: optionalControlValue(sample.resistance, 0, 100),
+					resistance: optionalControlValue(
+						sample.resistance,
+						MIN_RESISTANCE,
+						MAX_RESISTANCE
+					),
 					speed: nonNegativeNumber(sample.speed),
 				}))
 			: [];
@@ -194,10 +205,10 @@ export function loadStoredSession(storage: ReadableStorage = localStorage): Stor
 }
 
 export function storedResistance(storage: ReadableStorage = localStorage) {
-	const saved = storage.getItem('trainer-resistance-percent');
+	const saved = storage.getItem(RESISTANCE_STORAGE_KEY);
 	if (saved === null) {
-		return 10;
+		return DEFAULT_RESISTANCE;
 	}
 	const value = Number(saved);
-	return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 10;
+	return Number.isFinite(value) ? clampResistance(value) : DEFAULT_RESISTANCE;
 }

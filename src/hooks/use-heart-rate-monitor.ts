@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BATTERY, HEART_RATE } from '../constants';
+import { BATTERY, HEART_RATE, WEB_BLUETOOTH_UNAVAILABLE_MESSAGE } from '../constants';
+import { isBluetoothChooserCancellation } from '../lib/bluetooth';
 import { type DeviceConnectionPhase, deviceConnectionView } from '../lib/device-connection';
+import { errorMessage } from '../lib/errors';
 import { connectHeartRateDevice } from '../lib/heart-rate-device';
 import { createReconnectController } from '../lib/reconnect-controller';
 
@@ -44,9 +46,7 @@ export function useHeartRateMonitor(setNotice: (notice: string) => void) {
 			if (reconnecting) {
 				return;
 			}
-			setNotice(
-				`Heart rate monitor connection failed: ${error instanceof Error ? error.message : String(error)}`
-			);
+			setNotice(`Heart rate monitor connection failed: ${errorMessage(error)}`);
 			if (autoReconnect.current && !forgotten.current) {
 				reconnectController.current.start(selected.id, selected);
 			}
@@ -90,7 +90,7 @@ export function useHeartRateMonitor(setNotice: (notice: string) => void) {
 
 	const pair = useCallback(async () => {
 		if (!navigator.bluetooth) {
-			setNotice('Web Bluetooth requires current Chrome or Edge on localhost or HTTPS.');
+			setNotice(WEB_BLUETOOTH_UNAVAILABLE_MESSAGE);
 			return;
 		}
 		setPhase('pairing');
@@ -106,8 +106,8 @@ export function useHeartRateMonitor(setNotice: (notice: string) => void) {
 			await connectDevice(selected);
 		} catch (error) {
 			setPhase(device ? 'offline' : 'unpaired');
-			if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
-				setNotice(error instanceof Error ? error.message : String(error));
+			if (!isBluetoothChooserCancellation(error)) {
+				setNotice(errorMessage(error));
 			}
 		}
 	}, [connectDevice, device, setNotice]);

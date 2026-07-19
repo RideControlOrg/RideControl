@@ -1,7 +1,8 @@
 import { useSelector } from '@tanstack/react-store';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { RECORDING_PAUSE_DELAY_MS } from '../constants';
-import { loadStoredSession } from '../lib/session';
+import { loadStoredSession, SESSION_STORAGE_KEY } from '../lib/session';
+import { MILLISECONDS_PER_SECOND, secondsForMilliseconds } from '../lib/units';
 import {
 	createSessionStore,
 	persistSessionState,
@@ -98,7 +99,7 @@ export function useSession(
 		}
 		const interval = window.setInterval(() => {
 			const now = performance.now();
-			const seconds = (now - lastTick) / 1000;
+			const seconds = secondsForMilliseconds(now - lastTick);
 			lastTick = now;
 			const live = latestMetrics.current;
 			const liveControl = latestControl.current;
@@ -115,7 +116,7 @@ export function useSession(
 				metrics: live,
 				seconds,
 			});
-		}, 1000);
+		}, MILLISECONDS_PER_SECOND);
 		return () => window.clearInterval(interval);
 	}, [state.isRiding, store, trainerReportsDistance]);
 
@@ -140,7 +141,7 @@ export function useSession(
 	const startNew = useCallback(() => {
 		lastTrainerDistance.current = latestMetrics.current.distance;
 		lastPedalingAt.current = 0;
-		localStorage.removeItem('trainer-session');
+		localStorage.removeItem(SESSION_STORAGE_KEY);
 		store.actions.reset(latestControl.current.mode, Date.now());
 	}, [lastPedalingAt, store]);
 
@@ -148,7 +149,7 @@ export function useSession(
 		(sourceSession: SessionSnapshot) => {
 			lastTrainerDistance.current = latestMetrics.current.distance;
 			lastPedalingAt.current = 0;
-			localStorage.removeItem('trainer-session');
+			localStorage.removeItem(SESSION_STORAGE_KEY);
 			store.actions.continueFrom(sourceSession);
 		},
 		[lastPedalingAt, store]

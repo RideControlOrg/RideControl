@@ -3,6 +3,7 @@
 - After making any changes, always run `bun run ci` before handing work back.
 - `bun run ci` must run the Ultracite-configured Biome checks automatically, followed by the TypeScript check and production build.
 - Fix all reported issues rather than bypassing or disabling checks unless the project requirements explicitly demand an exception.
+- Keep the codebase as DRY as practical: before adding constants, calculations, formatting, parsing, labels, or state-derivation logic, search for an existing domain utility and reuse or extend it. Consolidate meaningful duplication into clearly named domain modules, but do not introduce generic abstractions that hide simple behavior or couple unrelated concepts solely because their implementations look similar.
 - Never include AI assistant, product, vendor, or model names (such as `codex` or `openai`) in branch names, commit messages, pull request titles or descriptions, issue titles or descriptions, tags, release notes, or any other repository-visible metadata or content.
 - Name branches only after the work being performed, such as `refactor/tanstack-store`; do not apply a tool's default branch prefix when that prefix would violate the naming rule above.
 - When the user says "add, commit", group all existing changes into logical sets, stage and commit each group, and repeat until every change is committed and the working tree is clean.

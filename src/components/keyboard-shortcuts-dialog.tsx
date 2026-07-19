@@ -1,4 +1,5 @@
-import { Fragment, useEffect } from 'react';
+import { Fragment } from 'react';
+import { useCloseOnEscape } from '../hooks/use-dialog-behavior';
 import { dashboardKeyboardShortcuts, type KeyboardShortcutDescription } from '../lib/keyboard';
 
 export function KeyboardShortcutsDialog({
@@ -14,19 +15,7 @@ export function KeyboardShortcutsDialog({
 	shortcuts?: KeyboardShortcutDescription[];
 	title?: string;
 }) {
-	useEffect(() => {
-		if (!(handleEscape && open)) {
-			return;
-		}
-		const closeOnEscape = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				onClose();
-			}
-		};
-		window.addEventListener('keydown', closeOnEscape);
-		return () => window.removeEventListener('keydown', closeOnEscape);
-	}, [handleEscape, onClose, open]);
+	useCloseOnEscape(handleEscape && open, onClose);
 
 	if (!open) {
 		return null;
