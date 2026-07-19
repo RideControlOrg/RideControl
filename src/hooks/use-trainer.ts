@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSelector } from '@tanstack/react-store';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
 	CHROME_BLUETOOTH_PERMISSION_MESSAGE,
 	CONTROL_FLASH_MS,
@@ -13,7 +14,7 @@ import {
 	resistanceCommand,
 	TRAINER_DEVICE_STORAGE_KEY,
 } from '../lib/bluetooth';
-import { type DeviceConnectionPhase, deviceConnectionView } from '../lib/device-connection';
+import { deviceConnectionView } from '../lib/device-connection';
 import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
 import { errorMessage } from '../lib/errors';
 import { scheduleNoticeDismissal } from '../lib/notification';
@@ -21,39 +22,32 @@ import { clamp } from '../lib/numbers';
 import { createReconnectController } from '../lib/reconnect-controller';
 import {
 	clampResistance,
-	MAX_RESISTANCE,
-	MIN_RESISTANCE,
 	resistanceDirectionForKey,
 	resistanceRampDuration,
 	smoothedResistance,
 } from '../lib/resistance';
 import { RESISTANCE_STORAGE_KEY, storedResistance } from '../lib/session';
 import { connectTrainerDevice } from '../lib/trainer-device';
-import type { Metrics, Range, ResistanceAdjustmentDirection, ResistanceRamp } from '../types';
+import { createTrainerStore } from '../stores/trainer-store';
 
 function pairingWasCancelled(error: unknown, connectionCancelled: boolean) {
 	return connectionCancelled || isBluetoothChooserCancellation(error);
 }
 
 export function useTrainer() {
-	const [device, setDevice] = useState<BluetoothDevice>();
-	const [pairedDevice, setPairedDevice] = useState<BluetoothDevice>();
-	const [controlPoint, setControlPoint] = useState<BluetoothRemoteGATTCharacteristic>();
-	const [metrics, setMetrics] = useState<Metrics>(emptyMetrics);
-	const [resistance, setResistance] = useState(storedResistance);
-	const [resistanceKeyFlash, setResistanceKeyFlash] = useState<
-		ResistanceAdjustmentDirection | undefined
-	>();
-	const [resistanceRamp, setResistanceRamp] = useState<ResistanceRamp>(() => {
-		const current = storedResistance();
-		return { current, from: current, phase: 'holding', progress: 0, to: current };
-	});
-	const [connectionPhase, setConnectionPhase] = useState<DeviceConnectionPhase>('unpaired');
-	const [notice, setNotice] = useState('');
-	const [resistanceRange, setResistanceRange] = useState<Range>({
-		max: MAX_RESISTANCE,
-		min: MIN_RESISTANCE,
-	});
+	const store = useMemo(() => createTrainerStore(), []);
+	const state = useSelector(store);
+	const {
+		setConnectionPhase,
+		setMetrics,
+		setNotice,
+		setResistance,
+		setResistanceKeyFlash,
+		setResistanceRamp,
+		setResistanceRange,
+	} = store.actions;
+	const device = useRef<BluetoothDevice | undefined>(undefined);
+	const pairedDevice = useRef<BluetoothDevice | undefined>(undefined);
 	const commandQueue = useRef(Promise.resolve());
 	const resistanceTimer = useRef<number | undefined>(undefined);
 	const resistanceRampTimer = useRef<number | undefined>(undefined);
@@ -74,9 +68,9 @@ export function useTrainer() {
 	const unloading = useRef(false);
 	const lastPedalingAt = useRef(0);
 	const trainerReportsDistance = useRef(false);
-	const controlPointRef = useRef(controlPoint);
-	const rangeRef = useRef(resistanceRange);
-	const connection = deviceConnectionView(connectionPhase);
+	const controlPointRef = useRef<BluetoothRemoteGATTCharacteristic | undefined>(undefined);
+	const rangeRef = useRef(state.resistanceRange);
+	const connection = deviceConnectionView(state.connectionPhase);
 	const reconnectController = useRef(
 		createReconnectController<BluetoothDevice>({
 			attempt: (selected) =>
@@ -88,15 +82,10 @@ export function useTrainer() {
 		})
 	);
 
-	useEffect(() => {
-		controlPointRef.current = controlPoint;
-	}, [controlPoint]);
-
-	useEffect(() => {
-		rangeRef.current = resistanceRange;
-	}, [resistanceRange]);
-
-	useEffect(() => scheduleNoticeDismissal(notice, () => setNotice('')), [notice]);
+	useEffect(
+		() => scheduleNoticeDismissal(state.notice, () => setNotice('')),
+		[setNotice, state.notice]
+	);
 
 	useEffect(
 		() => () => {
@@ -123,7 +112,7 @@ export function useTrainer() {
 			commandQueue.current = commandQueue.current.then(action, action);
 			await commandQueue.current;
 		},
-		[]
+		[setNotice]
 	);
 
 	function connectionStopped(rediscover: boolean) {
@@ -145,8 +134,9 @@ export function useTrainer() {
 		const shouldReconnect =
 			!(disconnectRequested.current || unloading.current) && autoReconnect.current;
 		disconnectRequested.current = false;
-		setDevice(undefined);
-		setControlPoint(undefined);
+		device.current = undefined;
+		store.actions.setDeviceName(undefined);
+		controlPointRef.current = undefined;
 		setMetrics(emptyMetrics);
 		lastPedalingAt.current = 0;
 		trainerReportsDistance.current = false;
@@ -156,7 +146,7 @@ export function useTrainer() {
 			setNotice('Trainer disconnected. Reconnecting automatically…');
 			reconnectController.current.start(selected.id, selected, 700);
 		} else if (connectionCancelled.current) {
-			setConnectionPhase(pairedDevice ? 'offline' : 'unpaired');
+			setConnectionPhase(pairedDevice.current ? 'offline' : 'unpaired');
 			setNotice('Connection attempt stopped.');
 		} else {
 			setConnectionPhase('offline');
@@ -172,11 +162,12 @@ export function useTrainer() {
 		setConnectionPhase(rediscover ? 'reconnecting' : 'connecting');
 		connectionCleanup.current();
 		try {
-			setPairedDevice(selected);
+			pairedDevice.current = selected;
+			store.actions.setPairedDeviceName(selected.name);
 			const nextConnection = await connectTrainerDevice(
 				selected,
 				rediscover,
-				resistanceRange,
+				rangeRef.current,
 				{
 					onControlRejected: () => setNotice('Trainer did not accept that command.'),
 					onDisconnect: () => {
@@ -188,7 +179,7 @@ export function useTrainer() {
 							trainerReportsDistance.current = true;
 						}
 						recordMetricActivity(lastPedalingAt, nextMetrics);
-						setMetrics((current) => ({ ...current, ...nextMetrics }));
+						store.actions.mergeMetrics(nextMetrics);
 					},
 				}
 			);
@@ -199,8 +190,9 @@ export function useTrainer() {
 			}
 			connectionCleanup.current = nextConnection.cleanup;
 			const point = nextConnection.controlPoint;
-			setControlPoint(point);
+			controlPointRef.current = point;
 			const activeRange = nextConnection.resistanceRange;
+			rangeRef.current = activeRange;
 			setResistanceRange(activeRange);
 			const restored = storedResistance();
 			setResistance(restored);
@@ -221,7 +213,8 @@ export function useTrainer() {
 				return false;
 			}
 			localStorage.setItem(TRAINER_DEVICE_STORAGE_KEY, selected.id);
-			setDevice(selected);
+			device.current = selected;
+			store.actions.setDeviceName(selected.name);
 			setConnectionPhase('connected');
 			reconnectController.current.reset(selected.id);
 			setNotice(`${selected.name ?? 'Trainer'} is connected and ready.`);
@@ -255,13 +248,14 @@ export function useTrainer() {
 				optionalServices,
 			});
 			pendingDevice.current = selected;
-			setPairedDevice(selected);
+			pairedDevice.current = selected;
+			store.actions.setPairedDeviceName(selected.name);
 			autoReconnect.current = true;
 			if (!(await connectDevice(selected))) {
 				reconnectController.current.start(selected.id, selected);
 			}
 		} catch (error) {
-			setConnectionPhase(pairedDevice ? 'offline' : 'unpaired');
+			setConnectionPhase(pairedDevice.current ? 'offline' : 'unpaired');
 			if (!pairingWasCancelled(error, connectionCancelled.current)) {
 				setNotice(errorMessage(error));
 			}
@@ -278,9 +272,9 @@ export function useTrainer() {
 		connectionCleanup.current();
 		pendingDevice.current?.gatt?.disconnect();
 		pendingDevice.current = undefined;
-		setConnectionPhase(pairedDevice ? 'offline' : 'unpaired');
+		setConnectionPhase(pairedDevice.current ? 'offline' : 'unpaired');
 		setNotice('Connection attempt stopped.');
-	}, [pairedDevice]);
+	}, [setConnectionPhase, setNotice]);
 
 	const disconnect = useCallback(() => {
 		connectionCancelled.current = false;
@@ -288,23 +282,25 @@ export function useTrainer() {
 		disconnectRequested.current = true;
 		reconnectController.current.cancelAll();
 		connectionCleanup.current();
-		device?.gatt?.disconnect();
-		setDevice(undefined);
-		setControlPoint(undefined);
+		device.current?.gatt?.disconnect();
+		device.current = undefined;
+		store.actions.setDeviceName(undefined);
+		controlPointRef.current = undefined;
 		setMetrics(emptyMetrics);
-		setConnectionPhase(pairedDevice ? 'offline' : 'unpaired');
-	}, [device, pairedDevice]);
+		setConnectionPhase(pairedDevice.current ? 'offline' : 'unpaired');
+	}, [setConnectionPhase, setMetrics, store]);
 
 	async function reconnect() {
-		if (!pairedDevice) {
+		if (!pairedDevice.current) {
 			return;
 		}
+		const selected = pairedDevice.current;
 		connectionCancelled.current = false;
 		disconnectRequested.current = false;
 		autoReconnect.current = true;
-		reconnectController.current.reset(pairedDevice.id);
-		if (!(await connectDevice(pairedDevice, true))) {
-			reconnectController.current.start(pairedDevice.id, pairedDevice);
+		reconnectController.current.reset(selected.id);
+		if (!(await connectDevice(selected, true))) {
+			reconnectController.current.start(selected.id, selected);
 		}
 	}
 
@@ -313,19 +309,21 @@ export function useTrainer() {
 		disconnectRequested.current = true;
 		reconnectController.current.cancelAll();
 		connectionCleanup.current();
-		device?.gatt?.disconnect();
+		device.current?.gatt?.disconnect();
 		try {
-			await pairedDevice?.forget();
+			await pairedDevice.current?.forget();
 		} finally {
 			localStorage.removeItem(TRAINER_DEVICE_STORAGE_KEY);
-			setDevice(undefined);
-			setPairedDevice(undefined);
-			setControlPoint(undefined);
+			device.current = undefined;
+			pairedDevice.current = undefined;
+			store.actions.setDeviceName(undefined);
+			store.actions.setPairedDeviceName(undefined);
+			controlPointRef.current = undefined;
 			setMetrics(emptyMetrics);
 			setConnectionPhase('unpaired');
 			setNotice('Trainer removed from paired devices.');
 		}
-	}, [device, pairedDevice]);
+	}, [setConnectionPhase, setMetrics, setNotice, store]);
 
 	const sendResistance = useCallback(
 		async (percent: number) => {
@@ -378,7 +376,7 @@ export function useTrainer() {
 			};
 			advance();
 		},
-		[sendResistance]
+		[sendResistance, setNotice, setResistanceRamp]
 	);
 
 	const updateResistance = useCallback(
@@ -401,7 +399,7 @@ export function useTrainer() {
 				rampResistance(next);
 			}, 180);
 		},
-		[rampResistance]
+		[rampResistance, setResistance, setResistanceRamp]
 	);
 
 	const shiftResistanceBy = useCallback(
@@ -422,7 +420,7 @@ export function useTrainer() {
 			localStorage.setItem(RESISTANCE_STORAGE_KEY, String(next));
 			sendResistance(next).catch((error: unknown) => setNotice(errorMessage(error)));
 		},
-		[sendResistance]
+		[sendResistance, setNotice, setResistance, setResistanceRamp]
 	);
 
 	useEffect(() => {
@@ -432,11 +430,11 @@ export function useTrainer() {
 			disconnectRequested.current = true;
 			reconnectController.current.cancelAll();
 			connectionCleanup.current();
-			device?.gatt?.disconnect();
+			device.current?.gatt?.disconnect();
 		};
 		window.addEventListener('pagehide', handlePageHide);
 		return () => window.removeEventListener('pagehide', handlePageHide);
-	}, [device]);
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -457,7 +455,8 @@ export function useTrainer() {
 				setConnectionPhase('unpaired');
 				return;
 			}
-			setPairedDevice(remembered);
+			pairedDevice.current = remembered;
+			store.actions.setPairedDeviceName(remembered.name);
 			setConnectionPhase('reconnecting');
 			reconnectController.current.start(remembered.id, remembered, 1);
 		}
@@ -468,7 +467,7 @@ export function useTrainer() {
 			reconnectController.current.cancelAll();
 			connectionCleanup.current();
 		};
-	}, []);
+	}, [setConnectionPhase, setNotice, store.actions.setPairedDeviceName]);
 
 	useEffect(() => {
 		const handleKeys = (event: KeyboardEvent) => {
@@ -523,7 +522,7 @@ export function useTrainer() {
 			window.removeEventListener('keyup', handleKeyUp);
 			window.removeEventListener('blur', handleBlur);
 		};
-	}, [updateResistance]);
+	}, [setResistanceKeyFlash, updateResistance]);
 
 	const setKeyboardControlsEnabled = useCallback((enabled: boolean) => {
 		keyboardControlsEnabled.current = enabled;
@@ -538,17 +537,17 @@ export function useTrainer() {
 		cancelConnection,
 		connect,
 		connectionBusy: connection.busy,
-		deviceName: device?.name,
+		deviceName: state.deviceName,
 		disconnect,
 		forget,
 		lastPedalingAt,
-		metrics,
-		notice,
-		pairedDeviceName: pairedDevice?.name,
+		metrics: state.metrics,
+		notice: state.notice,
+		pairedDeviceName: state.pairedDeviceName,
 		reconnect,
-		resistance,
-		resistanceKeyFlash,
-		resistanceRamp,
+		resistance: state.resistance,
+		resistanceKeyFlash: state.resistanceKeyFlash,
+		resistanceRamp: state.resistanceRamp,
 		setGearControlsEnabled,
 		setKeyboardControlsEnabled,
 		setNotice,
