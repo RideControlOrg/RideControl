@@ -7,7 +7,9 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo KICKR Core 2
 ## Features
 
 - Welcomes first-time visitors with a concise introduction, open-source and local-data privacy details, a direct source-code link, and an optional “Don't show again” preference stored in the browser; the welcome screen remains available from the Ride Control footer link.
-- Manages the smart trainer, heart rate monitor, and both Zwift Click V2 controllers independently from one paired-devices panel, with a blue activity indicator while devices connect and a green indicator once every paired device is ready; keeps the `+` controller above the `−` controller, automatically identifies each physical side, connects both controllers concurrently, routes mirrored Bluetooth notifications only to that side, glows only its row as it is pressed, remembers its identity, and continuously retries saved Click connections after a refresh or controller sleep; stalled attempts can be retried immediately, and Click presses made while this panel is open stay in setup and do not shift the ride.
+- Manages the smart trainer, heart rate monitor, and both Zwift Click V2 controllers independently from one paired-devices panel, with blue pulsing dots for controllers awaiting connection and a green indicator once every paired device is ready; keeps the `+` controller above the `−` controller, automatically identifies each physical side, connects both controllers concurrently, routes mirrored Bluetooth notifications only to that side, glows only its row as it is pressed, remembers its identity, continuously retries saved Click connections after a refresh or controller sleep, and keeps the sleeping-controller display stable between retry attempts; stalled attempts can be retried immediately, and Click presses made while this panel is open stay in setup and do not shift the ride.
+- Detects browsers outside the currently tested Chrome environment and replaces the pairing controls with a compatibility notice, while showing reconnect-saving guidance alongside the pairing controls only in Chrome.
+- Shows each deployment's build time in the viewer's local timezone and links it to the GitHub pull request that produced the build, falling back to the closed pull-request list when no associated PR is available.
 - Connects to compatible bike trainers and standard Bluetooth heart rate monitors through Web Bluetooth, remembers authorized devices, and automatically reconnects when possible.
 - Shows live speed, power, cadence, heart rate, elapsed time, distance, and estimated calories, with MPH and KM/H display modes.
 - Provides direct resistance control with buttons, a slider, and keyboard shortcuts with matching button feedback, shows smoothing progress inside the slider thumb, and records resistance changes alongside the other ride metrics.
@@ -39,6 +41,9 @@ CI succeeds on `main`, a separate workflow runs `bun run build` and deploys the 
 directory to GitHub Pages at [ridecontrol.xyz](https://ridecontrol.xyz).
 
 ## Automatic reconnect
+
+Ride Control currently tests Web Bluetooth only in desktop Chrome. Bluetooth does not work in
+Brave.
 
 Persistent Web Bluetooth permissions are disabled by default in current Chromium builds. To allow the app to reconnect after a page reload:
 

@@ -701,6 +701,12 @@ export function useZwiftClick(
 		pairedCount: devices.length,
 		pairing,
 		reconnect,
+		reconnecting:
+			devices.length > connectedIds.length &&
+			(busy ||
+				status === 'Connecting controllers…' ||
+				status === 'Finding controllers…' ||
+				status === 'Paired · reconnecting'),
 		status,
 	};
 }

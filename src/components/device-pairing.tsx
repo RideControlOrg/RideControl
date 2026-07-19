@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import { AUTOMATIC_RECONNECT_README_URL } from '../constants';
+import { bluetoothBrowserNotice } from '../lib/browser';
 import { Icon } from './icon';
 
 interface DeviceSlot {
-	allowRetryWhileBusy?: boolean;
 	battery?: number;
 	busy: boolean;
 	connected: boolean;
@@ -29,6 +30,7 @@ interface ClickSlot extends DeviceSlot {
 	onForgetController: (deviceId: string) => void | Promise<void>;
 	pairedCount: number;
 	pairing: boolean;
+	reconnecting?: boolean;
 }
 
 function clickControllerOrder(controller: ClickController) {
@@ -41,10 +43,20 @@ function clickControllerOrder(controller: ClickController) {
 	return 2;
 }
 
-function StatusDot({ connected, busy }: { connected: boolean; busy: boolean }) {
+function StatusDot({
+	bluePulse = false,
+	busy,
+	connected,
+}: {
+	bluePulse?: boolean;
+	busy: boolean;
+	connected: boolean;
+}) {
 	let statusClass = 'bg-slate-600';
 	if (busy) {
-		statusClass = 'animate-pulse bg-yellow-300';
+		statusClass = bluePulse
+			? 'animate-pulse bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,.7)]'
+			: 'animate-pulse bg-yellow-300';
 	} else if (connected) {
 		statusClass = 'bg-mint shadow-[0_0_10px_rgba(173,245,189,.55)]';
 	}
@@ -68,7 +80,7 @@ function DeviceActions({ slot }: { slot: DeviceSlot }) {
 	}
 	let connectionAction = 'Reconnect';
 	if (slot.busy) {
-		connectionAction = slot.allowRetryWhileBusy ? 'Retry' : 'Connecting…';
+		connectionAction = 'Connecting…';
 	} else if (slot.connected) {
 		connectionAction = 'Disconnect';
 	}
@@ -77,7 +89,7 @@ function DeviceActions({ slot }: { slot: DeviceSlot }) {
 		<div className="flex flex-wrap justify-end gap-2">
 			<button
 				className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs transition hover:border-slate-500 hover:text-white disabled:opacity-50"
-				disabled={slot.busy && !slot.allowRetryWhileBusy}
+				disabled={slot.busy}
 				onClick={disconnecting ? slot.onDisconnect : slot.onReconnect}
 				type="button"
 			>
@@ -145,11 +157,11 @@ export function DevicePairingButton({
 }) {
 	const allConnected = pairedCount > 0 && connectedCount === pairedCount;
 	let buttonClass = 'border-lime bg-lime text-ink hover:bg-[#e4ff9c]';
-	if (connecting) {
+	if (pairedCount) {
+		buttonClass = 'border-line bg-[#12171d] text-slate-200 hover:border-slate-500';
+	} else if (connecting) {
 		buttonClass =
 			'border-sky-400/70 bg-sky-400/10 text-sky-100 shadow-[0_0_16px_rgba(56,189,248,.12)] hover:border-sky-300';
-	} else if (pairedCount) {
-		buttonClass = 'border-line bg-[#12171d] text-slate-200 hover:border-slate-500';
 	}
 	let statusClass = 'bg-slate-600';
 	if (connecting) {
@@ -177,12 +189,14 @@ export function DevicePairingButton({
 }
 
 export function DevicePairingPanel({
+	browserNotice = bluetoothBrowserNotice(),
 	click,
 	heartRate,
 	onClose,
 	open,
 	trainer,
 }: {
+	browserNotice?: string;
 	click: ClickSlot;
 	heartRate: DeviceSlot;
 	onClose: () => void;
@@ -214,10 +228,11 @@ export function DevicePairingPanel({
 
 	const clickSlot: DeviceSlot = {
 		...click,
-		allowRetryWhileBusy: true,
+		busy: false,
 		connected: click.pairedCount > 0 && click.connectedCount === click.pairedCount,
 		paired: click.pairedCount > 0,
 	};
+	const waitingForControllers = Boolean(click.reconnecting);
 	const orderedClickControllers = [...click.controllers].sort(
 		(left, right) => clickControllerOrder(left) - clickControllerOrder(right)
 	);
@@ -263,91 +278,124 @@ export function DevicePairingPanel({
 					</button>
 				</div>
 
-				<div className="mt-6 space-y-3">
-					<DeviceCard
-						description="Power, cadence and resistance control"
-						icon="bike"
-						slot={trainer}
-						title="Smart trainer"
-					/>
-					<DeviceCard
-						description="Standard Bluetooth heart rate monitor"
-						icon="heart"
-						slot={heartRate}
-						title="Heart rate"
-					/>
+				{browserNotice ? (
+					<div
+						className="mt-5 rounded-xl border border-sky-400/30 bg-sky-400/10 p-3 text-sky-100 text-sm"
+						role="note"
+					>
+						<p>{browserNotice}</p>
+					</div>
+				) : null}
 
-					<article className="rounded-2xl border border-line bg-[#12171d] p-4">
-						<div className="flex items-start gap-3">
-							<div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-700 bg-slate-800/60 text-slate-300">
-								<Icon className="h-5 w-5" name="controls" />
-							</div>
-							<div className="min-w-0 flex-1">
-								<div className="flex items-center gap-2">
-									<StatusDot
-										busy={click.busy}
-										connected={click.connectedCount > 0}
-									/>
-									<h3 className="font-bold text-sm text-white">Zwift Click V2</h3>
+				{browserNotice ? null : (
+					<div className="mt-6 space-y-3">
+						<DeviceCard
+							description="Power, cadence and resistance control"
+							icon="bike"
+							slot={trainer}
+							title="Smart trainer"
+						/>
+						<DeviceCard
+							description="Standard Bluetooth heart rate monitor"
+							icon="heart"
+							slot={heartRate}
+							title="Heart rate"
+						/>
+
+						<article className="rounded-2xl border border-line bg-[#12171d] p-4">
+							<div className="flex items-start gap-3">
+								<div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-700 bg-slate-800/60 text-slate-300">
+									<Icon className="h-5 w-5" name="controls" />
 								</div>
-								<p className="mt-1 text-slate-300 text-xs">
-									{click.pairedCount
-										? `${click.connectedCount} of ${click.pairedCount} controllers connected`
-										: 'Pair each controller separately'}
-								</p>
-								<p className="mt-1 text-[11px] text-slate-500">{click.status}</p>
-							</div>
-						</div>
-
-						{orderedClickControllers.length ? (
-							<div className="mt-4 overflow-hidden rounded-xl border border-line">
-								{orderedClickControllers.map((controller) => (
-									<div
-										className={`flex items-center gap-3 border-line border-b px-3 py-2.5 transition duration-150 last:border-b-0 ${controller.active ? 'bg-mint/10' : ''}`}
-										key={controller.id}
-									>
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center gap-2">
 										<StatusDot
-											busy={controller.connecting}
-											connected={controller.connected}
+											busy={waitingForControllers}
+											connected={click.connectedCount > 0}
 										/>
-										<div className="min-w-0 flex-1">
-											<p
-												className={`font-semibold text-xs transition ${controller.active ? 'text-mint' : 'text-slate-200'}`}
-											>
-												{controller.label}
-											</p>
-										</div>
-										<button
-											className="font-semibold text-[11px] text-rose-300 hover:text-rose-200"
-											onClick={() => click.onForgetController(controller.id)}
-											type="button"
-										>
-											Forget
-										</button>
+										<h3 className="font-bold text-sm text-white">
+											Zwift Click V2
+										</h3>
 									</div>
-								))}
+									<p className="mt-1 text-slate-300 text-xs">
+										{click.pairedCount
+											? `${click.connectedCount} of ${click.pairedCount} controllers connected`
+											: 'Pair each controller separately'}
+									</p>
+									<p className="mt-1 text-[11px] text-slate-500">
+										{waitingForControllers
+											? 'Waiting for controllers…'
+											: click.status}
+									</p>
+								</div>
 							</div>
-						) : null}
 
-						<div className="mt-4 flex flex-wrap justify-end gap-2">
-							{click.pairedCount > 0 ? <DeviceActions slot={clickSlot} /> : null}
-							{click.pairedCount < 2 ? (
-								<button
-									className="h-9 rounded-lg bg-lime px-3 font-bold text-ink text-xs transition hover:bg-[#e4ff9c] disabled:opacity-50"
-									disabled={click.pairing}
-									onClick={click.onPair}
-									type="button"
-								>
-									{pairControllerLabel}
-								</button>
+							{orderedClickControllers.length ? (
+								<div className="mt-4 overflow-hidden rounded-xl border border-line">
+									{orderedClickControllers.map((controller) => (
+										<div
+											className={`flex items-center gap-3 border-line border-b px-3 py-2.5 transition duration-150 last:border-b-0 ${controller.active ? 'bg-mint/10' : ''}`}
+											key={controller.id}
+										>
+											<StatusDot
+												bluePulse
+												busy={
+													waitingForControllers && !controller.connected
+												}
+												connected={controller.connected}
+											/>
+											<div className="min-w-0 flex-1">
+												<p
+													className={`font-semibold text-xs transition ${controller.active ? 'text-mint' : 'text-slate-200'}`}
+												>
+													{controller.label}
+												</p>
+											</div>
+											<button
+												className="font-semibold text-[11px] text-rose-300 hover:text-rose-200"
+												onClick={() =>
+													click.onForgetController(controller.id)
+												}
+												type="button"
+											>
+												Forget
+											</button>
+										</div>
+									))}
+								</div>
 							) : null}
-						</div>
-						<p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-							Wake each controller before pairing. The + and − sides are identified
-							automatically and reconnect in the background.
+
+							<div className="mt-4 flex flex-wrap justify-end gap-2">
+								{click.pairedCount > 0 ? <DeviceActions slot={clickSlot} /> : null}
+								{click.pairedCount < 2 ? (
+									<button
+										className="h-9 rounded-lg bg-lime px-3 font-bold text-ink text-xs transition hover:bg-[#e4ff9c] disabled:opacity-50"
+										disabled={click.pairing}
+										onClick={click.onPair}
+										type="button"
+									>
+										{pairControllerLabel}
+									</button>
+								) : null}
+							</div>
+							<p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+								Wake each controller before pairing. The + and − sides are
+								identified automatically and reconnect in the background.
+							</p>
+						</article>
+						<p className="px-1 text-[11px] text-slate-500">
+							Having reconnect trouble?{' '}
+							<a
+								className="font-semibold text-slate-400 underline underline-offset-2 hover:text-slate-200"
+								href={AUTOMATIC_RECONNECT_README_URL}
+								rel="noreferrer"
+								target="_blank"
+							>
+								Enable reconnect saving in Chrome
+							</a>
 						</p>
-					</article>
-				</div>
+					</div>
+				)}
 			</section>
 		</div>
 	);
