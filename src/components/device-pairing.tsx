@@ -381,7 +381,7 @@ export function DevicePairingPanel({
 									{flagsUrlCopied ? null : 'Open '}
 									<button
 										aria-label="Copy Chrome Bluetooth settings address"
-										className="break-all font-semibold text-sky-300 underline underline-offset-2 hover:text-sky-200"
+										className="max-w-full break-words text-left align-top font-semibold text-sky-300 underline underline-offset-2 hover:text-sky-200"
 										onClick={copyChromeFlagsUrl}
 										type="button"
 									>
