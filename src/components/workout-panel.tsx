@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { errorMessage } from '../lib/errors';
 import { formatDistance, formatElevation } from '../lib/units';
 import { downloadWorkoutFile } from '../lib/workout-file';
-import { WORKOUT_VIEW } from '../lib/workout-schema';
+import { WORKOUT_ROUTE_TYPE, WORKOUT_VIEW } from '../lib/workout-schema';
 import { workoutDifficultyLabel, workoutMaximumGrade } from '../lib/workouts';
 import type { SpeedUnit, WorkoutCourse } from '../types';
 import { SideTray } from './side-tray';
@@ -65,7 +65,12 @@ function WorkoutCourseCard({
 					</div>
 				</div>
 				<div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-slate-500 text-xs tabular-nums">
-					<span>{formatDistance(course.distance, speedUnit, 1)} loop</span>
+					<span>
+						{formatDistance(course.distance, speedUnit, 1)}{' '}
+						{course.routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK
+							? 'out & back'
+							: 'loop'}
+					</span>
 					<span>{formatElevation(course.elevationGain, speedUnit)} climbing</span>
 					<span>Up to +{workoutMaximumGrade(course).toFixed(1)}%</span>
 					<div className="ml-auto flex items-center gap-3 font-semibold">
@@ -89,7 +94,7 @@ function WorkoutCourseCard({
 					</div>
 				</div>
 				<button
-					className={`mt-4 h-10 w-full rounded-lg font-bold text-xs transition ${selected ? 'border border-mint/30 bg-mint/10 text-mint' : 'bg-lime text-ink hover:bg-[#e4ff9c]'} disabled:cursor-not-allowed disabled:opacity-40`}
+					className={`mt-4 h-10 w-full rounded-lg border font-bold text-xs transition ${selected ? 'border-mint/30 bg-mint/10 text-mint' : 'border-slate-700 bg-slate-800/70 text-slate-200 hover:border-slate-500 hover:bg-slate-700/70 hover:text-white'} disabled:cursor-not-allowed disabled:opacity-40`}
 					disabled={disabled || selected}
 					onClick={onSelect}
 					type="button"
@@ -131,7 +136,7 @@ export function WorkoutPanel({
 	const [importStatus, setImportStatus] = useState('');
 	const [importError, setImportError] = useState('');
 	let notice =
-		'Choose a loop before you start riding. The course repeats until the session ends.';
+		'Choose a course before you start riding. The route repeats until the session ends.';
 	if (ended) {
 		notice = 'Choose a workout for your next session, then start it when you are ready.';
 	} else if (selectionLocked) {
@@ -168,7 +173,7 @@ export function WorkoutPanel({
 						</h2>
 						<p className="mt-1 max-w-md text-slate-400 text-sm leading-relaxed">
 							Resistance follows the climbs and descents while your position moves
-							around a loop.
+							along the route.
 						</p>
 					</div>
 					<div className="flex shrink-0 items-center gap-1.5">

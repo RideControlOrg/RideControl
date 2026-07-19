@@ -1,26 +1,19 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { workoutTerrainAtDistance } from '../lib/workouts';
-import type { SessionWorkout, WorkoutTerrain } from '../types';
+import { useEffect, useRef } from 'react';
+import type { WorkoutTerrain } from '../types';
 
-export function useWorkout({
+export function useWorkoutResistance({
 	active,
 	connected,
-	distance,
 	onResistanceChange,
 	onRestoreResistance,
-	workout,
+	terrain,
 }: {
 	active: boolean;
 	connected: boolean;
-	distance: number;
 	onResistanceChange: (resistance: number) => void;
 	onRestoreResistance: () => void;
-	workout?: SessionWorkout;
-}): WorkoutTerrain | undefined {
-	const terrain = useMemo(
-		() => (workout ? workoutTerrainAtDistance(workout.course, distance) : undefined),
-		[distance, workout]
-	);
+	terrain?: WorkoutTerrain;
+}) {
 	const resistance = terrain?.resistance;
 	const automatedResistance = useRef(false);
 
@@ -39,6 +32,4 @@ export function useWorkout({
 			automatedResistance.current = false;
 		}
 	}, [active, connected, onResistanceChange, onRestoreResistance, resistance]);
-
-	return terrain;
 }

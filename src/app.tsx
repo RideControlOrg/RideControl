@@ -20,7 +20,7 @@ import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useSession } from './hooks/use-session';
 import { useSessionWorkflow } from './hooks/use-session-workflow';
 import { useTrainer } from './hooks/use-trainer';
-import { useWorkout } from './hooks/use-workout';
+import { useWorkoutResistance } from './hooks/use-workout';
 import { useWorkoutLibrary } from './hooks/use-workout-library';
 import { useZwiftClick } from './hooks/use-zwift-click';
 import { APP_OVERLAY, type AppOverlay } from './lib/app-overlay';
@@ -29,7 +29,11 @@ import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
 import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
-import { workoutSelectionLocked } from './lib/workouts';
+import {
+	workoutDashboardPreview,
+	workoutSelectionLocked,
+	workoutTerrainAtDistance,
+} from './lib/workouts';
 import { MAX_CLICK_CONTROLLERS } from './lib/zwift-click';
 import { preferencesStore } from './stores/preferences-store';
 import type { Metrics, SavedSession, WorkoutCourse } from './types';
@@ -94,17 +98,26 @@ export function App() {
 		trainer.lastPedalingAt,
 		trainer.trainerReportsDistance
 	);
-	const workoutTerrain = useWorkout({
-		active: !session.ended,
-		connected: trainer.connected,
+	const dashboardWorkout = workoutDashboardPreview({
 		distance: session.rideDistance,
-		onResistanceChange: trainer.updateProgramResistance,
-		onRestoreResistance: trainer.restoreManualResistance,
+		elevationTotals: session.elevationTotals,
+		ended: session.ended,
+		selectedWorkout: session.selectedWorkout,
 		workout: session.workout,
 	});
-	const workflow = useSessionWorkflow(session, trainer.setNotice);
+	const workoutTerrain = dashboardWorkout.workout
+		? workoutTerrainAtDistance(dashboardWorkout.workout.course, dashboardWorkout.distance)
+		: undefined;
+	useWorkoutResistance({
+		active: !session.ended,
+		connected: trainer.connected,
+		onResistanceChange: trainer.updateProgramResistance,
+		onRestoreResistance: trainer.restoreManualResistance,
+		terrain: workoutTerrain,
+	});
+	const workflow = useSessionWorkflow(session, trainer.setNotice, trainer.settleAfterRide);
 	const dashboardKeyboardEnabled = activeOverlay === undefined && !workflow.saveDialogOpen;
-	const virtualShiftingActive = click.paired && !session.workout;
+	const virtualShiftingActive = click.paired && !dashboardWorkout.workout;
 	clickShiftRef.current = shiftHandlerUnlessBlocked(
 		gearControl.shiftGear,
 		!(dashboardKeyboardEnabled && virtualShiftingActive)
@@ -137,7 +150,7 @@ export function App() {
 	}, [warnBeforeUnload]);
 
 	useEffect(() => {
-		trainer.setKeyboardControlsEnabled(dashboardKeyboardEnabled && !session.workout);
+		trainer.setKeyboardControlsEnabled(dashboardKeyboardEnabled && !dashboardWorkout.workout);
 		trainer.setGearControlsEnabled(virtualShiftingActive);
 		gearControl.setKeyboardControlsEnabled(dashboardKeyboardEnabled && virtualShiftingActive);
 	}, [
@@ -145,7 +158,7 @@ export function App() {
 		gearControl.setKeyboardControlsEnabled,
 		trainer.setGearControlsEnabled,
 		trainer.setKeyboardControlsEnabled,
-		session.workout,
+		dashboardWorkout.workout,
 		virtualShiftingActive,
 	]);
 
@@ -220,7 +233,7 @@ export function App() {
 	const selectedWorkoutId = selectedWorkoutCourse?.id;
 	const workoutLocked = workoutSelectionLocked(session);
 	useEffect(() => {
-		if (!(selectedWorkoutCourse && !workoutLocked)) {
+		if (!selectedWorkoutCourse) {
 			return;
 		}
 		const currentDefinition = workoutLibrary.courses.find(
@@ -229,7 +242,7 @@ export function App() {
 		if (currentDefinition && currentDefinition !== selectedWorkoutCourse) {
 			session.selectWorkout(currentDefinition);
 		}
-	}, [selectedWorkoutCourse, session.selectWorkout, workoutLibrary.courses, workoutLocked]);
+	}, [selectedWorkoutCourse, session.selectWorkout, workoutLibrary.courses]);
 	const removeWorkout = useCallback(
 		(courseId: string) => {
 			if (selectedWorkoutId === courseId) {
@@ -287,13 +300,13 @@ export function App() {
 					rideDistance={session.rideDistance}
 					speedUnit={speedUnit}
 				/>
-				{session.workout && workoutTerrain ? (
+				{dashboardWorkout.workout && workoutTerrain ? (
 					<WorkoutProgress
-						elevationTotals={session.elevationTotals}
+						elevationTotals={dashboardWorkout.elevationTotals}
 						isRiding={session.isRiding}
 						speedUnit={speedUnit}
 						terrain={workoutTerrain}
-						workout={session.workout}
+						workout={dashboardWorkout.workout}
 					/>
 				) : null}
 				<DashboardWorkspace>

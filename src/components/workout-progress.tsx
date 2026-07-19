@@ -1,6 +1,6 @@
 import { formatGrade } from '../lib/format';
 import { formatDistanceProgress, formatElevation } from '../lib/units';
-import { WORKOUT_VIEW } from '../lib/workout-schema';
+import { WORKOUT_ROUTE_TYPE, WORKOUT_VIEW } from '../lib/workout-schema';
 import type { ElevationTotals, SessionWorkout, SpeedUnit, WorkoutTerrain } from '../types';
 import { WorkoutRouteVisualization } from './workout-route-visualization';
 
@@ -52,6 +52,8 @@ export function WorkoutProgress({
 	workout: SessionWorkout;
 }) {
 	const { course } = workout;
+	const outAndBack = course.routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK;
+	const completionUnit = outAndBack ? 'trip' : 'lap';
 	const elevationStats = [
 		{ label: 'Course climb', value: formatElevation(course.elevationGain, speedUnit) },
 		{ label: 'Climbed', value: formatElevation(elevationTotals.ascent, speedUnit) },
@@ -72,15 +74,15 @@ export function WorkoutProgress({
 					<h2 className="font-bold text-base">{course.name}</h2>
 					<span className="inline-flex items-center gap-1.5 whitespace-nowrap font-semibold text-[9px] text-slate-500 uppercase tracking-[.12em]">
 						<span className="h-0.5 w-3 rounded-full bg-mint" />
-						Ridden this lap
+						Ridden this {completionUnit}
 					</span>
 				</div>
 				<div className="flex items-center gap-2 text-right">
 					<p className="font-bold text-[8px] text-mint uppercase tracking-[.16em]">
-						Laps completed
+						{outAndBack ? 'Trips completed' : 'Laps completed'}
 					</p>
 					<output
-						aria-label={`${terrain.completedLaps} ${terrain.completedLaps === 1 ? 'lap' : 'laps'} completed`}
+						aria-label={`${terrain.completedLaps} ${completionUnit}${terrain.completedLaps === 1 ? '' : 's'} completed`}
 						className="block min-w-7 font-bold text-3xl text-white tabular-nums leading-none"
 					>
 						{terrain.completedLaps}

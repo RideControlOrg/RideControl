@@ -30,6 +30,7 @@ import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
 import { formatSessionImportTime, sessionSummary } from '../src/lib/saved-sessions';
 import { SESSION_WORKFLOW_INTENT } from '../src/lib/session-workflow';
+import { WORKOUT_ROUTE_TYPE } from '../src/lib/workout-schema';
 import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
 import { savedSessionFixture } from './fixtures/saved-session';
 
@@ -472,16 +473,25 @@ describe('view components', () => {
 		expect(panel).toContain('Prairie Roll');
 		expect(panel).toContain('Cedar Circuit');
 		expect(panel).toContain('Highland Loop');
+		expect(panel).toContain('Granite Switchbacks');
 		expect(panel).toContain('Harbor Ring course map');
 		expect(panel).toContain('Harbor Ring elevation profile');
 		expect(panel).toContain('Import GPX');
-		expect(panel.match(/Download GPX/g)).toHaveLength(4);
+		expect(panel.match(/Download GPX/g)).toHaveLength(5);
 		expect(panel).toContain('15.0 mi loop');
 		expect(panel).toContain('15–25% resistance');
 		expect(panel).toContain('49 ft climbing');
 		expect(panel).not.toContain('15 m climbing');
+		expect(panel).toContain('stroke="#64748b"');
+		expect(panel).toContain('bg-slate-800/70');
+		expect(panel).not.toContain('bg-lime text-ink');
 		expect(panel).toContain('data-side-tray="true"');
-		const importedCourse = { ...course, id: 'imported-course', name: 'Imported course' };
+		const importedCourse = {
+			...course,
+			id: 'imported-course',
+			name: 'Imported course',
+			routeType: WORKOUT_ROUTE_TYPE.OUT_AND_BACK,
+		};
 		const customPanel = render(
 			<WorkoutPanel
 				courses={[...WORKOUT_COURSES, importedCourse]}
@@ -498,8 +508,9 @@ describe('view components', () => {
 		);
 		expect(customPanel).toContain('Imported course');
 		expect(customPanel).toContain('Imported');
+		expect(customPanel).toContain('out &amp; back');
 		expect(customPanel).toContain('Remove');
-		expect(customPanel.match(/Download GPX/g)).toHaveLength(5);
+		expect(customPanel.match(/Download GPX/g)).toHaveLength(6);
 		const lockedPanel = render(
 			<WorkoutPanel
 				activeCourse={course}
@@ -516,7 +527,7 @@ describe('view components', () => {
 			/>
 		);
 		expect(lockedPanel).toContain('End the current session before changing the workout.');
-		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(4);
+		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(5);
 
 		const terrain = workoutTerrainAtDistance(course, course.distance * 2 + 2);
 		const progress = render(
@@ -570,6 +581,18 @@ describe('view components', () => {
 		expect(metricProgress).toContain('30 m');
 		expect(metricProgress).toContain('12 m');
 		expect(metricProgress).not.toContain('animate-pulse');
+		const outAndBackProgress = render(
+			<WorkoutProgress
+				elevationTotals={{ ascent: 30, descent: 12 }}
+				isRiding={false}
+				speedUnit="mph"
+				terrain={terrain}
+				workout={{ course: importedCourse }}
+			/>
+		);
+		expect(outAndBackProgress).toContain('Trips completed');
+		expect(outAndBackProgress).toContain('Ridden this trip');
+		expect(outAndBackProgress).toContain('aria-label="2 trips completed"');
 	});
 
 	test('hides empty notifications and expands setup guidance', () => {

@@ -8,6 +8,7 @@ import { scheduleNoticeDismissal } from '../lib/notification';
 import { clamp } from '../lib/numbers';
 import {
 	clampResistance,
+	DEFAULT_RESISTANCE,
 	resistanceDirectionForKey,
 	resistanceRampDuration,
 	smoothedResistance,
@@ -92,7 +93,7 @@ export function useTrainer() {
 	);
 
 	const queueResistance = useCallback(
-		(value: number, remember: boolean) => {
+		(value: number, remember: boolean, applyToTrainer = true) => {
 			const next = clampResistance(value);
 			resistanceTarget.current = next;
 			setResistance(next);
@@ -102,6 +103,17 @@ export function useTrainer() {
 			}
 			window.clearTimeout(resistanceTimer.current);
 			window.clearTimeout(resistanceRampTimer.current);
+			if (!applyToTrainer) {
+				appliedResistance.current = next;
+				setResistanceRamp({
+					current: next,
+					from: next,
+					phase: 'holding',
+					progress: 0,
+					to: next,
+				});
+				return;
+			}
 			const { current } = appliedResistance;
 			setResistanceRamp({
 				current,
@@ -127,6 +139,10 @@ export function useTrainer() {
 	const restoreManualResistance = useCallback(
 		() => queueResistance(rememberedResistance.current, false),
 		[queueResistance]
+	);
+	const settleAfterRide = useCallback(
+		() => queueResistance(DEFAULT_RESISTANCE, true, connection.connected),
+		[connection.connected, queueResistance]
 	);
 
 	const shiftResistanceBy = useCallback(
@@ -228,6 +244,7 @@ export function useTrainer() {
 		setGearControlsEnabled,
 		setKeyboardControlsEnabled,
 		setNotice,
+		settleAfterRide,
 		shiftResistanceBy,
 		trainerReportsDistance: trainerConnection.trainerReportsDistance,
 		updateProgramResistance,

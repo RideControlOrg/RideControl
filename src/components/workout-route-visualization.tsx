@@ -8,6 +8,8 @@ import {
 } from '../lib/workouts';
 import type { WorkoutCourse, WorkoutTerrain } from '../types';
 
+const ROUTE_STROKE = '#64748b';
+
 interface RouteMarker {
 	x: number;
 	y: number;
@@ -96,11 +98,11 @@ export function WorkoutRouteVisualization({
 				)}
 				{isMap ? null : (
 					<>
-						<path d={profileArea} fill="rgba(71, 85, 105, .16)" />
+						<path d={profileArea} fill="rgba(100, 116, 139, .18)" />
 						<path
 							d="M0 92H100"
 							fill="none"
-							stroke="#334155"
+							stroke="#475569"
 							strokeWidth=".75"
 							vectorEffect="non-scaling-stroke"
 						/>
@@ -109,10 +111,10 @@ export function WorkoutRouteVisualization({
 				<path
 					d={path}
 					fill="none"
-					stroke="#334155"
+					stroke={ROUTE_STROKE}
 					strokeLinecap="round"
 					strokeLinejoin="round"
-					strokeWidth={isMap ? 5 : 2.5}
+					strokeWidth={isMap ? 5 : 3}
 					vectorEffect="non-scaling-stroke"
 				/>
 				{terrain && progress > 0 ? (
