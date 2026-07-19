@@ -6,15 +6,10 @@ import { aggregateConnectionPhase, deviceConnectionView } from '../lib/device-co
 import { errorMessage } from '../lib/errors';
 import { createReconnectController } from '../lib/reconnect-controller';
 import {
-	CLICK_CONTROLLER_ROLES_STORAGE_KEY,
 	CLICK_DEVICE_IDS_STORAGE_KEY,
 	type ClickControllerRoles,
 	type ClickShift,
-	filterAcceptedClickShifts,
-	filterClickShiftsForController,
 	MAX_CLICK_CONTROLLERS,
-	parseClickV2Shift,
-	registerClickControllerRole,
 	storedClickControllerRoles,
 	storedClickDeviceIds,
 	ZWIFT_CLICK_NAME,
@@ -24,22 +19,13 @@ import {
 } from '../lib/zwift-click';
 import { connectClickDevice, SupersededClickConnectionError } from '../lib/zwift-click-device';
 import { createZwiftClickStore } from '../stores/zwift-click-store';
-
-interface ClickRepeatTimer {
-	delay: number;
-	interval?: number;
-}
+import { useZwiftClickInput } from './use-zwift-click-input';
 
 interface ClickConnectionOptions {
 	force?: boolean;
 	rediscover?: boolean;
 	scheduleRetry?: boolean;
 }
-
-const CLICK_HOLD_DELAY_MS = 600;
-const CLICK_HOLD_REPEAT_MS = 220;
-const CLICK_CONTROLLER_FLASH_MS = 350;
-const CLICK_SHIFTS: ClickShift[] = ['down', 'up'];
 
 type ClickConnectionCleanup = () => void;
 
@@ -48,10 +34,6 @@ function saveDeviceIds(devices: BluetoothDevice[]) {
 		CLICK_DEVICE_IDS_STORAGE_KEY,
 		JSON.stringify(devices.map(({ id }) => id).slice(0, MAX_CLICK_CONTROLLERS))
 	);
-}
-
-function saveControllerRoles(roles: ClickControllerRoles) {
-	localStorage.setItem(CLICK_CONTROLLER_ROLES_STORAGE_KEY, JSON.stringify(roles));
 }
 
 function controllerLabel(role: ClickShift | undefined) {
@@ -79,26 +61,18 @@ export function useZwiftClick(
 ) {
 	const store = useMemo(() => createZwiftClickStore(), []);
 	const state = useSelector(store);
-	const { clearActiveControllers, setControllerPhase } = store.actions;
+	const { setControllerPhase } = store.actions;
 	const autoReconnect = useRef(true);
 	const connectingIds = useRef(new Set<string>());
 	const connectionAttempts = useRef(new Map<string, number>());
 	const connectionCleanups = useRef(new Map<string, ClickConnectionCleanup>());
-	const controllerFlashTimers = useRef(new Map<string, number>());
-	const controllerRolesRef = useRef<ClickControllerRoles>({});
 	const devicesRef = useRef<BluetoothDevice[]>([]);
 	const forgottenIds = useRef(new Set<string>());
-	const heldShiftsByDevice = useRef(new Map<string, ClickShift[]>());
-	const identifyControllersRef = useRef(identifyControllers);
-	const previousButtonMaps = useRef(new Map<string, number>());
 	const reportedConnectionFailures = useRef(new Set<string>());
-	const lastShiftTimes = useRef(new Map<ClickShift, number>());
-	const repeatTimers = useRef(new Map<ClickShift, ClickRepeatTimer>());
 	const connectDeviceRef = useRef<
 		| ((selected: BluetoothDevice, options?: ClickConnectionOptions) => Promise<boolean>)
 		| undefined
 	>(undefined);
-	const onShiftRef = useRef(onShift);
 	const operationalIds = useRef(new Set<string>());
 	const reconnectController = useRef(
 		createReconnectController<BluetoothDevice>({
@@ -113,188 +87,32 @@ export function useZwiftClick(
 		})
 	);
 
-	useEffect(() => {
-		onShiftRef.current = onShift;
-	}, [onShift]);
-
-	useEffect(() => {
-		identifyControllersRef.current = identifyControllers;
-		if (!identifyControllers) {
-			for (const timer of controllerFlashTimers.current.values()) {
-				window.clearTimeout(timer);
-			}
-			controllerFlashTimers.current.clear();
-			clearActiveControllers();
-		}
-	}, [clearActiveControllers, identifyControllers]);
-
-	useEffect(
-		() => () => {
-			for (const timer of controllerFlashTimers.current.values()) {
-				window.clearTimeout(timer);
-			}
-		},
-		[]
-	);
-
-	const registerControllerRole = useCallback(
-		(deviceId: string, shifts: ClickShift[]) => {
-			const next = registerClickControllerRole(controllerRolesRef.current, deviceId, shifts);
-			if (next === controllerRolesRef.current) {
-				return;
-			}
-			controllerRolesRef.current = next;
-			store.actions.setControllerRoles(next);
-			saveControllerRoles(next);
-		},
-		[store]
-	);
-
-	const forgetControllerRole = useCallback(
+	const markControllerOperational = useCallback(
 		(deviceId: string) => {
-			if (!controllerRolesRef.current[deviceId]) {
-				return;
-			}
-			const next = { ...controllerRolesRef.current };
-			delete next[deviceId];
-			controllerRolesRef.current = next;
-			store.actions.setControllerRoles(next);
-			saveControllerRoles(next);
+			operationalIds.current.add(deviceId);
+			reconnectController.current.reset(deviceId);
+			reportedConnectionFailures.current.delete(deviceId);
+			setControllerPhase(deviceId, 'connected');
 		},
-		[store]
+		[setControllerPhase]
 	);
-
-	const stopRepeat = useCallback((shift: ClickShift) => {
-		const timer = repeatTimers.current.get(shift);
-		if (!timer) {
-			return;
-		}
-		window.clearTimeout(timer.delay);
-		window.clearInterval(timer.interval);
-		repeatTimers.current.delete(shift);
-	}, []);
-
-	const syncRepeats = useCallback(() => {
-		const heldShifts = new Set<ClickShift>();
-		for (const deviceShifts of heldShiftsByDevice.current.values()) {
-			for (const shift of deviceShifts) {
-				heldShifts.add(shift);
-			}
-		}
-		for (const shift of CLICK_SHIFTS) {
-			if (!heldShifts.has(shift)) {
-				stopRepeat(shift);
-				continue;
-			}
-			if (repeatTimers.current.has(shift)) {
-				continue;
-			}
-			const change = shift === 'down' ? -1 : 1;
-			const timer: ClickRepeatTimer = { delay: 0 };
-			timer.delay = window.setTimeout(() => {
-				onShiftRef.current(change);
-				timer.interval = window.setInterval(
-					() => onShiftRef.current(change),
-					CLICK_HOLD_REPEAT_MS
-				);
-			}, CLICK_HOLD_DELAY_MS);
-			repeatTimers.current.set(shift, timer);
-		}
-	}, [stopRepeat]);
-
-	const setDeviceHeldShifts = useCallback(
-		(deviceId: string, heldShifts: ClickShift[]) => {
-			if (heldShifts.length) {
-				heldShiftsByDevice.current.set(deviceId, heldShifts);
-			} else {
-				heldShiftsByDevice.current.delete(deviceId);
-			}
-			syncRepeats();
-		},
-		[syncRepeats]
-	);
-
-	const clearDeviceHeldShifts = useCallback(
-		(deviceId: string) => {
-			heldShiftsByDevice.current.delete(deviceId);
-			syncRepeats();
-		},
-		[syncRepeats]
-	);
-
-	useEffect(
-		() => () => {
-			for (const shift of repeatTimers.current.keys()) {
-				stopRepeat(shift);
-			}
-		},
-		[stopRepeat]
-	);
+	const clickInput = useZwiftClickInput({
+		identifyControllers,
+		onOperational: markControllerOperational,
+		onShift,
+		store,
+	});
 
 	const cleanupConnection = useCallback((deviceId: string) => {
 		connectionCleanups.current.get(deviceId)?.();
 		connectionCleanups.current.delete(deviceId);
 	}, []);
 
-	const flashController = useCallback(
-		(deviceId: string) => {
-			if (!identifyControllersRef.current) {
-				return;
-			}
-			window.clearTimeout(controllerFlashTimers.current.get(deviceId));
-			store.actions.activateController(deviceId);
-			const timer = window.setTimeout(() => {
-				controllerFlashTimers.current.delete(deviceId);
-				store.actions.deactivateController(deviceId);
-			}, CLICK_CONTROLLER_FLASH_MS);
-			controllerFlashTimers.current.set(deviceId, timer);
-		},
-		[store]
-	);
-
-	const handleControllerMessage = useCallback(
-		(deviceId: string, event: Event) => {
-			const { value } = event.target as BluetoothRemoteGATTCharacteristic;
-			if (!value) {
-				return;
-			}
-			const parsed = parseClickV2Shift(value, previousButtonMaps.current.get(deviceId));
-			if (!parsed) {
-				return;
-			}
-			operationalIds.current.add(deviceId);
-			reconnectController.current.reset(deviceId);
-			reportedConnectionFailures.current.delete(deviceId);
-			setControllerPhase(deviceId, 'connected');
-			previousButtonMaps.current.set(deviceId, parsed.buttonMap);
-			const controllerRole = controllerRolesRef.current[deviceId];
-			const heldShifts = filterClickShiftsForController(parsed.heldShifts, controllerRole);
-			const controllerShifts = filterClickShiftsForController(parsed.shifts, controllerRole);
-			setDeviceHeldShifts(deviceId, heldShifts);
-			const acceptedShifts = filterAcceptedClickShifts(
-				controllerShifts,
-				performance.now(),
-				lastShiftTimes.current
-			);
-			if (acceptedShifts.length) {
-				flashController(deviceId);
-			}
-			if (identifyControllersRef.current) {
-				registerControllerRole(deviceId, acceptedShifts);
-			}
-			for (const shift of acceptedShifts) {
-				onShiftRef.current(shift === 'down' ? -1 : 1);
-			}
-		},
-		[flashController, registerControllerRole, setControllerPhase, setDeviceHeldShifts]
-	);
-
 	const handleControllerDisconnect = useCallback(
 		(selected: BluetoothDevice) => {
 			cleanupConnection(selected.id);
 			operationalIds.current.delete(selected.id);
-			clearDeviceHeldShifts(selected.id);
-			previousButtonMaps.current.delete(selected.id);
+			clickInput.resetControllerInput(selected.id);
 			if (shouldAutoReconnect(autoReconnect.current, forgottenIds.current, selected.id)) {
 				setControllerPhase(selected.id, 'reconnecting');
 				reconnectController.current.start(selected.id, selected);
@@ -302,7 +120,7 @@ export function useZwiftClick(
 				setControllerPhase(selected.id, 'offline');
 			}
 		},
-		[cleanupConnection, clearDeviceHeldShifts, setControllerPhase]
+		[cleanupConnection, clickInput.resetControllerInput, setControllerPhase]
 	);
 
 	const establishControllerConnection = useCallback(
@@ -311,13 +129,17 @@ export function useZwiftClick(
 			const cleanup = await connectClickDevice(selected, rediscover, {
 				isCurrent: isCurrentAttempt,
 				isOperational: () => operationalIds.current.has(selected.id),
-				onControllerRole: (role) => registerControllerRole(selected.id, [role]),
+				onControllerRole: (role) => clickInput.registerControllerRole(selected.id, [role]),
 				onDisconnect: handleDisconnect,
-				onMessage: (event) => handleControllerMessage(selected.id, event),
+				onMessage: (event) => clickInput.handleControllerMessage(selected.id, event),
 			});
 			connectionCleanups.current.set(selected.id, cleanup);
 		},
-		[handleControllerDisconnect, handleControllerMessage, registerControllerRole]
+		[
+			clickInput.handleControllerMessage,
+			clickInput.registerControllerRole,
+			handleControllerDisconnect,
+		]
 	);
 
 	const beginControllerConnectionAttempt = useCallback(
@@ -343,18 +165,17 @@ export function useZwiftClick(
 			connectionAttempts.current.set(selected.id, attempt);
 			connectingIds.current.add(selected.id);
 			setControllerPhase(selected.id, force || rediscover ? 'reconnecting' : 'connecting');
-			previousButtonMaps.current.delete(selected.id);
-			clearDeviceHeldShifts(selected.id);
+			clickInput.resetControllerInput(selected.id);
 			return attempt;
 		},
-		[cleanupConnection, clearDeviceHeldShifts, setControllerPhase]
+		[cleanupConnection, clickInput.resetControllerInput, setControllerPhase]
 	);
 
 	const handleConnectionFailure = useCallback(
 		(selected: BluetoothDevice, error: unknown, scheduleRetry: boolean) => {
 			cleanupConnection(selected.id);
 			operationalIds.current.delete(selected.id);
-			clearDeviceHeldShifts(selected.id);
+			clickInput.clearDeviceHeldShifts(selected.id);
 			selected.gatt?.disconnect();
 			const shouldReconnect = shouldAutoReconnect(
 				autoReconnect.current,
@@ -370,7 +191,7 @@ export function useZwiftClick(
 				reconnectController.current.start(selected.id, selected);
 			}
 		},
-		[cleanupConnection, clearDeviceHeldShifts, setControllerPhase, setNotice]
+		[cleanupConnection, clickInput.clearDeviceHeldShifts, setControllerPhase, setNotice]
 	);
 
 	useEffect(
@@ -473,22 +294,22 @@ export function useZwiftClick(
 		for (const selected of devices) {
 			reconnectController.current.cancel(selected.id, true);
 			operationalIds.current.delete(selected.id);
-			clearDeviceHeldShifts(selected.id);
+			clickInput.clearDeviceHeldShifts(selected.id);
 			cleanupConnection(selected.id);
 			selected.gatt?.disconnect();
 		}
 		store.actions.setControllerPhases(
 			Object.fromEntries(devices.map((selected) => [selected.id, 'offline']))
 		);
-	}, [cleanupConnection, clearDeviceHeldShifts, store]);
+	}, [cleanupConnection, clickInput.clearDeviceHeldShifts, store]);
 
 	const forgetDevice = useCallback(
 		async (deviceId: string) => {
 			forgottenIds.current.add(deviceId);
 			operationalIds.current.delete(deviceId);
 			reconnectController.current.cancel(deviceId, true);
-			clearDeviceHeldShifts(deviceId);
-			forgetControllerRole(deviceId);
+			clickInput.clearDeviceHeldShifts(deviceId);
+			clickInput.forgetControllerRole(deviceId);
 			const selected = devicesRef.current.find(({ id }) => id === deviceId);
 			cleanupConnection(deviceId);
 			selected?.gatt?.disconnect();
@@ -502,7 +323,12 @@ export function useZwiftClick(
 				store.actions.removeControllerPhase(deviceId);
 			}
 		},
-		[cleanupConnection, clearDeviceHeldShifts, forgetControllerRole, store]
+		[
+			cleanupConnection,
+			clickInput.clearDeviceHeldShifts,
+			clickInput.forgetControllerRole,
+			store,
+		]
 	);
 
 	const forget = useCallback(async () => {
@@ -536,9 +362,8 @@ export function useZwiftClick(
 					rememberedIds.has(deviceId)
 				)
 			) as ClickControllerRoles;
-			controllerRolesRef.current = rememberedRoles;
+			clickInput.restoreControllerRoles(rememberedRoles);
 			devicesRef.current = remembered;
-			store.actions.setControllerRoles(rememberedRoles);
 			store.actions.setDeviceIds(remembered.map(({ id }) => id));
 			store.actions.setControllerPhases(
 				Object.fromEntries(remembered.map((selected) => [selected.id, 'reconnecting']))
@@ -566,7 +391,7 @@ export function useZwiftClick(
 			autoReconnect.current = false;
 			reconnectController.current.cancelAll();
 		};
-	}, [store]);
+	}, [clickInput.restoreControllerRoles, store]);
 
 	const connectionPhases = state.deviceIds.map(
 		(deviceId) => state.controllerPhases[deviceId] ?? 'offline'
