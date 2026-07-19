@@ -1,19 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { gearForResistance, resistanceChangeForGears, shiftedGear, storedGear } from '../lib/gears';
+import { CONTROL_FLASH_MS } from '../constants';
+import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
+import {
+	GEAR_STORAGE_KEY,
+	gearForResistance,
+	resistanceChangeForGears,
+	shiftedGear,
+	storedGear,
+} from '../lib/gears';
 import { resistanceDirectionForKey } from '../lib/resistance';
 import type { ResistanceAdjustmentDirection } from '../types';
 
 export function useGearControl({
 	active,
 	connected,
-	keyboardEnabled,
 	onResistanceChange,
 	resistance,
 	setNotice,
 }: {
 	active: boolean;
 	connected: boolean;
-	keyboardEnabled: boolean;
 	onResistanceChange: (change: number) => void;
 	resistance: number;
 	setNotice: (notice: string) => void;
@@ -21,6 +27,7 @@ export function useGearControl({
 	const [gear, setGear] = useState(() => storedGear(localStorage, gearForResistance(resistance)));
 	const [shiftFlash, setShiftFlash] = useState<ResistanceAdjustmentDirection | undefined>();
 	const gearRef = useRef(gear);
+	const keyboardControlsEnabled = useRef(true);
 	const shiftFlashTimer = useRef<number | undefined>(undefined);
 
 	const shiftGear = useCallback(
@@ -36,10 +43,13 @@ export function useGearControl({
 			}
 			setShiftFlash(change > 0 ? 'increase' : 'decrease');
 			window.clearTimeout(shiftFlashTimer.current);
-			shiftFlashTimer.current = window.setTimeout(() => setShiftFlash(undefined), 180);
+			shiftFlashTimer.current = window.setTimeout(
+				() => setShiftFlash(undefined),
+				CONTROL_FLASH_MS
+			);
 			gearRef.current = next;
 			setGear(next);
-			localStorage.setItem('trainer-virtual-gear', String(next));
+			localStorage.setItem(GEAR_STORAGE_KEY, String(next));
 			onResistanceChange(resistanceChangeForGears(previous, next));
 		},
 		[connected, onResistanceChange, setNotice]
@@ -50,16 +60,14 @@ export function useGearControl({
 			return;
 		}
 		const handleGearKey = (event: KeyboardEvent) => {
-			const target = event.target as HTMLElement | null;
-			const isGearControl = target?.matches('[data-gear-control="true"]');
+			const isGearControl =
+				event.target instanceof HTMLElement &&
+				event.target.matches('[data-gear-control="true"]');
 			if (
 				event.defaultPrevented ||
-				event.altKey ||
-				event.ctrlKey ||
-				event.metaKey ||
-				!keyboardEnabled ||
-				(!isGearControl &&
-					target?.matches("input, textarea, select, [contenteditable='true']"))
+				keyboardEventHasModifiers(event) ||
+				!keyboardControlsEnabled.current ||
+				(!isGearControl && eventTargetsEditableControl(event))
 			) {
 				return;
 			}
@@ -74,7 +82,7 @@ export function useGearControl({
 		return () => {
 			window.removeEventListener('keydown', handleGearKey);
 		};
-	}, [active, keyboardEnabled, shiftGear]);
+	}, [active, shiftGear]);
 
 	useEffect(
 		() => () => {
@@ -83,5 +91,9 @@ export function useGearControl({
 		[]
 	);
 
-	return { gear, shiftFlash, shiftGear };
+	const setKeyboardControlsEnabled = useCallback((enabled: boolean) => {
+		keyboardControlsEnabled.current = enabled;
+	}, []);
+
+	return { gear, setKeyboardControlsEnabled, shiftFlash, shiftGear };
 }

@@ -1,34 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppFooter } from './components/app-footer';
+import { Dashboard, DashboardToolbar, DashboardWorkspace } from './components/dashboard-layout';
+import { DashboardTools } from './components/dashboard-tools';
 import { DevicePairingPanel } from './components/device-pairing';
 import { KeyboardShortcutsDialog } from './components/keyboard-shortcuts-dialog';
 import { Notification } from './components/notification';
-import { AppFooter, RideDashboard } from './components/ride-dashboard';
+import { RideMetrics } from './components/ride-metrics';
+import { SessionControls } from './components/session-controls';
 import { SessionHistory } from './components/session-history';
+import { SessionOverview } from './components/session-overview';
 import { SessionSaveDialog } from './components/session-save-dialog';
+import { TrainingControl } from './components/training-control';
 import { WelcomeDialog } from './components/welcome-dialog';
 import { useGearControl } from './hooks/use-gear-control';
 import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useSession } from './hooks/use-session';
+import { useSessionWorkflow } from './hooks/use-session-workflow';
 import { useTrainer } from './hooks/use-trainer';
 import { useZwiftClick } from './hooks/use-zwift-click';
+import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
-import {
-	createSavedSession,
-	requestPersistentSessionStorage,
-	saveSession,
-} from './lib/saved-sessions';
 import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
+import { SPEED_UNIT_STORAGE_KEY, storedSpeedUnit } from './lib/units';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
-import type { ControlMode, Metrics, SavedSession, SessionMetadata, SpeedUnit } from './types';
+import type { ControlMode, Metrics, SavedSession, SpeedUnit } from './types';
+
+type AppOverlay = 'devices' | 'history' | 'shortcuts' | 'welcome';
 
 function shouldIgnoreShortcut(event: KeyboardEvent) {
-	const target = event.target as HTMLElement | null;
 	return (
 		event.defaultPrevented ||
-		event.altKey ||
-		event.ctrlKey ||
-		event.metaKey ||
-		target?.matches("button, a, input, textarea, select, [contenteditable='true']")
+		keyboardEventHasModifiers(event) ||
+		eventTargetsInteractiveControl(event)
 	);
 }
 
@@ -49,7 +52,10 @@ function controlModeForClick(paired: boolean): ControlMode {
 
 export function App() {
 	const trainer = useTrainer();
-	const [devicesOpen, setDevicesOpen] = useState(false);
+	const [activeOverlay, setActiveOverlay] = useState<AppOverlay | undefined>(() =>
+		shouldShowWelcome() ? 'welcome' : undefined
+	);
+	const devicesOpen = activeOverlay === 'devices';
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
 	const click = useZwiftClick(handleClickShift, trainer.setNotice, devicesOpen);
@@ -60,22 +66,14 @@ export function App() {
 		heartRate.heartRate
 	);
 	const { connected } = trainer;
-	const [speedUnit, setSpeedUnit] = useState<SpeedUnit>(() =>
-		localStorage.getItem('speed-unit') === 'kmh' ? 'kmh' : 'mph'
-	);
-	const [historyOpen, setHistoryOpen] = useState(false);
-	const [shortcutsOpen, setShortcutsOpen] = useState(false);
-	const [welcomeOpen, setWelcomeOpen] = useState(shouldShowWelcome);
-	const dashboardKeyboardEnabled = !(devicesOpen || historyOpen || shortcutsOpen || welcomeOpen);
+	const [speedUnit, setSpeedUnit] = useState<SpeedUnit>(storedSpeedUnit);
 	const gearControl = useGearControl({
 		active: click.paired,
 		connected: trainer.connected,
-		keyboardEnabled: dashboardKeyboardEnabled,
 		onResistanceChange: trainer.shiftResistanceBy,
 		resistance: trainer.resistance,
 		setNotice: trainer.setNotice,
 	});
-	clickShiftRef.current = shiftHandlerUnlessBlocked(gearControl.shiftGear, devicesOpen);
 	const session = useSession(
 		liveMetrics,
 		{
@@ -86,76 +84,26 @@ export function App() {
 		trainer.lastPedalingAt,
 		trainer.trainerReportsDistance
 	);
-	const { isRiding, manuallyPaused } = session;
-	const sessionIsSaved = Boolean(session.savedSessionId);
-	const [saveDialogOpen, setSaveDialogOpen] = useState(() => session.ended && !sessionIsSaved);
-	const [saving, setSaving] = useState(false);
-	const [startAfterSave, setStartAfterSave] = useState(false);
-	const [continuationAfterSave, setContinuationAfterSave] = useState<SavedSession>();
-	const endSession = useCallback(() => {
-		session.endSession();
-		setStartAfterSave(false);
-		setContinuationAfterSave(undefined);
-		setSaveDialogOpen(true);
-	}, [session.endSession]);
-	const startNewSession = useCallback(() => {
-		session.startNew();
-		setSaveDialogOpen(false);
-		setStartAfterSave(false);
-		setContinuationAfterSave(undefined);
-		trainer.setNotice('New session ready.');
-	}, [session.startNew, trainer.setNotice]);
-	const continueSession = useCallback(
-		(savedSession: SavedSession) => {
-			session.continueFrom(savedSession);
-			setHistoryOpen(false);
-			setSaveDialogOpen(false);
-			setStartAfterSave(false);
-			setContinuationAfterSave(undefined);
-			trainer.setNotice('Session continued.');
-		},
-		[session.continueFrom, trainer.setNotice]
+	const workflow = useSessionWorkflow(session, trainer.setNotice);
+	const dashboardKeyboardEnabled = activeOverlay === undefined && !workflow.saveDialogOpen;
+	clickShiftRef.current = shiftHandlerUnlessBlocked(
+		gearControl.shiftGear,
+		!dashboardKeyboardEnabled
 	);
-	const requestNewSession = useCallback(() => {
-		if (session.ended) {
-			if (sessionIsSaved) {
-				startNewSession();
-			} else {
-				setStartAfterSave(true);
-				setContinuationAfterSave(undefined);
-				setSaveDialogOpen(true);
-			}
-			return;
-		}
-		if (session.elapsedSeconds > 0) {
-			session.endSession();
-			setStartAfterSave(true);
-			setContinuationAfterSave(undefined);
-			setSaveDialogOpen(true);
-			return;
-		}
-		startNewSession();
-	}, [
-		session.elapsedSeconds,
-		session.endSession,
-		session.ended,
-		sessionIsSaved,
-		startNewSession,
-	]);
 	const handleNewSessionShortcut = useCallback(
 		(event: KeyboardEvent) => {
 			if (!session.ended) {
 				return;
 			}
 			event.preventDefault();
-			requestNewSession();
+			workflow.requestNewSession();
 		},
-		[requestNewSession, session.ended]
+		[session.ended, workflow.requestNewSession]
 	);
 
 	useEffect(() => {
-		requestPersistentSessionStorage().catch(() => false);
-	}, []);
+		workflow.requestPersistentStorage();
+	}, [workflow.requestPersistentStorage]);
 
 	const warnBeforeUnload = sessionNeedsUnloadWarning(session.ended, session.elapsedSeconds);
 	useEffect(() => {
@@ -172,9 +120,11 @@ export function App() {
 	useEffect(() => {
 		trainer.setKeyboardControlsEnabled(dashboardKeyboardEnabled);
 		trainer.setGearControlsEnabled(click.paired);
+		gearControl.setKeyboardControlsEnabled(dashboardKeyboardEnabled);
 	}, [
 		click.paired,
 		dashboardKeyboardEnabled,
+		gearControl.setKeyboardControlsEnabled,
 		trainer.setGearControlsEnabled,
 		trainer.setKeyboardControlsEnabled,
 	]);
@@ -182,46 +132,32 @@ export function App() {
 	useEffect(() => {
 		const shortcutHandlers: Record<AppShortcut, (event: KeyboardEvent) => void> = {
 			endSession: (event) => {
-				if (saveDialogOpen || shortcutsOpen || session.ended) {
+				if (session.ended) {
 					return;
 				}
 				event.preventDefault();
-				endSession();
+				workflow.endSession();
 			},
 			history: (event) => {
-				if (saveDialogOpen) {
-					return;
-				}
 				event.preventDefault();
-				setShortcutsOpen(false);
-				setHistoryOpen(true);
+				setActiveOverlay('history');
 			},
-			newSession: (event) => {
-				if (!(saveDialogOpen || shortcutsOpen)) {
-					handleNewSessionShortcut(event);
-				}
-			},
+			newSession: handleNewSessionShortcut,
 			pause: (event) => {
-				if (saveDialogOpen || shortcutsOpen) {
-					return;
-				}
 				event.preventDefault();
 				session.togglePause();
 			},
 			shortcuts: (event) => {
-				if (saveDialogOpen) {
-					return;
-				}
 				event.preventDefault();
-				setHistoryOpen(false);
-				setShortcutsOpen(true);
+				setActiveOverlay('shortcuts');
 			},
 		};
 		const handleShortcut = (event: KeyboardEvent) => {
-			if (devicesOpen || welcomeOpen || shouldIgnoreShortcut(event)) {
-				return;
-			}
-			if (historyOpen) {
+			if (
+				activeOverlay !== undefined ||
+				workflow.saveDialogOpen ||
+				shouldIgnoreShortcut(event)
+			) {
 				return;
 			}
 			const shortcut = appShortcutForKey(event);
@@ -232,89 +168,32 @@ export function App() {
 		window.addEventListener('keydown', handleShortcut);
 		return () => window.removeEventListener('keydown', handleShortcut);
 	}, [
-		devicesOpen,
-		endSession,
+		activeOverlay,
 		handleNewSessionShortcut,
-		historyOpen,
-		saveDialogOpen,
 		session.ended,
 		session.togglePause,
-		shortcutsOpen,
-		welcomeOpen,
+		workflow.endSession,
+		workflow.saveDialogOpen,
 	]);
 
 	function selectSpeedUnit(unit: SpeedUnit) {
 		setSpeedUnit(unit);
-		localStorage.setItem('speed-unit', unit);
+		localStorage.setItem(SPEED_UNIT_STORAGE_KEY, unit);
 	}
 
-	function closeSaveDialog() {
-		setSaveDialogOpen(false);
-		setStartAfterSave(false);
-		setContinuationAfterSave(undefined);
-	}
-
-	async function saveCurrentSession(metadata: SessionMetadata) {
-		setSaving(true);
-		try {
-			const saved = createSavedSession(session.snapshot, metadata);
-			await saveSession(saved);
-			session.markSaved(saved.id);
-			if (startAfterSave) {
-				if (continuationAfterSave) {
-					continueSession(continuationAfterSave);
-					trainer.setNotice('Session saved. Selected session continued.');
-				} else {
-					startNewSession();
-					trainer.setNotice('Session saved. New session ready.');
-				}
-			} else {
-				setSaveDialogOpen(false);
-				trainer.setNotice('Session saved.');
-			}
-		} catch (error) {
-			trainer.setNotice(
-				`Session could not be saved: ${error instanceof Error ? error.message : String(error)}`
-			);
-		} finally {
-			setSaving(false);
-		}
-	}
-
-	const closeHistory = useCallback(() => setHistoryOpen(false), []);
-	const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
 	const closeWelcome = useCallback((dontShowAgain: boolean) => {
 		if (dontShowAgain) {
 			rememberWelcomeDismissal();
 		}
-		setWelcomeOpen(false);
+		setActiveOverlay(undefined);
 	}, []);
-	const startNewSessionFromHistory = useCallback(
+	const continueFromHistory = useCallback(
 		(savedSession: SavedSession) => {
-			setHistoryOpen(false);
-			const currentNeedsSave =
-				(session.ended && !sessionIsSaved) ||
-				(!session.ended && session.elapsedSeconds > 0);
-			if (currentNeedsSave) {
-				if (!session.ended) {
-					session.endSession();
-				}
-				setContinuationAfterSave(savedSession);
-				setStartAfterSave(true);
-				setSaveDialogOpen(true);
-				return;
-			}
-			continueSession(savedSession);
+			setActiveOverlay(undefined);
+			workflow.requestContinuation(savedSession);
 		},
-		[continueSession, session.elapsedSeconds, session.endSession, session.ended, sessionIsSaved]
+		[workflow.requestContinuation]
 	);
-	const proceedWithoutSaving = useCallback(() => {
-		if (continuationAfterSave) {
-			continueSession(continuationAfterSave);
-		} else {
-			startNewSession();
-		}
-	}, [continuationAfterSave, continueSession, startNewSession]);
 
 	const connectedDeviceCount =
 		Number(trainer.connected) + Number(heartRate.connected) + click.connectedCount;
@@ -328,73 +207,88 @@ export function App() {
 
 	return (
 		<main className="min-h-screen bg-ink selection:bg-mint/30">
-			<RideDashboard
-				clickPaired={click.paired}
-				connected={connected}
-				connectedDeviceCount={connectedDeviceCount}
-				dashboardKeyboardEnabled={dashboardKeyboardEnabled}
-				devicesConnecting={devicesConnecting}
-				gear={gearControl.gear}
-				liveMetrics={liveMetrics}
-				onEndSession={endSession}
-				onOpenDevices={() => setDevicesOpen(true)}
-				onOpenHistory={() => {
-					setShortcutsOpen(false);
-					setHistoryOpen(true);
-				}}
-				onOpenShortcuts={() => {
-					setHistoryOpen(false);
-					setShortcutsOpen(true);
-				}}
-				onRequestNewSession={requestNewSession}
-				onSaveSession={() => {
-					setStartAfterSave(false);
-					setSaveDialogOpen(true);
-				}}
-				onSelectSpeedUnit={selectSpeedUnit}
-				onShiftGear={gearControl.shiftGear}
-				onTogglePause={session.togglePause}
-				onUpdateResistance={trainer.updateResistance}
-				pairedDeviceCount={pairedDeviceCount}
-				resistance={trainer.resistance}
-				resistanceKeyFlash={trainer.resistanceKeyFlash}
-				resistanceRamp={trainer.resistanceRamp}
-				session={{
-					aggregates: session.aggregates,
-					controlMode: session.controlMode,
-					elapsedSeconds: session.elapsedSeconds,
-					ended: session.ended,
-					history: session.history,
-					isRiding,
-					manuallyPaused,
-					maximums: session.maximums,
-					rideCalories: session.rideCalories,
-					rideDistance: session.rideDistance,
-				}}
-				sessionIsSaved={sessionIsSaved}
-				shiftFlash={gearControl.shiftFlash}
-				speedUnit={speedUnit}
-			/>
-			<AppFooter onOpenWelcome={() => setWelcomeOpen(true)} />
+			<Dashboard>
+				<DashboardToolbar>
+					<SessionControls
+						ended={session.ended}
+						isRiding={session.isRiding}
+						manuallyPaused={session.manuallyPaused}
+						onEnd={workflow.endSession}
+						onRequestNew={workflow.requestNewSession}
+						onSave={workflow.openSaveDialog}
+						onTogglePause={session.togglePause}
+						saved={workflow.sessionIsSaved}
+					/>
+					<DashboardTools
+						connectedDeviceCount={connectedDeviceCount}
+						devicesConnecting={devicesConnecting}
+						onOpenDevices={() => setActiveOverlay('devices')}
+						onOpenHistory={() => setActiveOverlay('history')}
+						onOpenShortcuts={() => setActiveOverlay('shortcuts')}
+						onSelectSpeedUnit={selectSpeedUnit}
+						pairedDeviceCount={pairedDeviceCount}
+						speedUnit={speedUnit}
+					/>
+				</DashboardToolbar>
+				<RideMetrics
+					aggregates={session.aggregates}
+					elapsedSeconds={session.elapsedSeconds}
+					liveMetrics={liveMetrics}
+					maximums={session.maximums}
+					rideDistance={session.rideDistance}
+					speedUnit={speedUnit}
+				/>
+				<DashboardWorkspace>
+					<SessionOverview
+						controlMode={session.controlMode}
+						elapsedSeconds={session.elapsedSeconds}
+						history={session.history}
+						keyboardEnabled={dashboardKeyboardEnabled}
+						rideCalories={session.rideCalories}
+						rideDistance={session.rideDistance}
+						speedUnit={speedUnit}
+					/>
+					<TrainingControl
+						connected={connected}
+						control={
+							click.paired
+								? {
+										gear: gearControl.gear,
+										mode: 'gear',
+										onShift: gearControl.shiftGear,
+										shiftFlash: gearControl.shiftFlash,
+									}
+								: {
+										keyboardFlash: trainer.resistanceKeyFlash,
+										mode: 'resistance',
+										onChange: trainer.updateResistance,
+										ramp: trainer.resistanceRamp,
+										resistance: trainer.resistance,
+									}
+						}
+					/>
+				</DashboardWorkspace>
+			</Dashboard>
+			<AppFooter onOpenWelcome={() => setActiveOverlay('welcome')} />
 			<Notification
 				connected={connected}
 				notice={trainer.notice}
 				onDismiss={() => trainer.setNotice('')}
 			/>
 			<SessionSaveDialog
-				continuing={Boolean(continuationAfterSave)}
-				onClose={closeSaveDialog}
-				onSave={saveCurrentSession}
-				onStartWithoutSaving={proceedWithoutSaving}
-				open={saveDialogOpen}
-				saving={saving}
+				continuing={workflow.continuing}
+				onClose={workflow.closeSaveDialog}
+				onSave={workflow.saveCurrentSession}
+				onStartWithoutSaving={workflow.proceedWithoutSaving}
+				open={workflow.saveDialogOpen}
+				saving={workflow.saving}
 				session={session.snapshot}
 				speedUnit={speedUnit}
 			/>
 			<SessionHistory
-				onClose={closeHistory}
-				onStartNew={startNewSessionFromHistory}
-				open={historyOpen}
+				onClose={() => setActiveOverlay(undefined)}
+				onStartNew={continueFromHistory}
+				open={activeOverlay === 'history'}
 				speedUnit={speedUnit}
 			/>
 			<DevicePairingPanel
@@ -413,7 +307,7 @@ export function App() {
 					onPair: heartRate.pair,
 					onReconnect: heartRate.reconnect,
 				}}
-				onClose={() => setDevicesOpen(false)}
+				onClose={() => setActiveOverlay(undefined)}
 				open={devicesOpen}
 				trainer={{
 					busy: trainer.connectionBusy,
@@ -430,11 +324,11 @@ export function App() {
 				}}
 			/>
 			<KeyboardShortcutsDialog
-				onClose={closeShortcuts}
-				open={shortcutsOpen}
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === 'shortcuts'}
 				shortcuts={click.paired ? gearingKeyboardShortcuts : undefined}
 			/>
-			<WelcomeDialog onClose={closeWelcome} open={welcomeOpen} />
+			<WelcomeDialog onClose={closeWelcome} open={activeOverlay === 'welcome'} />
 		</main>
 	);
 }

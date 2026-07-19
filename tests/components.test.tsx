@@ -16,6 +16,7 @@ import {
 	SessionHistory,
 } from '../src/components/session-history';
 import { SessionSaveDialog } from '../src/components/session-save-dialog';
+import { TrainingControl } from '../src/components/training-control';
 import { WelcomeDialog } from '../src/components/welcome-dialog';
 import { CHROME_BLUETOOTH_PERMISSION_MESSAGE, emptyMetrics, emptySession } from '../src/constants';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
@@ -356,6 +357,32 @@ describe('view components', () => {
 		expect(html).toContain('HARDER');
 		expect(html).toContain('grid h-9 w-9 shrink-0 place-items-center rounded-lg');
 		expect(html).toContain('scale-105 border-mint bg-mint/15 text-mint');
+	});
+
+	test('renders only the selected training control mode', () => {
+		const gear = render(
+			<TrainingControl
+				connected
+				control={{ gear: 12, mode: 'gear', onShift: () => undefined }}
+			/>
+		);
+		expect(gear).toContain('Virtual shifting');
+		expect(gear).toContain('of 24');
+		expect(gear).not.toContain('Resistance control');
+
+		const resistance = render(
+			<TrainingControl
+				connected
+				control={{
+					mode: 'resistance',
+					onChange: () => undefined,
+					ramp: { current: 40, from: 40, phase: 'holding', progress: 0, to: 40 },
+					resistance: 40,
+				}}
+			/>
+		);
+		expect(resistance).toContain('Resistance control');
+		expect(resistance).not.toContain('Virtual shifting');
 	});
 
 	test('hides empty notifications and expands setup guidance', () => {

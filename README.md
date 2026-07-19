@@ -42,8 +42,11 @@ existing session controller API to the interface. Each Bluetooth hook exposes on
 connection phase instead of independently managed status flags. Shared reconnect scheduling and
 notification subscriptions live in plain controllers, while device-specific adapters own GATT
 setup for heart-rate monitors, trainers, and Click controllers. Bluetooth objects and timers stay
-outside shared application state. The application component coordinates these services and passes
-serializable views into the dashboard; temporary dialogs and form inputs remain local React state.
+outside shared application state. The application component coordinates focused dashboard regions,
+uses an explicit overlay state for mutually exclusive trays, and delegates save/start/continue
+transitions to a reducer-backed session workflow. Temporary form inputs remain local React state.
+Shared domain utilities own unit conversions, numeric bounds, storage keys, metric presentation,
+and repeated dialog and keyboard behavior so those rules stay consistent across views and exports.
 
 ## Deployment
 
