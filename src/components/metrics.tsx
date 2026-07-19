@@ -13,7 +13,7 @@ function MetricSummary({
 	return (
 		<div className={rightAligned ? 'text-right' : undefined}>
 			<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">{label}</p>
-			<p className="mt-1 font-semibold text-2xl text-white tabular-nums tracking-tight">
+			<p className="mt-1 font-semibold text-4xl text-white tabular-nums tracking-tight">
 				{value}
 			</p>
 		</div>
@@ -44,7 +44,7 @@ export function Metric({
 				{icon ? <Icon className={metricIconClass(accent)} name={icon} /> : null}
 			</div>
 			<div className="mt-4 flex items-baseline gap-2">
-				<span className="font-semibold text-4xl tracking-tight">{value}</span>
+				<span className="font-semibold text-6xl tracking-tight">{value}</span>
 				<span className="text-slate-400 text-sm">{unit}</span>
 			</div>
 			<div className="mt-4 grid grid-cols-2 gap-3 border-line border-t pt-3">
@@ -56,11 +56,23 @@ export function Metric({
 	);
 }
 
-export function SmallMetric({ label, value }: { label: string; value: string }) {
+export function SmallMetric({
+	large = false,
+	label,
+	value,
+}: {
+	large?: boolean;
+	label: string;
+	value: string;
+}) {
 	return (
 		<div className="p-4 sm:p-5">
 			<p className="font-bold text-[11px] text-slate-500 tracking-[.12em]">{label}</p>
-			<p className="mt-1 font-semibold text-lg tracking-tight sm:text-2xl">{value}</p>
+			<p
+				className={`mt-1 font-semibold tracking-tight ${large ? 'text-3xl sm:text-5xl' : 'text-lg sm:text-2xl'}`}
+			>
+				{value}
+			</p>
 		</div>
 	);
 }

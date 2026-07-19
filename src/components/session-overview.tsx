@@ -27,6 +27,7 @@ export function SessionOverview({
 					calories={rideCalories}
 					distance={rideDistance}
 					elapsedSeconds={elapsedSeconds}
+					large
 					speedUnit={speedUnit}
 				/>
 			</div>

@@ -7,20 +7,30 @@ export function SessionSummary({
 	calories,
 	distance,
 	elapsedSeconds,
+	large = false,
 	speedUnit,
 	timeLabel = 'TIME',
 }: {
 	calories: number;
 	distance: number;
 	elapsedSeconds: number;
+	large?: boolean;
 	speedUnit: SpeedUnit;
 	timeLabel?: string;
 }) {
 	return (
 		<>
-			<SmallMetric label={timeLabel} value={formatDuration(elapsedSeconds)} />
-			<SmallMetric label="DISTANCE" value={formatDistance(distance, speedUnit)} />
-			<SmallMetric label="CALORIES" value={`${formatWholeNumber(calories)} kcal`} />
+			<SmallMetric label={timeLabel} large={large} value={formatDuration(elapsedSeconds)} />
+			<SmallMetric
+				label="DISTANCE"
+				large={large}
+				value={formatDistance(distance, speedUnit)}
+			/>
+			<SmallMetric
+				label="CALORIES"
+				large={large}
+				value={`${formatWholeNumber(calories)} kcal`}
+			/>
 		</>
 	);
 }

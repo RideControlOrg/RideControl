@@ -52,7 +52,8 @@ describe('view components', () => {
 		expect(html).toContain('POWER');
 		expect(html).toContain('200');
 		expect(html).toContain('grid grid-cols-2 gap-3 border-line border-t pt-3');
-		expect(html).toContain('font-semibold text-2xl text-white tabular-nums tracking-tight');
+		expect(html).toContain('font-semibold text-6xl tracking-tight');
+		expect(html).toContain('font-semibold text-4xl text-white tabular-nums tracking-tight');
 		expect(html).toContain('>180</p>');
 		expect(html).toContain('>300</p>');
 		expect(html.match(/watts/g)).toHaveLength(1);
@@ -64,6 +65,9 @@ describe('view components', () => {
 
 	test('renders a compact session metric', () => {
 		expect(render(<SmallMetric label="TIME" value="01:02:03" />)).toContain('01:02:03');
+		expect(render(<SmallMetric label="TIME" large value="01:02:03" />)).toContain(
+			'text-3xl sm:text-5xl'
+		);
 		const html = render(
 			<SessionMetric
 				accent="yellow"
