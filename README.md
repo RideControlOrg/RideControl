@@ -16,7 +16,7 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo Kickr Core 2
 - Organizes saved sessions by local date and time in a slide-out history tray with paginated loading, detailed metrics and charts, keyboard navigation, and permanent deletion.
 - Downloads saved rides as Strava-compatible TCX files, including timestamps, distance, speed, power, cadence, heart rate, resistance, calories, ride feeling, and comments for upload to Strava and other cycling services.
 - Continues any saved session in a new unsaved copy while preserving its recorded time, distance, calories, samples, averages, maximums, and original start time.
-- Protects active or unsaved ride data by presenting the save workflow before starting or continuing another session.
+- Protects recorded active rides with a browser confirmation before refresh or close, and presents the save workflow before starting or continuing another session.
 - Includes contextual keyboard help for dashboard and history actions, including pausing, ending, starting, navigating, viewing history, and deleting sessions.
 - Displays connection and application notices with a visible 15-second countdown and automatic dismissal.
 - Keeps all ride data local to the current browser profile; no account or remote service is required.

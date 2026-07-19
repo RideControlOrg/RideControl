@@ -18,6 +18,7 @@ import {
 	requestPersistentSessionStorage,
 	saveSession,
 } from './lib/saved-sessions';
+import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import type { RoutePoint, SavedSession, SessionMetadata, SpeedUnit } from './types';
 
@@ -119,6 +120,18 @@ export function App() {
 	useEffect(() => {
 		requestPersistentSessionStorage().catch(() => false);
 	}, []);
+
+	const warnBeforeUnload = sessionNeedsUnloadWarning(session.ended, session.elapsedSeconds);
+	useEffect(() => {
+		if (!warnBeforeUnload) {
+			return;
+		}
+		const confirmActiveSessionExit = (event: BeforeUnloadEvent) => {
+			requestUnloadConfirmation(event);
+		};
+		window.addEventListener('beforeunload', confirmActiveSessionExit);
+		return () => window.removeEventListener('beforeunload', confirmActiveSessionExit);
+	}, [warnBeforeUnload]);
 
 	useEffect(() => {
 		trainer.setKeyboardControlsEnabled(!(historyOpen || shortcutsOpen || welcomeOpen));

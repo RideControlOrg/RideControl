@@ -28,6 +28,17 @@ export function sessionContinuation(snapshot: SessionSnapshot): StoredSession {
 	};
 }
 
+export function sessionNeedsUnloadWarning(ended: boolean, elapsedSeconds: number): boolean {
+	return !ended && elapsedSeconds > 0;
+}
+
+export function requestUnloadConfirmation(
+	event: Pick<BeforeUnloadEvent, 'preventDefault' | 'returnValue'>
+): void {
+	event.preventDefault();
+	event.returnValue = true;
+}
+
 export function addAggregate(
 	aggregate: MetricAggregate,
 	value: number,
