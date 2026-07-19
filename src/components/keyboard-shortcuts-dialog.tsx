@@ -1,20 +1,5 @@
-import { useEffect } from 'react';
-
-export interface KeyboardShortcutDescription {
-	keys: string[];
-	label: string;
-}
-
-export const dashboardKeyboardShortcuts: KeyboardShortcutDescription[] = [
-	{ keys: ['Space'], label: 'Pause or resume the session' },
-	{ keys: ['Q'], label: 'End the current session' },
-	{ keys: ['↑', '↓'], label: 'Increase or decrease resistance' },
-	{ keys: ['←', '→'], label: 'Change the chart view' },
-	{ keys: ['N'], label: 'Start a new session after ending' },
-	{ keys: ['H'], label: 'Open session history' },
-	{ keys: ['?'], label: 'Show keyboard shortcuts' },
-	{ keys: ['Esc'], label: 'Close an open dialog' },
-];
+import { Fragment, useEffect } from 'react';
+import { dashboardKeyboardShortcuts, type KeyboardShortcutDescription } from '../lib/keyboard';
 
 export function KeyboardShortcutsDialog({
 	handleEscape = true,
@@ -68,24 +53,28 @@ export function KeyboardShortcutsDialog({
 						×
 					</button>
 				</div>
-				<div className="mt-5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-[#12171d]">
-					{shortcuts.map((shortcut) => (
-						<div
-							className="flex min-h-12 items-center justify-between gap-5 px-3.5 py-2.5"
-							key={shortcut.label}
-						>
-							<span className="text-slate-300 text-sm">{shortcut.label}</span>
-							<span className="flex shrink-0 gap-1.5">
-								{shortcut.keys.map((key) => (
-									<kbd
-										className="min-w-8 rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-center font-mono font-semibold text-slate-200 text-xs shadow-sm"
-										key={key}
-									>
-										{key}
-									</kbd>
-								))}
-							</span>
-						</div>
+				<div className="mt-5 overflow-hidden rounded-xl border border-line bg-[#12171d]">
+					{shortcuts.map((shortcut, index) => (
+						<Fragment key={shortcut.label}>
+							{shortcut.group && shortcut.group !== shortcuts[index - 1]?.group ? (
+								<div className="border-line border-t bg-slate-800/40 px-3.5 py-2 font-bold text-[10px] text-slate-500 tracking-[.14em] first:border-t-0">
+									{shortcut.group.toUpperCase()}
+								</div>
+							) : null}
+							<div className="flex min-h-12 items-center justify-between gap-5 border-line border-t px-3.5 py-2.5 first:border-t-0">
+								<span className="text-slate-300 text-sm">{shortcut.label}</span>
+								<span className="flex shrink-0 gap-1.5">
+									{shortcut.keys.map((key) => (
+										<kbd
+											className="min-w-8 rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-center font-mono font-semibold text-slate-200 text-xs shadow-sm"
+											key={key}
+										>
+											{key}
+										</kbd>
+									))}
+								</span>
+							</div>
+						</Fragment>
 					))}
 				</div>
 			</section>

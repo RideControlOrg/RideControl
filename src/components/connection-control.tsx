@@ -59,7 +59,6 @@ export function ConnectionControl({
 			onClick={onConnect}
 			type="button"
 		>
-			<span className="h-2 w-2 shrink-0 rounded-full bg-ink/50" />
 			<Icon className="h-4 w-4" name="bluetooth" />
 			Connect trainer
 		</button>

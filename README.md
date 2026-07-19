@@ -6,6 +6,7 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo Kickr Core 2
 
 ## Features
 
+- Welcomes first-time visitors with a concise introduction, open-source and local-data privacy details, a direct source-code link, and an optional “Don't show again” preference stored in the browser; the welcome screen remains available from the Ride Control footer link.
 - Connects to compatible bike trainers through Web Bluetooth, remembers authorized devices, and automatically reconnects when possible.
 - Shows live speed, power, cadence, heart rate, elapsed time, distance, and estimated calories, with MPH and KM/H display modes.
 - Provides direct resistance control with buttons, a slider, and keyboard shortcuts while recording resistance changes alongside the other ride metrics.
@@ -15,7 +16,7 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo Kickr Core 2
 - Organizes saved sessions by local date and time in a slide-out history tray with paginated loading, detailed metrics and charts, keyboard navigation, and permanent deletion.
 - Downloads saved rides as Strava-compatible TCX files, including timestamps, distance, speed, power, cadence, heart rate, resistance, calories, ride feeling, and comments for upload to Strava and other cycling services.
 - Continues any saved session in a new unsaved copy while preserving its recorded time, distance, calories, samples, averages, maximums, and original start time.
-- Protects active or unsaved ride data by presenting the save workflow before starting or continuing another session.
+- Protects recorded active rides with a browser confirmation before refresh or close, and presents the save workflow before starting or continuing another session.
 - Includes contextual keyboard help for dashboard and history actions, including pausing, ending, starting, navigating, viewing history, and deleting sessions.
 - Displays connection and application notices with a visible 15-second countdown and automatic dismissal.
 - Keeps all ride data local to the current browser profile; no account or remote service is required.

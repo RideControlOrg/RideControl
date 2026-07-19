@@ -6,8 +6,10 @@ import {
 	aggregateResistance,
 	loadStoredSession,
 	nonNegativeNumber,
+	requestUnloadConfirmation,
 	restoreAggregate,
 	sessionContinuation,
+	sessionNeedsUnloadWarning,
 	storedResistance,
 } from '../src/lib/session';
 
@@ -46,6 +48,23 @@ describe('session utilities', () => {
 		const continued = sessionContinuation(snapshot);
 		expect(continued).toMatchObject({ ...snapshot, ended: false, endedAt: 0 });
 		expect(continued.savedSessionId).toBeUndefined();
+	});
+
+	test('protects recorded active sessions from accidental page exit', () => {
+		expect(sessionNeedsUnloadWarning(false, 1)).toBe(true);
+		expect(sessionNeedsUnloadWarning(false, 0)).toBe(false);
+		expect(sessionNeedsUnloadWarning(true, 1)).toBe(false);
+
+		let prevented = false;
+		const event = {
+			preventDefault: () => {
+				prevented = true;
+			},
+			returnValue: false,
+		};
+		requestUnloadConfirmation(event);
+		expect(prevented).toBe(true);
+		expect(event.returnValue).toBe(true);
 	});
 
 	test('adds aggregate samples according to zero policy', () => {

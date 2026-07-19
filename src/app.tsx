@@ -8,6 +8,7 @@ import { ResistanceControl } from './components/resistance-control';
 import { SessionChart } from './components/session-chart';
 import { SessionHistory } from './components/session-history';
 import { SessionSaveDialog } from './components/session-save-dialog';
+import { WelcomeDialog } from './components/welcome-dialog';
 import { useSession } from './hooks/use-session';
 import { useTrainer } from './hooks/use-trainer';
 import { formatAggregateAverage, formatDuration } from './lib/format';
@@ -17,6 +18,8 @@ import {
 	requestPersistentSessionStorage,
 	saveSession,
 } from './lib/saved-sessions';
+import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
+import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import type { RoutePoint, SavedSession, SessionMetadata, SpeedUnit } from './types';
 
 const EMPTY_ROUTE: RoutePoint[] = [];
@@ -48,6 +51,7 @@ export function App() {
 	);
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [shortcutsOpen, setShortcutsOpen] = useState(false);
+	const [welcomeOpen, setWelcomeOpen] = useState(shouldShowWelcome);
 	const [saveDialogOpen, setSaveDialogOpen] = useState(() => session.ended && !sessionIsSaved);
 	const [saving, setSaving] = useState(false);
 	const [startAfterSave, setStartAfterSave] = useState(false);
@@ -117,9 +121,21 @@ export function App() {
 		requestPersistentSessionStorage().catch(() => false);
 	}, []);
 
+	const warnBeforeUnload = sessionNeedsUnloadWarning(session.ended, session.elapsedSeconds);
 	useEffect(() => {
-		trainer.setKeyboardControlsEnabled(!(historyOpen || shortcutsOpen));
-	}, [historyOpen, shortcutsOpen, trainer.setKeyboardControlsEnabled]);
+		if (!warnBeforeUnload) {
+			return;
+		}
+		const confirmActiveSessionExit = (event: BeforeUnloadEvent) => {
+			requestUnloadConfirmation(event);
+		};
+		window.addEventListener('beforeunload', confirmActiveSessionExit);
+		return () => window.removeEventListener('beforeunload', confirmActiveSessionExit);
+	}, [warnBeforeUnload]);
+
+	useEffect(() => {
+		trainer.setKeyboardControlsEnabled(!(historyOpen || shortcutsOpen || welcomeOpen));
+	}, [historyOpen, shortcutsOpen, trainer.setKeyboardControlsEnabled, welcomeOpen]);
 
 	useEffect(() => {
 		const shortcutHandlers: Record<AppShortcut, (event: KeyboardEvent) => void> = {
@@ -160,7 +176,7 @@ export function App() {
 			},
 		};
 		const handleShortcut = (event: KeyboardEvent) => {
-			if (shouldIgnoreShortcut(event)) {
+			if (welcomeOpen || shouldIgnoreShortcut(event)) {
 				return;
 			}
 			if (historyOpen) {
@@ -181,6 +197,7 @@ export function App() {
 		session.ended,
 		session.togglePause,
 		shortcutsOpen,
+		welcomeOpen,
 	]);
 
 	function selectSpeedUnit(unit: SpeedUnit) {
@@ -223,6 +240,12 @@ export function App() {
 
 	const closeHistory = useCallback(() => setHistoryOpen(false), []);
 	const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
+	const closeWelcome = useCallback((dontShowAgain: boolean) => {
+		if (dontShowAgain) {
+			rememberWelcomeDismissal();
+		}
+		setWelcomeOpen(false);
+	}, []);
 	const startNewSessionFromHistory = useCallback(
 		(savedSession: SavedSession) => {
 			setHistoryOpen(false);
@@ -405,7 +428,7 @@ export function App() {
 					/>
 				</section>
 
-				<section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+				<section className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_.55fr]">
 					<div className="rounded-2xl border border-line bg-panel p-5 sm:p-6">
 						<div className="grid grid-cols-3 divide-x divide-line rounded-xl border border-slate-500 bg-[#12171d]">
 							<SmallMetric
@@ -423,7 +446,7 @@ export function App() {
 						</div>
 						<SessionChart
 							history={session.history}
-							keyboardEnabled={!(historyOpen || shortcutsOpen)}
+							keyboardEnabled={!(historyOpen || shortcutsOpen || welcomeOpen)}
 							route={EMPTY_ROUTE}
 							speedUnit={speedUnit}
 						/>
@@ -448,7 +471,13 @@ export function App() {
 				</section>
 			</div>
 			<footer className="fixed bottom-3 left-4 z-20 flex items-center gap-1.5 text-[11px] text-slate-600">
-				<span className="font-semibold tracking-wide">Ride Control</span>
+				<button
+					className="font-semibold tracking-wide transition hover:text-slate-400"
+					onClick={() => setWelcomeOpen(true)}
+					type="button"
+				>
+					Ride Control
+				</button>
 				<span aria-hidden="true">·</span>
 				<a
 					className="transition hover:text-slate-400"
@@ -490,6 +519,7 @@ export function App() {
 				speedUnit={speedUnit}
 			/>
 			<KeyboardShortcutsDialog onClose={closeShortcuts} open={shortcutsOpen} />
+			<WelcomeDialog onClose={closeWelcome} open={welcomeOpen} />
 		</main>
 	);
 }

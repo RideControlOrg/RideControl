@@ -20,11 +20,16 @@ import {
 	SessionHistory,
 } from '../src/components/session-history';
 import { SessionSaveDialog } from '../src/components/session-save-dialog';
+import { WelcomeDialog } from '../src/components/welcome-dialog';
 import { CHROME_BLUETOOTH_PERMISSION_MESSAGE, emptyMetrics, emptySession } from '../src/constants';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 
 const render = (element: React.ReactNode) => renderToStaticMarkup(element);
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
+const solidChartBoundaries =
+	/d="M0 14H100 M0 90H100"[^>]*stroke="#3a4654"(?![^>]*stroke-dasharray)/;
+const dashedChartGuides =
+	/d="M0 52H100 M25 14V90 M50 14V90 M75 14V90"[^>]*stroke-dasharray="2.5 2.5"/;
 
 describe('view components', () => {
 	test('renders known and fallback icons', () => {
@@ -106,18 +111,18 @@ describe('view components', () => {
 	});
 
 	test('renders connection, busy, and connected states', () => {
-		expect(
-			render(
-				<ConnectionControl
-					busy={false}
-					connected={false}
-					onCancel={() => undefined}
-					onConnect={() => undefined}
-					onDisconnect={() => undefined}
-					status="Ready"
-				/>
-			)
-		).toContain('Connect trainer');
+		const ready = render(
+			<ConnectionControl
+				busy={false}
+				connected={false}
+				onCancel={() => undefined}
+				onConnect={() => undefined}
+				onDisconnect={() => undefined}
+				status="Ready"
+			/>
+		);
+		expect(ready).toContain('Connect trainer');
+		expect(ready).not.toContain('bg-ink/50');
 		const busy = render(
 			<ConnectionControl
 				busy
@@ -203,8 +208,31 @@ describe('view components', () => {
 		expect(html).toContain('href="https://github.com/lookfirst"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
 		expect(html).toContain('Sponsor');
+		expect(html).toContain('WELCOME TO');
+		expect(html).toContain('show again');
+		expect(html).toContain('tracking-wide transition hover:text-slate-400');
+		expect(html).toContain('type="button">Ride Control</button>');
+		expect(html).toContain('xl:grid-cols-[1.45fr_.55fr]');
 		expect(html.indexOf('KM/H')).toBeLessThan(html.indexOf('Show keyboard controls'));
 		expect(html).toMatch(enabledEndSessionButton);
+	});
+
+	test('renders the first-time welcome message', () => {
+		expect(render(<WelcomeDialog onClose={() => undefined} open={false} />)).toBe('');
+		const html = render(<WelcomeDialog onClose={() => undefined} open />);
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('WELCOME TO');
+		expect(html).toContain('RideControl.xyz');
+		expect(html).toContain('show again');
+		expect(html).toContain('Get started');
+		expect(html).toContain('type="checkbox"');
+		expect(html).toContain('open-source GPLv3 application');
+		expect(html).toContain('source code on GitHub');
+		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
+		expect(html).toContain('all ride data stays in your browser');
+		expect(html).toContain('We don&#x27;t upload it anywhere');
+		expect(html).toContain('would only upload data with your permission');
+		expect(html).toContain('From the history, you can download your rides as TCX files');
 	});
 
 	test('renders the keyboard controls reference', () => {
@@ -216,6 +244,9 @@ describe('view components', () => {
 		expect(html).toContain('Start a new session after ending');
 		expect(html).toContain('Increase or decrease resistance');
 		expect(html).toContain('Change the chart view');
+		expect(html).toContain('SESSION');
+		expect(html).toContain('RIDE CONTROLS');
+		expect(html).toContain('GENERAL');
 		const historyHtml = render(
 			<KeyboardShortcutsDialog
 				onClose={() => undefined}
@@ -260,6 +291,14 @@ describe('view components', () => {
 		);
 		expect(html).toContain('Resistance over time');
 		expect(html).toContain('Resistance</button>');
+		expect(html).toContain('grid-cols-[3.75rem_minmax(0,1fr)]');
+		expect(html).toContain('absolute right-2 -translate-y-1/2 whitespace-nowrap');
+		expect(html).toContain('pointer-events-none relative h-full w-15 shrink-0');
+		expect(html).toContain('h-full min-w-0 flex-1 overflow-hidden');
+		expect(html).toContain('class="block h-full w-full"');
+		expect(html).toMatch(solidChartBoundaries);
+		expect(html).toMatch(dashedChartGuides);
+		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
 	});
 
 	test('renders the session save workflow', () => {
