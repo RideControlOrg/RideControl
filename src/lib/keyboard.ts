@@ -1,4 +1,9 @@
 export type AppShortcut = 'endSession' | 'history' | 'newSession' | 'pause' | 'shortcuts';
+export interface KeyboardShortcutDescription {
+	group?: string;
+	keys: string[];
+	label: string;
+}
 export type HistoryShortcut =
 	| 'close'
 	| 'confirmDelete'
@@ -17,10 +22,21 @@ const historyShortcuts: Record<string, HistoryShortcut> = {
 	Escape: 'close',
 };
 
-export const historyKeyboardShortcuts = [
+export const dashboardKeyboardShortcuts: KeyboardShortcutDescription[] = [
+	{ group: 'Session', keys: ['Space'], label: 'Pause or resume the session' },
+	{ group: 'Session', keys: ['q'], label: 'End the current session' },
+	{ group: 'Session', keys: ['n'], label: 'Start a new session after ending' },
+	{ group: 'Session', keys: ['h'], label: 'Open session history' },
+	{ group: 'Ride controls', keys: ['↑', '↓'], label: 'Increase or decrease resistance' },
+	{ group: 'Ride controls', keys: ['←', '→'], label: 'Change the chart view' },
+	{ group: 'General', keys: ['?'], label: 'Show keyboard shortcuts' },
+	{ group: 'General', keys: ['Esc'], label: 'Close an open dialog' },
+];
+
+export const historyKeyboardShortcuts: KeyboardShortcutDescription[] = [
 	{ keys: ['↑', '↓'], label: 'Select the previous or next session' },
 	{ keys: ['←', '→'], label: 'Change the session chart view' },
-	{ keys: ['D'], label: 'Delete the selected session' },
+	{ keys: ['d'], label: 'Delete the selected session' },
 	{ keys: ['Enter'], label: 'Confirm session deletion' },
 	{ keys: ['?'], label: 'Show history keyboard controls' },
 	{ keys: ['Esc'], label: 'Close help or session history' },

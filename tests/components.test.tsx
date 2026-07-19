@@ -20,6 +20,7 @@ import {
 	SessionHistory,
 } from '../src/components/session-history';
 import { SessionSaveDialog } from '../src/components/session-save-dialog';
+import { WelcomeDialog } from '../src/components/welcome-dialog';
 import { CHROME_BLUETOOTH_PERMISSION_MESSAGE, emptyMetrics, emptySession } from '../src/constants';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 
@@ -106,18 +107,18 @@ describe('view components', () => {
 	});
 
 	test('renders connection, busy, and connected states', () => {
-		expect(
-			render(
-				<ConnectionControl
-					busy={false}
-					connected={false}
-					onCancel={() => undefined}
-					onConnect={() => undefined}
-					onDisconnect={() => undefined}
-					status="Ready"
-				/>
-			)
-		).toContain('Connect trainer');
+		const ready = render(
+			<ConnectionControl
+				busy={false}
+				connected={false}
+				onCancel={() => undefined}
+				onConnect={() => undefined}
+				onDisconnect={() => undefined}
+				status="Ready"
+			/>
+		);
+		expect(ready).toContain('Connect trainer');
+		expect(ready).not.toContain('bg-ink/50');
 		const busy = render(
 			<ConnectionControl
 				busy
@@ -203,8 +204,30 @@ describe('view components', () => {
 		expect(html).toContain('href="https://github.com/lookfirst"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
 		expect(html).toContain('Sponsor');
+		expect(html).toContain('WELCOME TO');
+		expect(html).toContain('show again');
+		expect(html).toContain('tracking-wide transition hover:text-slate-400');
+		expect(html).toContain('type="button">Ride Control</button>');
 		expect(html.indexOf('KM/H')).toBeLessThan(html.indexOf('Show keyboard controls'));
 		expect(html).toMatch(enabledEndSessionButton);
+	});
+
+	test('renders the first-time welcome message', () => {
+		expect(render(<WelcomeDialog onClose={() => undefined} open={false} />)).toBe('');
+		const html = render(<WelcomeDialog onClose={() => undefined} open />);
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('WELCOME TO');
+		expect(html).toContain('RideControl.xyz');
+		expect(html).toContain('show again');
+		expect(html).toContain('Get started');
+		expect(html).toContain('type="checkbox"');
+		expect(html).toContain('open-source GPLv3 application');
+		expect(html).toContain('source code on GitHub');
+		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
+		expect(html).toContain('all ride data stays in your browser');
+		expect(html).toContain('We don&#x27;t upload it anywhere');
+		expect(html).toContain('would only upload data with your permission');
+		expect(html).toContain('download your rides as TCX files');
 	});
 
 	test('renders the keyboard controls reference', () => {
@@ -216,6 +239,9 @@ describe('view components', () => {
 		expect(html).toContain('Start a new session after ending');
 		expect(html).toContain('Increase or decrease resistance');
 		expect(html).toContain('Change the chart view');
+		expect(html).toContain('SESSION');
+		expect(html).toContain('RIDE CONTROLS');
+		expect(html).toContain('GENERAL');
 		const historyHtml = render(
 			<KeyboardShortcutsDialog
 				onClose={() => undefined}

@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { appShortcutForKey, historyShortcutForKey } from '../src/lib/keyboard';
+import {
+	appShortcutForKey,
+	dashboardKeyboardShortcuts,
+	historyKeyboardShortcuts,
+	historyShortcutForKey,
+} from '../src/lib/keyboard';
 
 describe('keyboard shortcuts', () => {
 	test('maps history, help, session, and pause keys', () => {
@@ -17,12 +22,33 @@ describe('keyboard shortcuts', () => {
 		expect(appShortcutForKey({ code: 'KeyR', key: 'r' })).toBeUndefined();
 	});
 
+	test('groups main-screen session controls together', () => {
+		expect(dashboardKeyboardShortcuts.slice(0, 4).map((shortcut) => shortcut.label)).toEqual([
+			'Pause or resume the session',
+			'End the current session',
+			'Start a new session after ending',
+			'Open session history',
+		]);
+		expect(dashboardKeyboardShortcuts.slice(0, 4).map((shortcut) => shortcut.group)).toEqual([
+			'Session',
+			'Session',
+			'Session',
+			'Session',
+		]);
+		expect(dashboardKeyboardShortcuts.slice(1, 4).map((shortcut) => shortcut.keys[0])).toEqual([
+			'q',
+			'n',
+			'h',
+		]);
+	});
+
 	test('maps history navigation keys', () => {
 		expect(historyShortcutForKey('ArrowUp')).toBe('previousSession');
 		expect(historyShortcutForKey('ArrowDown')).toBe('nextSession');
 		expect(historyShortcutForKey('d')).toBe('deleteSession');
 		expect(historyShortcutForKey('D')).toBe('deleteSession');
 		expect(historyShortcutForKey('Enter')).toBe('confirmDelete');
+		expect(historyKeyboardShortcuts[2]?.keys).toEqual(['d']);
 		expect(historyShortcutForKey('?')).toBe('help');
 		expect(historyShortcutForKey('Escape')).toBe('close');
 		expect(historyShortcutForKey('ArrowLeft')).toBeUndefined();
