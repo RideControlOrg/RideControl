@@ -9,7 +9,7 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo Kickr Core 2
 - Welcomes first-time visitors with a concise introduction, open-source and local-data privacy details, a direct source-code link, and an optional “Don't show again” preference stored in the browser; the welcome screen remains available from the Ride Control footer link.
 - Connects to compatible bike trainers through Web Bluetooth, remembers authorized devices, and automatically reconnects when possible.
 - Shows live speed, power, cadence, heart rate, elapsed time, distance, and estimated calories, with MPH and KM/H display modes.
-- Provides direct resistance control with buttons, a slider, and keyboard shortcuts while recording resistance changes alongside the other ride metrics.
+- Provides direct resistance control with buttons, a slider, and keyboard shortcuts with matching button feedback, shows smoothing progress inside the slider thumb, and records resistance changes alongside the other ride metrics.
 - Automatically records while pedaling, auto-pauses during inactivity, supports manual pause and resume, and allows a session to end at any time—even before trainer data arrives.
 - Tracks complete time-series data plus averages and maximums for power, cadence, heart rate, speed, and resistance, with focused and combined chart views.
 - Saves completed sessions to browser-managed IndexedDB storage, including optional comments and how the ride felt, and requests persistent browser storage when supported.

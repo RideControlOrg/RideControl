@@ -17,6 +17,17 @@ export interface Range {
 	min: number;
 }
 
+export type ResistanceRampPhase = 'holding' | 'queued' | 'ramping' | 'settled';
+export type ResistanceAdjustmentDirection = 'decrease' | 'increase';
+
+export interface ResistanceRamp {
+	current: number;
+	from: number;
+	phase: ResistanceRampPhase;
+	progress: number;
+	to: number;
+}
+
 export interface MetricSample {
 	cadence: number;
 	elapsedSeconds: number;

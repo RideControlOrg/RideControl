@@ -454,16 +454,20 @@ export function App() {
 					<div className="self-start rounded-2xl border border-line bg-panel p-4 sm:p-5">
 						<div className="flex items-center justify-between gap-4">
 							<h2 className="font-bold text-lg">Resistance control</h2>
-							<output className="font-bold text-3xl text-mint tabular-nums tracking-tight">
-								{trainer.resistance}
-								<span className="ml-0.5 text-lg">%</span>
-							</output>
+							<div className="text-right">
+								<output className="font-bold text-3xl text-mint tabular-nums tracking-tight">
+									{trainer.resistance}
+									<span className="ml-0.5 text-lg">%</span>
+								</output>
+							</div>
 						</div>
 						<ResistanceControl
 							disabled={!connected}
+							keyboardFlash={trainer.resistanceKeyFlash}
 							max={100}
 							min={0}
 							onChange={trainer.updateResistance}
+							ramp={trainer.resistanceRamp}
 							step={1}
 							value={trainer.resistance}
 						/>

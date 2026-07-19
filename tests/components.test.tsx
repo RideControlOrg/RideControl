@@ -50,6 +50,10 @@ describe('view components', () => {
 		);
 		expect(html).toContain('POWER');
 		expect(html).toContain('200');
+		expect(html).toContain('grid grid-cols-2 gap-3 border-line border-t pt-3');
+		expect(html).toContain('font-semibold text-2xl text-white tabular-nums tracking-tight');
+		expect(html).toContain('<span>180</span>');
+		expect(html).toContain('<span>300</span>');
 		expect(metricAccentClass('rose')).toBe('bg-rose-400');
 		expect(metricAccentClass('other')).toBe('bg-mint');
 		expect(metricIconClass('violet')).toBe('text-violet-400');
@@ -88,9 +92,11 @@ describe('view components', () => {
 		const enabled = render(
 			<ResistanceControl
 				disabled={false}
+				keyboardFlash="increase"
 				max={100}
 				min={0}
 				onChange={() => undefined}
+				ramp={{ current: 35, from: 20, phase: 'ramping', progress: 0.4, to: 60 }}
 				step={1}
 				value={20}
 			/>
@@ -101,13 +107,54 @@ describe('view components', () => {
 				max={100}
 				min={0}
 				onChange={() => undefined}
+				ramp={{ current: 20, from: 20, phase: 'holding', progress: 0, to: 20 }}
 				step={1}
 				value={20}
 			/>
 		);
 		expect(enabled).toContain('aria-label="Resistance"');
 		expect(enabled).toContain('value="20"');
+		expect(enabled).toContain('class="resistance-slider w-full disabled:opacity-40"');
+		expect(enabled).toContain('data-ramp-active="true"');
+		expect(enabled).toContain('data-ramp-progress="40"');
+		expect(enabled).toContain('data-resistance-control="true"');
+		expect(enabled).toContain('--ramp-progress:144deg');
+		expect(enabled).toContain('--resistance-position:20%');
+		expect(enabled).not.toContain('Ramping');
+		expect(enabled).not.toContain('>20%<');
+		expect(enabled).not.toContain('>60%<');
+		expect(enabled).toContain('data-keyboard-flash="true"');
+		expect(enabled).toContain('scale-105 border-mint bg-mint/15 text-mint');
+		expect(disabled).toContain('data-ramp-progress="0"');
 		expect(disabled).toContain('disabled');
+		const queued = render(
+			<ResistanceControl
+				disabled={false}
+				max={100}
+				min={0}
+				onChange={() => undefined}
+				ramp={{ current: 20, from: 20, phase: 'queued', progress: 0, to: 60 }}
+				step={1}
+				value={60}
+			/>
+		);
+		const settled = render(
+			<ResistanceControl
+				disabled={false}
+				max={100}
+				min={0}
+				onChange={() => undefined}
+				ramp={{ current: 60, from: 20, phase: 'settled', progress: 1, to: 60 }}
+				step={1}
+				value={60}
+			/>
+		);
+		expect(queued).toContain('data-ramp-progress="0"');
+		expect(settled).toContain('data-ramp-progress="100"');
+		expect(queued).not.toContain('data-ramp-active');
+		expect(settled).not.toContain('data-ramp-active');
+		expect(queued).not.toContain('Queued');
+		expect(settled).not.toContain('Settled');
 	});
 
 	test('renders connection, busy, and connected states', () => {

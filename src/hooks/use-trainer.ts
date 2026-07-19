@@ -24,14 +24,26 @@ import {
 	resistanceCommand,
 } from '../lib/bluetooth';
 import { scheduleNoticeDismissal } from '../lib/notification';
+import {
+	resistanceDirectionForKey,
+	resistanceRampDuration,
+	smoothedResistance,
+} from '../lib/resistance';
 import { storedResistance } from '../lib/session';
-import type { Metrics, Range } from '../types';
+import type { Metrics, Range, ResistanceAdjustmentDirection, ResistanceRamp } from '../types';
 
 export function useTrainer() {
 	const [device, setDevice] = useState<BluetoothDevice>();
 	const [controlPoint, setControlPoint] = useState<BluetoothRemoteGATTCharacteristic>();
 	const [metrics, setMetrics] = useState<Metrics>(emptyMetrics);
 	const [resistance, setResistance] = useState(storedResistance);
+	const [resistanceKeyFlash, setResistanceKeyFlash] = useState<
+		ResistanceAdjustmentDirection | undefined
+	>();
+	const [resistanceRamp, setResistanceRamp] = useState<ResistanceRamp>(() => {
+		const current = storedResistance();
+		return { current, from: current, phase: 'holding', progress: 0, to: current };
+	});
 	const [status, setStatus] = useState('Ready to connect');
 	const [notice, setNotice] = useState('');
 	const [connectionBusy, setConnectionBusy] = useState(false);
@@ -42,6 +54,7 @@ export function useTrainer() {
 	const commandQueue = useRef(Promise.resolve());
 	const resistanceTimer = useRef<number | undefined>(undefined);
 	const resistanceRampTimer = useRef<number | undefined>(undefined);
+	const resistanceKeyFlashTimer = useRef<number | undefined>(undefined);
 	const appliedResistance = useRef(storedResistance());
 	const resistanceTarget = useRef(storedResistance());
 	const connecting = useRef(false);
@@ -67,6 +80,15 @@ export function useTrainer() {
 	}, [resistanceRange]);
 
 	useEffect(() => scheduleNoticeDismissal(notice, () => setNotice('')), [notice]);
+
+	useEffect(
+		() => () => {
+			window.clearTimeout(resistanceTimer.current);
+			window.clearTimeout(resistanceRampTimer.current);
+			window.clearTimeout(resistanceKeyFlashTimer.current);
+		},
+		[]
+	);
 
 	const writeControl = useCallback(
 		async (characteristic: BluetoothRemoteGATTCharacteristic | undefined, bytes: number[]) => {
@@ -232,6 +254,13 @@ export function useTrainer() {
 			setResistance(restored);
 			appliedResistance.current = restored;
 			resistanceTarget.current = restored;
+			setResistanceRamp({
+				current: restored,
+				from: restored,
+				phase: 'holding',
+				progress: 0,
+				to: restored,
+			});
 			await writeControl(point, [0]);
 			await new Promise((resolve) => window.setTimeout(resolve, 150));
 			await writeControl(point, resistanceCommand(restored, activeRange));
@@ -355,13 +384,36 @@ export function useTrainer() {
 		(target: number) => {
 			window.clearTimeout(resistanceRampTimer.current);
 			const start = appliedResistance.current;
+			if (start === target) {
+				setResistanceRamp({
+					current: target,
+					from: start,
+					phase: 'settled',
+					progress: 1,
+					to: target,
+				});
+				return;
+			}
 			const startedAt = performance.now();
-			const duration = Math.max(600, Math.min(3000, Math.abs(target - start) * 45));
+			const duration = resistanceRampDuration(start, target);
+			setResistanceRamp({
+				current: start,
+				from: start,
+				phase: 'ramping',
+				progress: 0,
+				to: target,
+			});
 			const advance = () => {
 				const progress = Math.min(1, (performance.now() - startedAt) / duration);
-				const eased = progress * progress * (3 - 2 * progress);
-				const current = start + (target - start) * eased;
+				const current = smoothedResistance(start, target, progress);
 				appliedResistance.current = current;
+				setResistanceRamp({
+					current,
+					from: start,
+					phase: progress < 1 ? 'ramping' : 'settled',
+					progress,
+					to: target,
+				});
 				sendResistance(current).catch((error: unknown) =>
 					setNotice(error instanceof Error ? error.message : String(error))
 				);
@@ -381,6 +433,15 @@ export function useTrainer() {
 			setResistance(next);
 			localStorage.setItem('trainer-resistance-percent', String(next));
 			window.clearTimeout(resistanceTimer.current);
+			window.clearTimeout(resistanceRampTimer.current);
+			const { current } = appliedResistance;
+			setResistanceRamp({
+				current,
+				from: current,
+				phase: current === next ? 'settled' : 'queued',
+				progress: current === next ? 1 : 0,
+				to: next,
+			});
 			resistanceTimer.current = window.setTimeout(() => {
 				rampResistance(next);
 			}, 180);
@@ -434,28 +495,55 @@ export function useTrainer() {
 	useEffect(() => {
 		const handleKeys = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
+			const isResistanceControl = target?.matches('[data-resistance-control="true"]');
 			if (
 				event.defaultPrevented ||
 				event.altKey ||
 				event.ctrlKey ||
 				event.metaKey ||
-				target?.matches("input, textarea, select, [contenteditable='true']")
+				(!isResistanceControl &&
+					target?.matches("input, textarea, select, [contenteditable='true']"))
 			) {
 				return;
 			}
 			if (!keyboardControlsEnabled.current) {
 				return;
 			}
-			if (event.key === 'ArrowUp') {
-				event.preventDefault();
+			const direction = resistanceDirectionForKey(event.key);
+			if (!direction) {
+				return;
+			}
+			event.preventDefault();
+			setResistanceKeyFlash(direction);
+			window.clearTimeout(resistanceKeyFlashTimer.current);
+			if (direction === 'increase') {
 				updateResistance(resistanceTarget.current + 1);
-			} else if (event.key === 'ArrowDown') {
-				event.preventDefault();
+			} else {
 				updateResistance(resistanceTarget.current - 1);
 			}
 		};
+		const handleKeyUp = (event: KeyboardEvent) => {
+			if (!resistanceDirectionForKey(event.key)) {
+				return;
+			}
+			window.clearTimeout(resistanceKeyFlashTimer.current);
+			resistanceKeyFlashTimer.current = window.setTimeout(
+				() => setResistanceKeyFlash(undefined),
+				180
+			);
+		};
+		const handleBlur = () => {
+			window.clearTimeout(resistanceKeyFlashTimer.current);
+			setResistanceKeyFlash(undefined);
+		};
 		window.addEventListener('keydown', handleKeys);
-		return () => window.removeEventListener('keydown', handleKeys);
+		window.addEventListener('keyup', handleKeyUp);
+		window.addEventListener('blur', handleBlur);
+		return () => {
+			window.removeEventListener('keydown', handleKeys);
+			window.removeEventListener('keyup', handleKeyUp);
+			window.removeEventListener('blur', handleBlur);
+		};
 	}, [updateResistance]);
 
 	const setKeyboardControlsEnabled = useCallback((enabled: boolean) => {
@@ -473,6 +561,8 @@ export function useTrainer() {
 		metrics,
 		notice,
 		resistance,
+		resistanceKeyFlash,
+		resistanceRamp,
 		setKeyboardControlsEnabled,
 		setNotice,
 		status,
