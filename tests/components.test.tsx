@@ -238,6 +238,7 @@ describe('view components', () => {
 		);
 		expect(connectingButton).toContain('aria-busy="true"');
 		expect(connectingButton).toContain('animate-pulse bg-sky-400');
+		expect(connectingButton).not.toContain('bg-sky-400/10');
 		const connectedButton = render(
 			<DevicePairingButton connectedCount={3} onClick={() => undefined} pairedCount={3} />
 		);
@@ -255,9 +256,10 @@ describe('view components', () => {
 		};
 		const panel = render(
 			<DevicePairingPanel
+				browserNotice=""
 				click={{
 					...common,
-					connectedCount: 1,
+					connectedCount: 0,
 					controllers: [
 						{
 							active: false,
@@ -268,7 +270,7 @@ describe('view components', () => {
 						},
 						{
 							active: true,
-							connected: true,
+							connected: false,
 							connecting: false,
 							id: 'plus-click',
 							label: '+ Controller',
@@ -277,6 +279,7 @@ describe('view components', () => {
 					onForgetController: () => undefined,
 					pairedCount: 2,
 					pairing: false,
+					reconnecting: true,
 				}}
 				heartRate={common}
 				onClose={() => undefined}
@@ -288,12 +291,45 @@ describe('view components', () => {
 		expect(panel).toContain('Smart trainer');
 		expect(panel).toContain('Heart rate');
 		expect(panel).toContain('Zwift Click V2');
+		expect(panel).toContain('Waiting for controllers…');
+		expect(panel).not.toContain('Retry');
+		expect(panel).toContain('Reconnect');
+		expect(panel.match(/animate-pulse/g)).toHaveLength(3);
+		expect(panel.match(/animate-pulse bg-sky-400/g)).toHaveLength(2);
+		expect(panel).toContain('Enable reconnect saving in Chrome');
+		expect(panel).toContain('https://github.com/lookfirst/RideControl#automatic-reconnect');
 		expect(panel).toContain('+ Controller');
 		expect(panel.indexOf('+ Controller')).toBeLessThan(panel.indexOf('− Controller'));
 		expect(panel).toContain('animate-pulse');
 		expect(panel).toContain('bg-mint/10');
 		expect(panel).not.toContain('shadow-[inset_0_0_18px');
 		expect(panel).not.toContain('divide-y');
+		const unsupportedPanel = render(
+			<DevicePairingPanel
+				browserNotice="Bluetooth does not work in Brave. Chrome is currently the only browser tested with Ride Control."
+				click={{
+					...common,
+					connectedCount: 0,
+					controllers: [],
+					onForgetController: () => undefined,
+					pairedCount: 0,
+					pairing: false,
+					reconnecting: false,
+				}}
+				heartRate={common}
+				onClose={() => undefined}
+				open
+				trainer={common}
+			/>
+		);
+		expect(unsupportedPanel).toContain('Bluetooth does not work in Brave');
+		expect(unsupportedPanel).not.toContain('Enable reconnect saving in Chrome');
+		expect(unsupportedPanel).not.toContain(
+			'https://github.com/lookfirst/RideControl#automatic-reconnect'
+		);
+		expect(unsupportedPanel).not.toContain('Smart trainer');
+		expect(unsupportedPanel).not.toContain('Heart rate');
+		expect(unsupportedPanel).not.toContain('Zwift Click V2');
 	});
 
 	test('renders a focused 1–24 gear control', () => {
@@ -352,6 +388,11 @@ describe('view components', () => {
 		expect(html).toContain('History');
 		expect(html).toContain('Show keyboard controls');
 		expect(html).toContain('Ride Control');
+		expect(html).toContain('Build:');
+		expect(html).toContain(
+			'href="https://github.com/lookfirst/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
+		);
+		expect(html).toContain('<time dateTime=');
 		expect(html).toContain('href="https://github.com/lookfirst"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
 		expect(html).toContain('Sponsor');

@@ -15,6 +15,7 @@ import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useSession } from './hooks/use-session';
 import { useTrainer } from './hooks/use-trainer';
 import { useZwiftClick } from './hooks/use-zwift-click';
+import { BUILD_PR_URL, BUILD_TIMESTAMP_UTC, formatBuildTimestamp } from './lib/build-info';
 import { formatAggregateAverage, formatDuration } from './lib/format';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
 import {
@@ -344,7 +345,7 @@ export function App() {
 	const devicesConnecting = [
 		trainer.connectionBusy,
 		heartRate.busy,
-		click.busy,
+		click.reconnecting,
 		click.pairing,
 	].some(Boolean);
 	let sessionControlLabel = 'Auto paused';
@@ -551,7 +552,7 @@ export function App() {
 					</div>
 				</section>
 			</div>
-			<footer className="fixed bottom-3 left-4 z-20 flex items-center gap-1.5 text-[11px] text-slate-600">
+			<footer className="fixed right-4 bottom-3 left-4 z-20 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-600">
 				<button
 					className="font-semibold tracking-wide transition hover:text-slate-400"
 					onClick={() => setWelcomeOpen(true)}
@@ -576,6 +577,18 @@ export function App() {
 					target="_blank"
 				>
 					Sponsor
+				</a>
+				<span aria-hidden="true">·</span>
+				<a
+					className="transition hover:text-slate-400"
+					href={BUILD_PR_URL}
+					rel="noreferrer"
+					target="_blank"
+					title={`Built from UTC timestamp ${BUILD_TIMESTAMP_UTC}`}
+				>
+					<time dateTime={BUILD_TIMESTAMP_UTC}>
+						{formatBuildTimestamp(BUILD_TIMESTAMP_UTC)}
+					</time>
 				</a>
 			</footer>
 			<Notification

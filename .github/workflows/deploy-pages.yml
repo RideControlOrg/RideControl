@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   pages: write
+  pull-requests: read
   id-token: write
 
 concurrency:
@@ -38,6 +39,17 @@ jobs:
         uses: actions/configure-pages@v6
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Resolve build metadata
+        env:
+          BUILD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "VITE_BUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+          build_pr_url="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BUILD_SHA}/pulls" --jq '.[0].html_url // empty')"
+          if [ -z "$build_pr_url" ]; then
+            build_pr_url="https://github.com/${GITHUB_REPOSITORY}/pulls?q=is%3Apr+is%3Aclosed"
+          fi
+          echo "VITE_BUILD_PR_URL=${build_pr_url}" >> "$GITHUB_ENV"
       - name: Build site
         run: bun run build
       - name: Upload site artifact
