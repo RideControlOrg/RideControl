@@ -34,6 +34,7 @@ import type { Metrics, Range, ResistanceAdjustmentDirection, ResistanceRamp } fr
 
 export function useTrainer() {
 	const [device, setDevice] = useState<BluetoothDevice>();
+	const [pairedDevice, setPairedDevice] = useState<BluetoothDevice>();
 	const [controlPoint, setControlPoint] = useState<BluetoothRemoteGATTCharacteristic>();
 	const [metrics, setMetrics] = useState<Metrics>(emptyMetrics);
 	const [resistance, setResistance] = useState(storedResistance);
@@ -63,6 +64,7 @@ export function useTrainer() {
 	const autoReconnect = useRef(true);
 	const pendingDevice = useRef<BluetoothDevice | undefined>(undefined);
 	const keyboardControlsEnabled = useRef(true);
+	const gearControlsEnabled = useRef(false);
 	const unloading = useRef(false);
 	const lastCrank = useRef<{ revolutions: number; time: number } | undefined>(undefined);
 	const lastPedalingAt = useRef(0);
@@ -201,6 +203,7 @@ export function useTrainer() {
 		}
 		connecting.current = true;
 		try {
+			setPairedDevice(selected);
 			const server = await connectGatt(selected, rediscover, setStatus);
 			if (connectionStopped(rediscover)) {
 				selected.gatt?.disconnect();
@@ -334,6 +337,7 @@ export function useTrainer() {
 				optionalServices,
 			});
 			pendingDevice.current = selected;
+			setPairedDevice(selected);
 			autoReconnect.current = true;
 			await connectDevice(selected);
 		} catch (error) {
@@ -369,6 +373,38 @@ export function useTrainer() {
 		disconnectRequested.current = true;
 		device?.gatt?.disconnect();
 	}, [device]);
+
+	async function reconnect() {
+		if (!pairedDevice) {
+			return;
+		}
+		connectionCancelled.current = false;
+		disconnectRequested.current = false;
+		autoReconnect.current = true;
+		setConnectionBusy(true);
+		try {
+			await connectDevice(pairedDevice, true);
+		} finally {
+			setConnectionBusy(false);
+		}
+	}
+
+	const forget = useCallback(async () => {
+		autoReconnect.current = false;
+		disconnectRequested.current = true;
+		device?.gatt?.disconnect();
+		try {
+			await pairedDevice?.forget();
+		} finally {
+			localStorage.removeItem('trainer-device-id');
+			setDevice(undefined);
+			setPairedDevice(undefined);
+			setControlPoint(undefined);
+			setMetrics(emptyMetrics);
+			setStatus('Ready to pair');
+			setNotice('Trainer removed from paired devices.');
+		}
+	}, [device, pairedDevice]);
 
 	const sendResistance = useCallback(
 		async (percent: number) => {
@@ -449,6 +485,29 @@ export function useTrainer() {
 		[rampResistance]
 	);
 
+	const shiftResistanceBy = useCallback(
+		(change: number) => {
+			const next = Math.max(0, Math.min(100, resistanceTarget.current + change));
+			window.clearTimeout(resistanceTimer.current);
+			window.clearTimeout(resistanceRampTimer.current);
+			resistanceTarget.current = next;
+			appliedResistance.current = next;
+			setResistance(next);
+			setResistanceRamp({
+				current: next,
+				from: next,
+				phase: 'settled',
+				progress: 1,
+				to: next,
+			});
+			localStorage.setItem('trainer-resistance-percent', String(next));
+			sendResistance(next).catch((error: unknown) =>
+				setNotice(error instanceof Error ? error.message : String(error))
+			);
+		},
+		[sendResistance]
+	);
+
 	useEffect(() => {
 		const handlePageHide = () => {
 			unloading.current = true;
@@ -480,6 +539,7 @@ export function useTrainer() {
 				setStatus('Ready to connect');
 				return;
 			}
+			setPairedDevice(remembered);
 			setStatus('Reconnecting…');
 			await reconnectDevice(remembered);
 		}
@@ -507,6 +567,9 @@ export function useTrainer() {
 				return;
 			}
 			if (!keyboardControlsEnabled.current) {
+				return;
+			}
+			if (gearControlsEnabled.current) {
 				return;
 			}
 			const direction = resistanceDirectionForKey(event.key);
@@ -550,6 +613,10 @@ export function useTrainer() {
 		keyboardControlsEnabled.current = enabled;
 	}, []);
 
+	const setGearControlsEnabled = useCallback((enabled: boolean) => {
+		gearControlsEnabled.current = enabled;
+	}, []);
+
 	return {
 		cancelConnection,
 		connect,
@@ -557,14 +624,20 @@ export function useTrainer() {
 		connectionBusy,
 		deviceName: device?.name,
 		disconnect,
+		forget,
 		lastPedalingAt,
 		metrics,
 		notice,
+		paired: Boolean(pairedDevice),
+		pairedDeviceName: pairedDevice?.name,
+		reconnect,
 		resistance,
 		resistanceKeyFlash,
 		resistanceRamp,
+		setGearControlsEnabled,
 		setKeyboardControlsEnabled,
 		setNotice,
+		shiftResistanceBy,
 		status,
 		trainerReportsDistance,
 		updateResistance,

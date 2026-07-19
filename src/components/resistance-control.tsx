@@ -35,7 +35,7 @@ export function ResistanceControl({
 		'--resistance-position': `${sliderPosition}%`,
 	} as CSSProperties;
 	const buttonClass =
-		'grid h-9 w-9 place-items-center rounded-lg border border-line text-slate-300 transition duration-150 hover:border-mint disabled:opacity-40';
+		'grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-slate-300 transition duration-150 hover:border-mint disabled:opacity-40';
 	const keyboardFlashClass =
 		'scale-105 border-mint bg-mint/15 text-mint shadow-[0_0_14px_rgba(190,242,100,.4)]';
 	const activeFlash = keyboardFlash ?? sliderFlash;
@@ -85,7 +85,7 @@ export function ResistanceControl({
 				</button>
 				<input
 					aria-label="Resistance"
-					className="resistance-slider w-full disabled:opacity-40"
+					className="resistance-slider w-full min-w-0 disabled:opacity-40"
 					data-ramp-active={ramp.phase === 'ramping' || undefined}
 					data-ramp-progress={rampProgressPercent}
 					data-resistance-control="true"

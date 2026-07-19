@@ -122,6 +122,22 @@ export function SessionDetail({
 }) {
 	const unitFactor = speedUnit === 'mph' ? 0.621_371 : 1;
 	const distanceUnit = speedUnit === 'mph' ? 'mi' : 'km';
+	const usesGear = session.controlMode === 'gear';
+	const controlMetric = usesGear
+		? {
+				accent: 'mint',
+				average: formatAggregateAverage(session.aggregates.gear, 0),
+				icon: 'controls',
+				label: 'GEAR',
+				unit: '',
+			}
+		: {
+				accent: 'mint',
+				average: formatAggregateAverage(session.aggregates.resistance, 0),
+				icon: 'resistance',
+				label: 'RESISTANCE',
+				unit: '%',
+			};
 
 	return (
 		<div className="min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
@@ -208,13 +224,7 @@ export function SessionDetail({
 						maximum: String(Math.round(session.maximums.heartRate)),
 						unit: 'bpm',
 					},
-					{
-						accent: 'mint',
-						average: formatAggregateAverage(session.aggregates.resistance, 0),
-						icon: 'resistance',
-						label: 'RESISTANCE',
-						unit: '%',
-					},
+					controlMetric,
 				].map((metric) => (
 					<SessionMetric key={metric.label} {...metric} />
 				))}
@@ -236,6 +246,7 @@ export function SessionDetail({
 				</div>
 			</div>
 			<SessionChart
+				controlMode={session.controlMode}
 				history={session.history}
 				keyboardEnabled={chartKeyboardEnabled}
 				route={EMPTY_ROUTE}

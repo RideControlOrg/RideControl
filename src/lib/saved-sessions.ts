@@ -5,7 +5,7 @@ import type {
 	SessionMetadata,
 	SessionSnapshot,
 } from '../types';
-import { aggregateResistance } from './session';
+import { aggregateGear, aggregateResistance, controlModeForHistory } from './session';
 
 const DATABASE_NAME = 'ridecontrol-sessions';
 const DATABASE_VERSION = 1;
@@ -147,10 +147,14 @@ export function normalizeSavedSession(session: SavedSession): SavedSession {
 		...session,
 		aggregates: {
 			...session.aggregates,
+			gear:
+				(session.aggregates as Partial<SavedSession['aggregates']>).gear ??
+				aggregateGear(session.history),
 			resistance:
 				(session.aggregates as Partial<SavedSession['aggregates']>).resistance ??
 				aggregateResistance(session.history),
 		},
+		controlMode: controlModeForHistory(session.history, session.controlMode),
 	};
 }
 

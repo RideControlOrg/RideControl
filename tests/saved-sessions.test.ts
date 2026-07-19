@@ -21,6 +21,7 @@ import type { SavedSession, SavedSessionSummary, SessionSnapshot } from '../src/
 const snapshot: SessionSnapshot = {
 	aggregates: emptySession.aggregates,
 	calories: 120,
+	controlMode: 'resistance',
 	distance: 10,
 	elapsedSeconds: 1800,
 	endedAt: new Date(2026, 6, 18, 9).getTime(),
@@ -130,6 +131,30 @@ describe('saved session utilities', () => {
 		expect(normalizeSavedSession(session).aggregates.resistance).toBe(
 			session.aggregates.resistance
 		);
+	});
+
+	test('restores gear aggregates for virtual shifting sessions', () => {
+		const gearSession = {
+			...createSavedSession(snapshot, { comments: '' }, 1234, 'gears'),
+			aggregates: {
+				...snapshot.aggregates,
+				gear: undefined,
+			},
+			controlMode: 'gear',
+			history: [
+				{
+					cadence: 85,
+					elapsedSeconds: 1,
+					gear: 14,
+					heartRate: 140,
+					power: 180,
+					speed: 30,
+				},
+			],
+		} as unknown as SavedSession;
+		const normalized = normalizeSavedSession(gearSession);
+		expect(normalized.controlMode).toBe('gear');
+		expect(normalized.aggregates.gear).toEqual({ count: 1, sum: 14 });
 	});
 
 	test('groups ordered summaries by their local calendar date', () => {
