@@ -394,6 +394,13 @@ describe('view components', () => {
 		expect(html).toContain('HARDER');
 		expect(html).toContain('grid h-9 w-9 shrink-0 place-items-center rounded-lg');
 		expect(html).toContain('scale-105 border-mint bg-mint/15 text-mint');
+		expect(html).not.toContain('Connect the trainer and controllers before shifting gears.');
+		const disabled = render(<GearControl disabled gear={12} onChange={() => undefined} />);
+		expect(disabled).not.toContain(
+			'Connect the trainer and controllers before shifting gears.'
+		);
+		expect(disabled).not.toContain('Use Zwift Click');
+		expect(disabled.match(/disabled=""/g)).toHaveLength(2);
 	});
 
 	test('renders only the selected training control mode', () => {

@@ -5,6 +5,7 @@ import {
 	GEAR_STORAGE_KEY,
 	gearForResistance,
 	resistanceChangeForGears,
+	SHIFTING_CONNECTION_MESSAGE,
 	shiftedGear,
 	storedGear,
 } from '../lib/gears';
@@ -13,14 +14,14 @@ import type { ResistanceAdjustmentDirection } from '../types';
 
 export function useGearControl({
 	active,
-	connected,
 	onResistanceChange,
+	ready,
 	resistance,
 	setNotice,
 }: {
 	active: boolean;
-	connected: boolean;
 	onResistanceChange: (change: number) => void;
+	ready: boolean;
 	resistance: number;
 	setNotice: (notice: string) => void;
 }) {
@@ -32,8 +33,8 @@ export function useGearControl({
 
 	const shiftGear = useCallback(
 		(change: number) => {
-			if (!connected) {
-				setNotice('Connect the trainer before shifting gears.');
+			if (!ready) {
+				setNotice(SHIFTING_CONNECTION_MESSAGE);
 				return;
 			}
 			const previous = gearRef.current;
@@ -52,7 +53,7 @@ export function useGearControl({
 			localStorage.setItem(GEAR_STORAGE_KEY, String(next));
 			onResistanceChange(resistanceChangeForGears(previous, next));
 		},
-		[connected, onResistanceChange, setNotice]
+		[onResistanceChange, ready, setNotice]
 	);
 
 	useEffect(() => {

@@ -5,6 +5,8 @@ export const MAX_GEAR = 24;
 export const DEFAULT_GEAR = 12;
 export const RESISTANCE_POINTS_PER_GEAR = 3;
 export const GEAR_STORAGE_KEY = 'trainer-virtual-gear';
+export const SHIFTING_CONNECTION_MESSAGE =
+	'Connect the trainer and controllers before shifting gears.';
 
 export function clampGear(gear: number): number {
 	return clamp(Math.round(gear), MIN_GEAR, MAX_GEAR);

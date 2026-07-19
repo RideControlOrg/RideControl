@@ -24,6 +24,7 @@ import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
 import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
+import { MAX_CLICK_CONTROLLERS } from './lib/zwift-click';
 import { preferencesStore } from './stores/preferences-store';
 import type { Metrics, SavedSession } from './types';
 
@@ -69,10 +70,12 @@ export function App() {
 	);
 	const { connected } = trainer;
 	const speedUnit = useSelector(preferencesStore, (preferences) => preferences.speedUnit);
+	const virtualShiftingReady =
+		trainer.connected && click.connectedCount === MAX_CLICK_CONTROLLERS;
 	const gearControl = useGearControl({
 		active: click.paired,
-		connected: trainer.connected,
 		onResistanceChange: trainer.shiftResistanceBy,
+		ready: virtualShiftingReady,
 		resistance: trainer.resistance,
 		setNotice: trainer.setNotice,
 	});
@@ -246,7 +249,7 @@ export function App() {
 						speedUnit={speedUnit}
 					/>
 					<TrainingControl
-						connected={connected}
+						connected={click.paired ? virtualShiftingReady : connected}
 						control={
 							click.paired
 								? {
