@@ -380,6 +380,8 @@ describe('view components', () => {
 		expect(html).toContain('FELT');
 		expect(html).toContain('Delete session');
 		expect(html).toContain('Start new session');
+		expect(html).toContain('Download TCX');
+		expect(html).toContain('No recorded samples to export');
 		expect(html).toContain('role="alertdialog"');
 		expect(html).not.toContain('until');
 		expect(html).toContain(

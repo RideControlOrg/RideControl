@@ -18,6 +18,7 @@ import {
 	listSavedSessions,
 	sessionListAfterDelete,
 } from '../lib/saved-sessions';
+import { downloadSessionTcx } from '../lib/tcx';
 import type { SavedSession, SavedSessionSummary, SpeedUnit } from '../types';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import { SessionMetric, SmallMetric } from './metrics';
@@ -133,6 +134,19 @@ export function SessionDetail({
 					<h3 className="mt-1 font-bold text-2xl">{formatSessionTimeRange(session)}</h3>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
+					<button
+						className="rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+						disabled={session.history.length === 0}
+						onClick={() => downloadSessionTcx(session)}
+						title={
+							session.history.length === 0
+								? 'No recorded samples to export'
+								: 'Download a TCX file for Strava and other bike services'
+						}
+						type="button"
+					>
+						Download TCX
+					</button>
 					{onStartNew ? (
 						<button
 							className="rounded-lg border border-mint/30 px-3 py-2 font-semibold text-mint text-xs transition hover:border-mint/60 hover:bg-mint/5"
