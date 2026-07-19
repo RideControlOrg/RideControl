@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { EMPTY_ROUTE } from '../constants';
 import { CONTROL_MODE } from '../lib/control-mode';
-import { formatAggregateAverage, formatWholeNumber } from '../lib/format';
+import { aggregateMaximum, formatAggregateAverage, formatWholeNumber } from '../lib/format';
 import { METRIC_PRESENTATION, STANDARD_METRIC_KEYS } from '../lib/metric-presentation';
 import {
 	feelingLabel,
 	formatSessionDateRange,
+	formatSessionImportLabel,
 	formatSessionTimeRange,
+	isImportedSession,
 } from '../lib/saved-sessions';
 import { downloadSessionTcx } from '../lib/tcx';
 import type { SavedSession, SpeedUnit } from '../types';
@@ -96,12 +98,14 @@ export function SessionDetail({
 	speedUnit: SpeedUnit;
 }) {
 	const usesGear = session.controlMode === CONTROL_MODE.GEAR;
+	const imported = isImportedSession(session);
 	const controlMetric = usesGear
 		? {
 				accent: 'mint',
 				average: formatAggregateAverage(session.aggregates.gear, 0),
 				icon: 'controls',
 				label: 'GEAR',
+				maximum: formatWholeNumber(aggregateMaximum(session.aggregates.gear)),
 				unit: '',
 			}
 		: {
@@ -109,6 +113,7 @@ export function SessionDetail({
 				average: formatAggregateAverage(session.aggregates.resistance, 0),
 				icon: 'resistance',
 				label: 'RESISTANCE',
+				maximum: formatWholeNumber(aggregateMaximum(session.aggregates.resistance)),
 				unit: '%',
 			};
 	const standardMetrics = STANDARD_METRIC_KEYS.map((key) => {
@@ -127,9 +132,19 @@ export function SessionDetail({
 		<div className="min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
 			<div className="relative flex items-start justify-between gap-4">
 				<div>
-					<p className="font-bold text-[11px] text-mint tracking-[.14em]">
-						{formatSessionDateRange(session)}
-					</p>
+					<div className="flex items-center gap-2">
+						<p className="font-bold text-[11px] text-mint tracking-[.14em]">
+							{formatSessionDateRange(session)}
+						</p>
+						{imported ? (
+							<span
+								className="rounded-full bg-cyan-400/15 px-1.5 py-0.5 font-bold text-[9px] text-cyan-300 uppercase tracking-wide"
+								title={formatSessionImportLabel(session)}
+							>
+								Imported
+							</span>
+						) : null}
+					</div>
 					<h3 className="mt-1 font-bold text-2xl">{formatSessionTimeRange(session)}</h3>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">

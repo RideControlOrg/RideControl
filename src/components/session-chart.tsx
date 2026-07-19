@@ -1,5 +1,5 @@
 import { useSelector } from '@tanstack/react-store';
-import { useCallback, useEffect, useMemo } from 'react';
+import { Fragment, useCallback, useEffect, useMemo } from 'react';
 import { chartModesForControl, chartPath, roundedChartMaximum } from '../lib/chart';
 import { CONTROL_MODE, isControlMode } from '../lib/control-mode';
 import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
@@ -271,19 +271,27 @@ export function SessionChart({
 							values={elevationValues}
 						/>
 					) : (
-						visibleSeries.map((item) => (
-							<ChartPlot
-								color={item.color}
-								decimals={item.decimals}
-								heightClass={effectiveMode === 'all' ? 'h-24' : 'h-52'}
-								key={item.key}
-								maximum={item.chartMaximum}
-								minimum={item.minimum}
-								positions={historyPositions}
-								title={`${item.label} over time`}
-								unit={item.unit}
-								values={item.values}
-							/>
+						visibleSeries.map((item, index) => (
+							<Fragment key={item.key}>
+								<ChartPlot
+									color={item.color}
+									decimals={item.decimals}
+									heightClass={effectiveMode === 'all' ? 'h-24' : 'h-52'}
+									maximum={item.chartMaximum}
+									minimum={item.minimum}
+									positions={historyPositions}
+									title={`${item.label} over time`}
+									unit={item.unit}
+									values={item.values}
+								/>
+								{effectiveMode === 'all' && index < visibleSeries.length - 1 ? (
+									<div
+										aria-hidden="true"
+										className="pointer-events-none relative -my-3 ml-15 h-6 bg-white/1.5"
+										data-chart-separator="true"
+									/>
+								) : null}
+							</Fragment>
 						))
 					)}
 				</div>

@@ -12,6 +12,7 @@ import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionChart } from '../src/components/session-chart';
 import { DeleteSessionDialog, SessionDetail } from '../src/components/session-detail';
 import { SessionHistory } from '../src/components/session-history';
+import { SessionHistoryList } from '../src/components/session-history-list';
 import { SessionSaveDialog } from '../src/components/session-save-dialog';
 import { TrainingControl } from '../src/components/training-control';
 import { WelcomeDialog } from '../src/components/welcome-dialog';
@@ -23,7 +24,9 @@ import {
 } from '../src/constants';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
+import { formatSessionImportTime, sessionSummary } from '../src/lib/saved-sessions';
 import { SESSION_WORKFLOW_INTENT } from '../src/lib/session-workflow';
+import { savedSessionFixture } from './fixtures/saved-session';
 
 const render = (element: React.ReactNode) => renderToStaticMarkup(element);
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
@@ -68,6 +71,10 @@ describe('view components', () => {
 		expect(render(<SmallMetric label="TIME" large value="01:02:03" />)).toContain(
 			'text-3xl sm:text-5xl'
 		);
+		const distance = render(<SmallMetric label="DISTANCE" large unit="mi" value="10.00" />);
+		expect(distance).toContain('>10.00</span>');
+		expect(distance).toContain('text-base sm:text-xl');
+		expect(distance).toContain('>mi</span>');
 		const html = render(
 			<SessionMetric
 				accent="yellow"
@@ -81,6 +88,8 @@ describe('view components', () => {
 		expect(html).toContain('text-3xl');
 		expect(html).toContain('bg-yellow-400');
 		expect(html).toContain('<title>bolt</title>');
+		expect(html.match(/>W<\/span>/g)).toHaveLength(1);
+		expect(html).toContain('MAX</strong>300');
 		const averageOnly = render(
 			<SessionMetric
 				accent="mint"
@@ -572,6 +581,8 @@ describe('view components', () => {
 		expect(html).toContain('class="block h-full w-full"');
 		expect(html).toMatch(solidChartBoundaries);
 		expect(html).toMatch(dashedChartGuides);
+		expect(html.match(/data-chart-separator="true"/g)).toHaveLength(4);
+		expect(html.match(/-my-3 ml-15 h-6 bg-white\/1\.5/g)).toHaveLength(4);
 		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
 	});
 
@@ -681,9 +692,60 @@ describe('view components', () => {
 		expect(html).toContain('Session history');
 		expect(html).toContain('data-side-tray="true"');
 		expect(html).toContain('No saved sessions yet');
+		expect(html).toContain('Import TCX');
+		expect(html).toContain('Download all');
+		expect(html).toContain('.tcx,.zip');
+		expect(html).toContain('End a session or import a TCX file to add it here.');
 		expect(html).toContain('ml-auto');
 		expect(html).toContain('translate-x-0');
 		expect(html).toContain('Show history keyboard controls');
+	});
+
+	test('highlights every session from the latest import in history navigation', () => {
+		const importedSession = { ...savedSessionFixture, importedAt: Date.UTC(2026, 6, 19) };
+		const html = render(
+			<SessionHistoryList
+				error=""
+				highlightedSessionIds={[importedSession.id]}
+				onLoadMore={() => undefined}
+				onSelect={() => undefined}
+				selectedId={importedSession.id}
+				speedUnit="kmh"
+				summaries={[sessionSummary(importedSession)]}
+				total={1}
+			/>
+		);
+		expect(html).toContain('aria-label="Imported from TCX file"');
+		expect(html).toContain('<title>Imported from TCX file</title>');
+		expect(html).toContain('absolute right-2.5 bottom-3');
+		expect(html).toContain('class="h-5 w-5"');
+		expect(html).toContain('ring-cyan-400/70');
+		expect(html).toContain('shadow-[0_0_14px_rgba(34,211,238,0.16)]');
+	});
+
+	test('labels imported sessions permanently without retaining the fresh highlight', () => {
+		const importedSession = { ...savedSessionFixture, importedAt: Date.UTC(2026, 6, 19) };
+		const list = render(
+			<SessionHistoryList
+				error=""
+				highlightedSessionIds={[]}
+				onLoadMore={() => undefined}
+				onSelect={() => undefined}
+				speedUnit="kmh"
+				summaries={[sessionSummary(importedSession)]}
+				total={1}
+			/>
+		);
+		expect(list).toContain('aria-label="Imported from TCX file"');
+		expect(list).not.toContain('>Imported<');
+		expect(list).not.toContain('ring-cyan-400/70');
+		const detail = render(<SessionDetail session={importedSession} speedUnit="kmh" />);
+		expect(detail).toContain('>Imported<');
+		expect(detail).not.toContain('Imported TCX');
+		expect(detail).toContain('MAX</strong>45');
+		expect(detail).toContain(
+			`title="Imported ${formatSessionImportTime(importedSession.importedAt)}`
+		);
 	});
 
 	test('renders session deletion confirmation as a modal', () => {
@@ -794,7 +856,7 @@ describe('view components', () => {
 				session={{
 					aggregates: {
 						...emptySession.aggregates,
-						gear: { count: 2, sum: 27 },
+						gear: { count: 2, maximum: 14, sum: 27 },
 					},
 					calories: 0,
 					comments: '',
@@ -811,6 +873,7 @@ describe('view components', () => {
 			/>
 		);
 		expect(html).toContain('GEAR');
+		expect(html).toContain('MAX</strong>14');
 		expect(html).not.toContain('RESISTANCE');
 	});
 });

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionHistory } from '../hooks/use-session-history';
 import {
 	eventTargetsEditableControl,
@@ -40,7 +40,13 @@ export function SessionHistory({
 	const {
 		deleteSelectedSession: deleteHistorySession,
 		deleting,
+		downloadAllTcx,
 		error,
+		exporting,
+		historyStatus,
+		highlightedSessionIds,
+		importTcxFile,
+		importing,
 		loading,
 		loadMore,
 		selected,
@@ -51,6 +57,8 @@ export function SessionHistory({
 	} = useSessionHistory(open);
 	const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
 	const [historyHelpOpen, setHistoryHelpOpen] = useState(false);
+	const importInput = useRef<HTMLInputElement>(null);
+	const transferring = exporting || importing;
 
 	useEffect(() => {
 		if (!open) {
@@ -184,16 +192,52 @@ export function SessionHistory({
 				open={open}
 				panelClassName="flex max-w-6xl flex-col overflow-hidden sm:w-[min(72rem,calc(100vw-2rem))]"
 			>
-				<header className="flex items-center justify-between border-line border-b px-5 py-4">
-					<div>
+				<header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-line border-b px-5 py-3">
+					<div className="mr-auto min-w-0">
 						<h2 className="font-bold text-xl" id="session-history-title">
 							Session history
 						</h2>
-						<p className="mt-0.5 text-slate-500 text-xs">
+						<p
+							aria-live="polite"
+							className="mt-0.5 max-w-xl truncate text-slate-500 text-xs"
+							title={historyStatus || undefined}
+						>
 							Saved on this device · {total} {total === 1 ? 'session' : 'sessions'}
+							{historyStatus ? (
+								<span className="text-cyan-300"> · {historyStatus}</span>
+							) : null}
 						</p>
 					</div>
 					<div className="flex items-center gap-1">
+						<input
+							accept=".tcx,.zip,application/vnd.garmin.tcx+xml,application/zip"
+							className="hidden"
+							onChange={(event) => {
+								const file = event.currentTarget.files?.[0];
+								event.currentTarget.value = '';
+								if (file) {
+									importTcxFile(file);
+								}
+							}}
+							ref={importInput}
+							type="file"
+						/>
+						<button
+							className="rounded-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
+							disabled={transferring}
+							onClick={() => importInput.current?.click()}
+							type="button"
+						>
+							{importing ? 'Importing…' : 'Import TCX'}
+						</button>
+						<button
+							className="rounded-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+							disabled={transferring || total === 0}
+							onClick={downloadAllTcx}
+							type="button"
+						>
+							{exporting ? 'Preparing…' : 'Download all'}
+						</button>
 						<button
 							aria-label="Show history keyboard controls"
 							className="grid h-9 w-9 place-items-center rounded-lg font-bold text-slate-400 text-sm hover:bg-slate-700 hover:text-white"
@@ -218,6 +262,7 @@ export function SessionHistory({
 				<div className="flex min-h-0 flex-1 flex-col md:flex-row">
 					<SessionHistoryList
 						error={error}
+						highlightedSessionIds={highlightedSessionIds}
 						onLoadMore={loadMore}
 						onSelect={selectSession}
 						selectedId={selectedId}

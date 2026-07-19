@@ -1,13 +1,14 @@
 import type { MetricSample, SavedSession } from '../types';
 import { CONTROL_MODE } from './control-mode';
-import { aggregateAverage } from './format';
+import { downloadBrowserFile } from './download';
+import { aggregateAverage, aggregateMaximum } from './format';
 import { nonNegativeNumber } from './numbers';
+import {
+	RIDECONTROL_TCX_EXTENSION_NAMESPACE,
+	TCX_ACTIVITY_EXTENSION_NAMESPACE,
+	TCX_NAMESPACE,
+} from './tcx-schema';
 import { metersForKilometers, metersPerSecond, millisecondsForSeconds } from './units';
-
-const TCX_NAMESPACE = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
-const ACTIVITY_EXTENSION_NAMESPACE = 'http://www.garmin.com/xmlschemas/ActivityExtension/v2';
-const RIDECONTROL_EXTENSION_NAMESPACE =
-	'https://github.com/lookfirst/RideControl/xmlschemas/ActivityExtension/v1';
 
 function xmlEscape(value: string): string {
 	return value
@@ -95,14 +96,14 @@ export function sessionToTcx(session: SavedSession): string {
 	const controlSummary =
 		session.controlMode === CONTROL_MODE.GEAR
 			? `<rc:AverageGear>${aggregateAverage(session.aggregates.gear).toFixed(1)}</rc:AverageGear>
-						<rc:MaximumGear>${Math.max(0, ...session.history.map((sample) => nonNegativeNumber(sample.gear))).toFixed(0)}</rc:MaximumGear>`
+						<rc:MaximumGear>${Math.max(aggregateMaximum(session.aggregates.gear), ...session.history.map((sample) => nonNegativeNumber(sample.gear))).toFixed(0)}</rc:MaximumGear>`
 			: `<rc:AverageResistance>${aggregateAverage(session.aggregates.resistance).toFixed(1)}</rc:AverageResistance>
-						<rc:MaximumResistance>${Math.max(0, ...session.history.map((sample) => nonNegativeNumber(sample.resistance))).toFixed(1)}</rc:MaximumResistance>`;
+						<rc:MaximumResistance>${Math.max(aggregateMaximum(session.aggregates.resistance), ...session.history.map((sample) => nonNegativeNumber(sample.resistance))).toFixed(1)}</rc:MaximumResistance>`;
 	const distanceMeters = metersForKilometers(nonNegativeNumber(session.distance));
 	const averageSpeed = session.elapsedSeconds > 0 ? distanceMeters / session.elapsedSeconds : 0;
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
-<TrainingCenterDatabase xmlns="${TCX_NAMESPACE}" xmlns:ns3="${ACTIVITY_EXTENSION_NAMESPACE}" xmlns:rc="${RIDECONTROL_EXTENSION_NAMESPACE}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="${TCX_NAMESPACE} http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd ${ACTIVITY_EXTENSION_NAMESPACE} http://www.garmin.com/xmlschemas/ActivityExtensionv2.xsd">
+<TrainingCenterDatabase xmlns="${TCX_NAMESPACE}" xmlns:ns3="${TCX_ACTIVITY_EXTENSION_NAMESPACE}" xmlns:rc="${RIDECONTROL_TCX_EXTENSION_NAMESPACE}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="${TCX_NAMESPACE} http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd ${TCX_ACTIVITY_EXTENSION_NAMESPACE} http://www.garmin.com/xmlschemas/ActivityExtensionv2.xsd">
 	<Activities>
 		<Activity Sport="Biking">
 			<Id>${startedAt}</Id>
@@ -133,6 +134,7 @@ export function sessionToTcx(session: SavedSession): string {
 						<ns3:MaxWatts>${Math.round(nonNegativeNumber(session.maximums.power))}</ns3:MaxWatts>
 					</ns3:LX>
 					<rc:Summary>
+						<rc:SessionId>${xmlEscape(session.id)}</rc:SessionId>
 						${controlSummary}
 					</rc:Summary>
 				</Extensions>
@@ -153,14 +155,9 @@ export function sessionTcxFilename(session: Pick<SavedSession, 'startedAt'>): st
 }
 
 export function downloadSessionTcx(session: SavedSession): void {
-	const url = URL.createObjectURL(
-		new Blob([sessionToTcx(session)], { type: 'application/vnd.garmin.tcx+xml' })
+	downloadBrowserFile(
+		sessionToTcx(session),
+		sessionTcxFilename(session),
+		'application/vnd.garmin.tcx+xml'
 	);
-	const anchor = document.createElement('a');
-	anchor.download = sessionTcxFilename(session);
-	anchor.href = url;
-	document.body.append(anchor);
-	anchor.click();
-	anchor.remove();
-	URL.revokeObjectURL(url);
 }
