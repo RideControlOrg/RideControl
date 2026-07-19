@@ -38,10 +38,12 @@ Open <http://localhost:4200> in current Chrome.
 
 Ride session data is held in a per-app TanStack Store and changed through atomic domain actions.
 The `useSession` adapter owns recording timers and durable browser persistence while exposing the
-existing session controller API to the interface. Web Bluetooth devices, GATT characteristics,
-retry queues, and listeners remain inside their dedicated device hooks; only serializable device
-status should cross into shared application state. Temporary dialogs and form inputs remain local
-React state.
+existing session controller API to the interface. Each Bluetooth hook exposes one explicit
+connection phase instead of independently managed status flags. Shared reconnect scheduling and
+notification subscriptions live in plain controllers, while device-specific adapters own GATT
+setup for heart-rate monitors, trainers, and Click controllers. Bluetooth objects and timers stay
+outside shared application state. The application component coordinates these services and passes
+serializable views into the dashboard; temporary dialogs and form inputs remain local React state.
 
 ## Deployment
 
