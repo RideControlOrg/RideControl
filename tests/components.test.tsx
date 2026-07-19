@@ -53,8 +53,9 @@ describe('view components', () => {
 		expect(html).toContain('200');
 		expect(html).toContain('grid grid-cols-2 gap-3 border-line border-t pt-3');
 		expect(html).toContain('font-semibold text-2xl text-white tabular-nums tracking-tight');
-		expect(html).toContain('<span>180</span>');
-		expect(html).toContain('<span>300</span>');
+		expect(html).toContain('>180</p>');
+		expect(html).toContain('>300</p>');
+		expect(html.match(/watts/g)).toHaveLength(1);
 		expect(metricAccentClass('rose')).toBe('bg-rose-400');
 		expect(metricAccentClass('other')).toBe('bg-mint');
 		expect(metricIconClass('violet')).toBe('text-violet-400');

@@ -1,6 +1,25 @@
 import { metricAccentClass, metricIconClass } from '../lib/metric-presentation';
 import { Icon } from './icon';
 
+function MetricSummary({
+	label,
+	rightAligned = false,
+	value,
+}: {
+	label: string;
+	rightAligned?: boolean;
+	value: string;
+}) {
+	return (
+		<div className={rightAligned ? 'text-right' : undefined}>
+			<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">{label}</p>
+			<p className="mt-1 font-semibold text-2xl text-white tabular-nums tracking-tight">
+				{value}
+			</p>
+		</div>
+	);
+}
+
 export function Metric({
 	average,
 	label,
@@ -29,20 +48,8 @@ export function Metric({
 				<span className="text-slate-400 text-sm">{unit}</span>
 			</div>
 			<div className="mt-4 grid grid-cols-2 gap-3 border-line border-t pt-3">
-				<div>
-					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">AVG</p>
-					<p className="mt-1 flex items-baseline gap-1 font-semibold text-2xl text-white tabular-nums tracking-tight">
-						<span>{average}</span>
-						<span className="font-medium text-slate-300 text-xs">{unit}</span>
-					</p>
-				</div>
-				<div className="text-right">
-					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">MAX</p>
-					<p className="mt-1 flex items-baseline justify-end gap-1 font-semibold text-2xl text-white tabular-nums tracking-tight">
-						<span>{maximum}</span>
-						<span className="font-medium text-slate-300 text-xs">{unit}</span>
-					</p>
-				</div>
+				<MetricSummary label="AVG" value={average} />
+				<MetricSummary label="MAX" rightAligned value={maximum} />
 			</div>
 			<div className={`mt-3 h-1 rounded-full ${metricAccentClass(accent)}`} />
 		</div>
