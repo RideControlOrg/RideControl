@@ -8,6 +8,7 @@ import { Icon } from '../src/components/icon';
 import { KeyboardShortcutsDialog } from '../src/components/keyboard-shortcuts-dialog';
 import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
 import { Notification } from '../src/components/notification';
+import { RenameWorkoutDialog } from '../src/components/rename-workout-dialog';
 import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionChart } from '../src/components/session-chart';
 import { SessionControls } from '../src/components/session-controls';
@@ -460,10 +461,11 @@ describe('view components', () => {
 			<WorkoutPanel
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
-				ended={false}
 				onClose={() => undefined}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
+				onRenameCourse={() => course}
+				onReorderCourse={() => undefined}
 				onSelect={() => undefined}
 				open
 				selectionLocked={false}
@@ -480,6 +482,13 @@ describe('view components', () => {
 		expect(panel).toContain('Harbor Ring course map');
 		expect(panel).toContain('Harbor Ring elevation profile');
 		expect(panel).toContain('Import GPX');
+		expect(panel).toContain('href="https://bikegpx.com/bike_routes/"');
+		expect(panel).toContain('BikeGPX has thousands of GPX files');
+		expect(panel).toContain('data-gpx-drop-target="true"');
+		expect(panel).toContain('placeholder="Search by name or difficulty"');
+		expect(panel).not.toContain(
+			'Choose a workout for your next session, then start it when you are ready.'
+		);
 		expect(panel.match(/Download GPX/g)).toHaveLength(6);
 		expect(panel).toContain('10.0 mi out &amp; back');
 		expect(panel).toContain('15.0 mi loop');
@@ -489,21 +498,25 @@ describe('view components', () => {
 		expect(panel).toContain('stroke="#64748b"');
 		expect(panel).toContain('bg-slate-800/70');
 		expect(panel).not.toContain('bg-lime text-ink');
+		expect(panel).not.toContain('aria-label="Rename Harbor Ring"');
+		expect(panel).toContain('aria-label="Drag Harbor Ring to reorder"');
+		expect(panel.match(/draggable="true"/g)).toHaveLength(6);
 		expect(panel).toContain('data-side-tray="true"');
 		const importedCourse = {
 			...course,
 			id: 'imported-course',
 			name: 'Imported course',
-			routeType: WORKOUT_ROUTE_TYPE.OUT_AND_BACK,
+			routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
 		};
 		const customPanel = render(
 			<WorkoutPanel
 				courses={[...WORKOUT_COURSES, importedCourse]}
 				customCourseIds={new Set([importedCourse.id])}
-				ended={false}
 				onClose={() => undefined}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
+				onRenameCourse={() => importedCourse}
+				onReorderCourse={() => undefined}
 				onSelect={() => undefined}
 				open
 				selectionLocked={false}
@@ -511,26 +524,43 @@ describe('view components', () => {
 			/>
 		);
 		expect(customPanel).toContain('Imported course');
+		expect(customPanel).toContain('aria-label="Rename Imported course"');
+		expect(customPanel).toContain('title="Rename imported workout"');
 		expect(customPanel).toContain('Imported');
-		expect(customPanel).toContain('out &amp; back');
+		expect(customPanel).toContain('point to point');
 		expect(customPanel).toContain('Remove');
 		expect(customPanel.match(/Download GPX/g)).toHaveLength(7);
+		const renameDialog = render(
+			<RenameWorkoutDialog
+				course={importedCourse}
+				onClose={() => undefined}
+				onRename={() => undefined}
+			/>
+		);
+		expect(renameDialog).toContain('Rename workout');
+		expect(renameDialog).not.toContain('IMPORTED GPX');
+		expect(renameDialog).toContain(
+			'The route and its duplicate-detection identifier will stay the same.'
+		);
+		expect(renameDialog).toContain('value="Imported course"');
+		expect(renameDialog).toContain('Save name');
 		const lockedPanel = render(
 			<WorkoutPanel
 				activeCourse={course}
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
-				ended={false}
 				onClose={() => undefined}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
+				onRenameCourse={() => course}
+				onReorderCourse={() => undefined}
 				onSelect={() => undefined}
 				open
 				selectionLocked
 				speedUnit="mph"
 			/>
 		);
-		expect(lockedPanel).toContain('End the current session before changing the workout.');
+		expect(lockedPanel).toContain('placeholder="Search by name or difficulty"');
 		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(6);
 
 		const terrain = workoutTerrainAtDistance(course, course.distance * 2 + 2);
@@ -588,7 +618,7 @@ describe('view components', () => {
 		expect(metricProgress).toContain('30 m');
 		expect(metricProgress).toContain('12 m');
 		expect(metricProgress).not.toContain('animate-pulse');
-		const outAndBackProgress = render(
+		const pointToPointProgress = render(
 			<WorkoutProgress
 				elevationTotals={{ ascent: 30, descent: 12 }}
 				isRiding={false}
@@ -597,9 +627,9 @@ describe('view components', () => {
 				workout={{ course: importedCourse }}
 			/>
 		);
-		expect(outAndBackProgress).toContain('Trips completed');
-		expect(outAndBackProgress).toContain('Ridden this trip');
-		expect(outAndBackProgress).toContain('aria-label="2 trips completed"');
+		expect(pointToPointProgress).toContain('Route completed');
+		expect(pointToPointProgress).toContain('Ridden this route');
+		expect(pointToPointProgress).toContain('aria-label="2 routes completed"');
 	});
 
 	test('hides empty notifications and expands setup guidance', () => {

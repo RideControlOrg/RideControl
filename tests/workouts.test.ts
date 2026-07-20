@@ -15,6 +15,7 @@ import {
 	workoutLap,
 	workoutMapPath,
 	workoutMapProgressPath,
+	workoutMatchesSearch,
 	workoutMaximumGrade,
 	workoutProfilePath,
 	workoutProfilePosition,
@@ -73,6 +74,19 @@ describe('terrain workouts', () => {
 			expect(workout.points.at(-1)?.distance).toBe(workout.distance);
 			expect(workoutMaximumGrade(workout)).toBeGreaterThan(0);
 		}
+	});
+
+	test('filters workouts by name and displayed difficulty', () => {
+		const prairie = WORKOUT_COURSES.find((workout) => workout.id === 'prairie-roll');
+		const granite = WORKOUT_COURSES.find((workout) => workout.id === 'granite-switchbacks');
+		if (!(prairie && granite)) {
+			throw new Error('Expected Prairie Roll and Granite Switchbacks');
+		}
+		expect(workoutMatchesSearch(prairie, 'prairie')).toBeTrue();
+		expect(workoutMatchesSearch(prairie, 'GENTLE')).toBeTrue();
+		expect(workoutMatchesSearch(granite, 'granite challenging')).toBeTrue();
+		expect(workoutMatchesSearch(granite, 'gentle')).toBeFalse();
+		expect(workoutMatchesSearch(granite, '   ')).toBeTrue();
 	});
 
 	test('offers a ten-mile time trial with a mirrored five-mile hillclimb', () => {
@@ -156,6 +170,35 @@ describe('terrain workouts', () => {
 		expect(workoutCompletedLaps(outAndBack, distance)).toBe(1);
 		expect(workoutTerrainAtDistance(outAndBack, distance).distance).toBe(0);
 		expect(workoutMapPath(outAndBack)).toStartWith('M ');
+	});
+
+	test('finishes point-to-point courses without wrapping back to the start', () => {
+		if (!course) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const sourcePoints = course.points.slice(0, 6).map(({ x: _x, y: _y, ...point }) => point);
+		const distance = sourcePoints.at(-1)?.distance ?? 0;
+		const pointToPoint = restoreWorkoutCourse({
+			...course,
+			distance,
+			id: 'ridge-point-to-point',
+			points: sourcePoints,
+			routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
+		});
+		if (!pointToPoint) {
+			throw new Error('Expected a valid point-to-point workout course');
+		}
+		const finish = workoutTerrainAtDistance(pointToPoint, distance);
+		const beyondFinish = workoutTerrainAtDistance(pointToPoint, distance * 2);
+		expect(finish).toMatchObject({ completedLaps: 1, distance, grade: 0, lap: 1, progress: 1 });
+		expect(beyondFinish).toEqual(finish);
+		expect(workoutLap(pointToPoint, distance * 2)).toBe(1);
+		expect(workoutCompletedLaps(pointToPoint, distance * 2)).toBe(1);
+		expect(workoutProgress(pointToPoint, distance * 2)).toBe(1);
+		expect(workoutElevationTotalsAtDistance(pointToPoint, distance * 2)).toEqual(
+			workoutElevationTotalsAtDistance(pointToPoint, distance)
+		);
+		expect(workoutMapProgressPath(pointToPoint, finish)).toBe(workoutMapPath(pointToPoint));
 	});
 
 	test('offers a fifteen-mile course with long rollers centered on 20% resistance', () => {

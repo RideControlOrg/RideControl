@@ -1,12 +1,29 @@
 import { formatGrade } from '../lib/format';
 import { formatDistanceProgress, formatElevation } from '../lib/units';
-import { WORKOUT_ROUTE_TYPE, WORKOUT_VIEW } from '../lib/workout-schema';
+import { WORKOUT_ROUTE_TYPE, WORKOUT_VIEW, type WorkoutRouteType } from '../lib/workout-schema';
 import type { ElevationTotals, SessionWorkout, SpeedUnit, WorkoutTerrain } from '../types';
 import { WorkoutRouteVisualization } from './workout-route-visualization';
 
 interface WorkoutStat {
 	label: string;
 	value: string;
+}
+
+function workoutCompletionLabels(routeType: WorkoutRouteType): {
+	completed: string;
+	ridden: string;
+	unit: string;
+} {
+	switch (routeType) {
+		case WORKOUT_ROUTE_TYPE.LOOP:
+			return { completed: 'Laps completed', ridden: 'Ridden this lap', unit: 'lap' };
+		case WORKOUT_ROUTE_TYPE.OUT_AND_BACK:
+			return { completed: 'Trips completed', ridden: 'Ridden this trip', unit: 'trip' };
+		case WORKOUT_ROUTE_TYPE.POINT_TO_POINT:
+			return { completed: 'Route completed', ridden: 'Ridden this route', unit: 'route' };
+		default:
+			return { completed: '', ridden: '', unit: '' };
+	}
 }
 
 function WorkoutStats({
@@ -54,8 +71,7 @@ export function WorkoutProgress({
 	workout: SessionWorkout;
 }) {
 	const { course } = workout;
-	const outAndBack = course.routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK;
-	const completionUnit = outAndBack ? 'trip' : 'lap';
+	const completion = workoutCompletionLabels(course.routeType);
 	const elevationStats = [
 		{ label: 'Course climb', value: formatElevation(course.elevationGain, speedUnit) },
 		{ label: 'Climbed', value: formatElevation(elevationTotals.ascent, speedUnit) },
@@ -79,15 +95,15 @@ export function WorkoutProgress({
 					<h2 className="font-bold text-base">{course.name}</h2>
 					<span className="inline-flex items-center gap-1.5 whitespace-nowrap font-semibold text-[9px] text-slate-500 uppercase tracking-[.12em]">
 						<span className="h-0.5 w-3 rounded-full bg-mint" />
-						Ridden this {completionUnit}
+						{completion.ridden}
 					</span>
 				</div>
 				<div className="flex items-center gap-2 text-right">
 					<p className="font-bold text-[8px] text-mint uppercase tracking-[.16em]">
-						{outAndBack ? 'Trips completed' : 'Laps completed'}
+						{completion.completed}
 					</p>
 					<output
-						aria-label={`${terrain.completedLaps} ${completionUnit}${terrain.completedLaps === 1 ? '' : 's'} completed`}
+						aria-label={`${terrain.completedLaps} ${completion.unit}${terrain.completedLaps === 1 ? '' : 's'} completed`}
 						className="block min-w-7 font-bold text-3xl text-white tabular-nums leading-none"
 					>
 						{terrain.completedLaps}

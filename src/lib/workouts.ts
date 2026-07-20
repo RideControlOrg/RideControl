@@ -20,6 +20,10 @@ import { clamp, nonNegativeNumber } from './numbers';
 import { clampResistance } from './resistance';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
 import {
+	isWorkoutDescriptionAttribution,
+	type WorkoutDescriptionAttribution,
+} from './workout-description';
+import {
 	isWorkoutDifficulty,
 	isWorkoutRouteType,
 	WORKOUT_DIFFICULTY,
@@ -49,6 +53,7 @@ const ROUTE_VALUE_EPSILON = 0.000_001;
 const LOW_CLIMB_ELEVATION_GAIN_METERS = 50;
 const MODERATE_CLIMB_ELEVATION_GAIN_METERS = 150;
 const PROFILE_REFERENCE_ELEVATION_SPAN_METERS = 200;
+const SEARCH_WHITESPACE = /\s+/;
 export const WORKOUT_SHORT_FLAT_START_DISTANCE = 0.4;
 export const WORKOUT_MODERATE_FLAT_START_DISTANCE = 0.8;
 export const WORKOUT_FLAT_START_DISTANCE = 1.5;
@@ -158,7 +163,7 @@ function withFlatCourseStart(
 	routeType: WorkoutRouteType,
 	rolloutDistance: number
 ): GeographicRoutePoint[] {
-	if (routeType === WORKOUT_ROUTE_TYPE.LOOP) {
+	if (routeType !== WORKOUT_ROUTE_TYPE.OUT_AND_BACK) {
 		return flatRouteStart(points, rolloutDistance);
 	}
 	const outbound = points.filter((point) => point.distance <= distance / 2 + ROUTE_VALUE_EPSILON);
@@ -170,11 +175,16 @@ function withFlatCourseStart(
 export function workoutRouteCloses(points: GeographicRoutePoint[]): boolean {
 	const [first] = points;
 	const last = points.at(-1);
+	const routeDistanceMeters = (last?.distance ?? 0) * 1000;
+	const closureThreshold = Math.min(
+		COURSE_CLOSURE_METERS,
+		Math.max(20, routeDistanceMeters * 0.02)
+	);
 	return Boolean(
 		first &&
 			last &&
 			distanceBetween(first.latitude, first.longitude, last.latitude, last.longitude) <=
-				COURSE_CLOSURE_METERS
+				closureThreshold
 	);
 }
 
@@ -250,32 +260,31 @@ function createGeographicCourse(
 	distance: number,
 	points: GeographicRoutePoint[],
 	baseResistance = DEFAULT_TERRAIN_RESISTANCE,
-	routeType: WorkoutRouteType = WORKOUT_ROUTE_TYPE.LOOP
+	routeType: WorkoutRouteType = WORKOUT_ROUTE_TYPE.LOOP,
+	descriptionAttribution?: WorkoutDescriptionAttribution
 ): WorkoutCourse {
 	const [first] = points;
 	const rolloutDistance = flatStartDistanceForElevationGain(elevationGain(points));
+	const sourcePoints =
+		first && routeType !== WORKOUT_ROUTE_TYPE.POINT_TO_POINT
+			? points.map((point, index) =>
+					index === points.length - 1
+						? {
+								...point,
+								elevation: first.elevation,
+								latitude: first.latitude,
+								longitude: first.longitude,
+							}
+						: point
+				)
+			: points;
 	const terrainPoints = mapCoordinates(
-		withFlatCourseStart(
-			first
-				? points.map((point, index) =>
-						index === points.length - 1
-							? {
-									...point,
-									elevation: first.elevation,
-									latitude: first.latitude,
-									longitude: first.longitude,
-								}
-							: point
-					)
-				: points,
-			distance,
-			routeType,
-			rolloutDistance
-		)
+		withFlatCourseStart(sourcePoints, distance, routeType, rolloutDistance)
 	);
 	return {
 		baseResistance,
 		description,
+		descriptionAttribution,
 		difficulty,
 		distance,
 		elevationGain: elevationGain(terrainPoints),
@@ -325,8 +334,14 @@ function loopDistance(courseDistance: number, totalDistance: number): number {
 	return nonNegativeNumber(totalDistance) % courseDistance;
 }
 
+function coursePosition(course: WorkoutCourse, totalDistance: number): number {
+	return course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT
+		? clamp(nonNegativeNumber(totalDistance), 0, course.distance)
+		: loopDistance(course.distance, totalDistance);
+}
+
 function segmentAtDistance(course: WorkoutCourse, distance: number) {
-	const position = loopDistance(course.distance, distance);
+	const position = coursePosition(course, distance);
 	const nextIndex = course.points.findIndex((point) => point.distance >= position);
 	const rightIndex = Math.max(1, nextIndex < 0 ? course.points.length - 1 : nextIndex);
 	const left = course.points[rightIndex - 1] ?? course.points[0];
@@ -369,9 +384,7 @@ function coursePointAtDistance(course: WorkoutCourse, distance: number): Workout
 }
 
 export function workoutProgress(course: WorkoutCourse, totalDistance: number): number {
-	return course.distance <= 0
-		? 0
-		: loopDistance(course.distance, totalDistance) / course.distance;
+	return course.distance <= 0 ? 0 : coursePosition(course, totalDistance) / course.distance;
 }
 
 export function workoutSelectionLocked({
@@ -387,27 +400,36 @@ export function workoutSelectionLocked({
 }
 
 export function workoutLap(course: WorkoutCourse, totalDistance: number): number {
-	return workoutCompletedLaps(course, totalDistance) + 1;
+	return course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT
+		? 1
+		: workoutCompletedLaps(course, totalDistance) + 1;
 }
 
 export function workoutCompletedLaps(course: WorkoutCourse, totalDistance: number): number {
-	return course.distance <= 0
-		? 0
-		: Math.floor(nonNegativeNumber(totalDistance) / course.distance);
+	if (course.distance <= 0) {
+		return 0;
+	}
+	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
+		return nonNegativeNumber(totalDistance) >= course.distance ? 1 : 0;
+	}
+	return Math.floor(nonNegativeNumber(totalDistance) / course.distance);
 }
 
 export function workoutElevationTotalsAtDistance(
 	course: WorkoutCourse,
 	totalDistance: number
 ): ElevationTotals {
-	const completedLaps = workoutCompletedLaps(course, totalDistance);
-	const fullLap = elevationTotalsForSamples(course.points);
-	const position = loopDistance(course.distance, totalDistance);
+	const position = coursePosition(course, totalDistance);
 	const current = coursePointAtDistance(course, position);
 	const partialLap = elevationTotalsForSamples([
 		...course.points.filter((point) => point.distance < position),
 		current,
 	]);
+	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
+		return partialLap;
+	}
+	const completedLaps = workoutCompletedLaps(course, totalDistance);
+	const fullLap = elevationTotalsForSamples(course.points);
 	return {
 		ascent: fullLap.ascent * completedLaps + partialLap.ascent,
 		descent: fullLap.descent * completedLaps + partialLap.descent,
@@ -432,17 +454,17 @@ export function workoutTerrainAtDistance(
 	course: WorkoutCourse,
 	totalDistance: number
 ): WorkoutTerrain {
-	const distance = loopDistance(course.distance, totalDistance);
+	const distance = coursePosition(course, totalDistance);
 	const point = coursePointAtDistance(course, distance);
 	const lookAheadDistance = Math.min(0.15, course.distance / 20);
-	const ahead = coursePointAtDistance(course, distance + lookAheadDistance);
+	const gradeDistance =
+		course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT
+			? Math.min(lookAheadDistance, course.distance - distance)
+			: lookAheadDistance;
+	const ahead = coursePointAtDistance(course, distance + gradeDistance);
 	const grade =
-		lookAheadDistance > 0
-			? clamp(
-					((ahead.elevation - point.elevation) / (lookAheadDistance * 1000)) * 100,
-					-15,
-					15
-				)
+		gradeDistance > 0
+			? clamp(((ahead.elevation - point.elevation) / (gradeDistance * 1000)) * 100, -15, 15)
 			: 0;
 	const resistance = clampResistance(
 		Math.round(
@@ -604,7 +626,7 @@ function mapCoordinateTangents(
 }
 
 function workoutMapCourse(course: WorkoutCourse): WorkoutCourse {
-	if (course.routeType === WORKOUT_ROUTE_TYPE.LOOP) {
+	if (course.routeType !== WORKOUT_ROUTE_TYPE.OUT_AND_BACK) {
 		return course;
 	}
 	const turnaroundDistance = course.distance / 2;
@@ -618,7 +640,7 @@ function workoutMapCourse(course: WorkoutCourse): WorkoutCourse {
 }
 
 function workoutMapDistance(course: WorkoutCourse, distance: number): number {
-	const position = loopDistance(course.distance, distance);
+	const position = coursePosition(course, distance);
 	return course.routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK && position > course.distance / 2
 		? course.distance - position
 		: position;
@@ -882,22 +904,53 @@ function isValidOutAndBack(points: GeographicRoutePoint[], distance: number): bo
 	});
 }
 
+function isValidPointToPoint(points: GeographicRoutePoint[], distance: number): boolean {
+	const [first] = points;
+	const last = points.at(-1);
+	return Boolean(
+		first &&
+			last &&
+			points.every((point, index) => {
+				const previous = points[index - 1];
+				return !previous || point.distance > previous.distance;
+			}) &&
+			approximatelyEqual(first.distance, 0) &&
+			approximatelyEqual(last.distance, distance)
+	);
+}
+
 function isValidCourse(
 	points: GeographicRoutePoint[],
 	distance: number,
 	routeType: WorkoutRouteType
 ): boolean {
-	return routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK
-		? isValidOutAndBack(points, distance)
-		: isValidClosedCourse(points, distance);
+	switch (routeType) {
+		case WORKOUT_ROUTE_TYPE.LOOP:
+			return isValidClosedCourse(points, distance);
+		case WORKOUT_ROUTE_TYPE.OUT_AND_BACK:
+			return isValidOutAndBack(points, distance);
+		case WORKOUT_ROUTE_TYPE.POINT_TO_POINT:
+			return isValidPointToPoint(points, distance);
+		default:
+			return false;
+	}
 }
 
 export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined {
 	if (!isRecord(value)) {
 		return;
 	}
-	const { baseResistance, description, difficulty, distance, id, name, points, routeType } =
-		value;
+	const {
+		baseResistance,
+		description,
+		descriptionAttribution,
+		difficulty,
+		distance,
+		id,
+		name,
+		points,
+		routeType,
+	} = value;
 	let restoredRouteType: WorkoutRouteType | undefined;
 	if (routeType === undefined) {
 		restoredRouteType = WORKOUT_ROUTE_TYPE.LOOP;
@@ -907,6 +960,8 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 	if (
 		!(
 			isString(description) &&
+			(descriptionAttribution === undefined ||
+				isWorkoutDescriptionAttribution(descriptionAttribution)) &&
 			isWorkoutDifficulty(difficulty) &&
 			isFiniteNumber(distance) &&
 			isString(id) &&
@@ -952,7 +1007,8 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		distance,
 		restoredPoints,
 		restoredBaseResistance,
-		restoredRouteType
+		restoredRouteType,
+		descriptionAttribution
 	);
 }
 
@@ -980,4 +1036,14 @@ export function workoutDifficultyLabel(difficulty: WorkoutDifficulty): string {
 		default:
 			return difficulty;
 	}
+}
+
+export function workoutMatchesSearch(course: WorkoutCourse, query: string): boolean {
+	const terms = query.trim().toLocaleLowerCase().split(SEARCH_WHITESPACE).filter(Boolean);
+	if (terms.length === 0) {
+		return true;
+	}
+	const searchable =
+		`${course.name} ${workoutDifficultyLabel(course.difficulty)}`.toLocaleLowerCase();
+	return terms.every((term) => searchable.includes(term));
 }

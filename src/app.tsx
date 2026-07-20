@@ -407,10 +407,11 @@ export function App() {
 				activeCourse={session.selectedWorkout?.course}
 				courses={workoutLibrary.courses}
 				customCourseIds={workoutLibrary.customCourseIds}
-				ended={session.ended}
 				onClose={() => setActiveOverlay(undefined)}
 				onImportFile={workoutLibrary.importFile}
 				onRemoveCourse={removeWorkout}
+				onRenameCourse={workoutLibrary.renameCourse}
+				onReorderCourse={workoutLibrary.reorderCourse}
 				onSelect={selectWorkout}
 				open={activeOverlay === APP_OVERLAY.WORKOUTS}
 				selectionLocked={workoutLocked}
