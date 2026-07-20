@@ -200,7 +200,7 @@ export function SessionDetail({
 					/>
 				) : null}
 			</div>
-			<div className="mt-5 grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-[#12171d]">
+			<div className="mt-5 grid grid-cols-3 divide-x divide-line rounded-xl bg-[#12171d] ring-1 ring-line ring-inset">
 				<SessionSummary
 					calories={session.calories}
 					distance={session.distance}
