@@ -532,11 +532,13 @@ describe('view components', () => {
 		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(6);
 
 		const terrain = workoutTerrainAtDistance(course, course.distance * 2 + 2);
+		const shiftedWorkoutResistance = 42.4;
 		const progress = render(
 			<WorkoutProgress
 				elevationTotals={{ ascent: 30, descent: 12 }}
 				isRiding
 				speedUnit="mph"
+				targetResistance={shiftedWorkoutResistance}
 				terrain={terrain}
 				workout={{ course }}
 			/>
@@ -559,7 +561,8 @@ describe('view components', () => {
 		expect(progress).toContain('Grade');
 		expect(progress).toContain(formatGrade(terrain.grade));
 		expect(progress).toContain('Resistance');
-		expect(progress).toContain(`${terrain.resistance}%`);
+		expect(progress).toContain(`${Math.round(shiftedWorkoutResistance)}%`);
+		expect(progress).not.toContain(`${terrain.resistance}%`);
 		expect(progress.match(/sm:text-4xl/g)).toHaveLength(3);
 		expect(progress.match(/sm:text-2xl/g)).toHaveLength(3);
 		expect(progress).toContain('sm:text-lg');
