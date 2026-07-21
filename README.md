@@ -75,7 +75,7 @@ and repeated dialog and keyboard behavior so those rules stay consistent across 
 
 Pull requests and pushes to `main` run the complete `bun run ci` suite in GitHub Actions. After
 CI succeeds on `main`, a separate workflow runs `bun run build` and deploys the generated `dist`
-directory to GitHub Pages at [ridecontrol.xyz](https://ridecontrol.xyz).
+assets to a Cloudflare Worker at [ridecontrol.xyz](https://ridecontrol.xyz).
 
 ## Automatic reconnect
 

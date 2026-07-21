@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: Deploy Worker
 
 on:
   workflow_run:
@@ -12,20 +12,20 @@ on:
 
 permissions:
   contents: read
-  pages: write
   pull-requests: read
-  id-token: write
 
 concurrency:
-  group: pages
+  group: production-worker
   cancel-in-progress: false
 
 jobs:
-
-  build:
-    name: Build site
+  deploy:
+    name: Deploy Worker
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://ridecontrol.xyz
     steps:
       - name: Check out verified revision
         uses: actions/checkout@v7
@@ -35,8 +35,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Set up GitHub Pages
-        uses: actions/configure-pages@v6
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Resolve build metadata
@@ -50,21 +48,11 @@ jobs:
             build_pr_url="https://github.com/${GITHUB_REPOSITORY}/pulls?q=is%3Apr+is%3Aclosed"
           fi
           echo "VITE_BUILD_PR_URL=${build_pr_url}" >> "$GITHUB_ENV"
-      - name: Build site
+      - name: Build Worker
         run: bun run build
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v5
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: dist
-
-  deploy:
-    name: Deploy site
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+          accountId: c1e6e1378d9461aa07039950b1bf8b89
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy

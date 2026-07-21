@@ -1,0 +1,16 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "ridecontrol-frontend",
+	"account_id": "c1e6e1378d9461aa07039950b1bf8b89",
+	"compatibility_date": "2026-07-21",
+	"workers_dev": false,
+	"routes": [
+		{
+			"pattern": "ridecontrol.xyz",
+			"custom_domain": true
+		}
+	],
+	"assets": {
+		"not_found_handling": "single-page-application"
+	}
+}
