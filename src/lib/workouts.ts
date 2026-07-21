@@ -261,7 +261,8 @@ function createGeographicCourse(
 	points: GeographicRoutePoint[],
 	baseResistance = DEFAULT_TERRAIN_RESISTANCE,
 	routeType: WorkoutRouteType = WORKOUT_ROUTE_TYPE.LOOP,
-	descriptionAttribution?: WorkoutDescriptionAttribution
+	descriptionAttribution?: WorkoutDescriptionAttribution,
+	startingLocation?: string
 ): WorkoutCourse {
 	const [first] = points;
 	const rolloutDistance = flatStartDistanceForElevationGain(elevationGain(points));
@@ -292,6 +293,7 @@ function createGeographicCourse(
 		name,
 		points: terrainPoints,
 		routeType,
+		startingLocation,
 	};
 }
 
@@ -950,6 +952,7 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		name,
 		points,
 		routeType,
+		startingLocation,
 	} = value;
 	let restoredRouteType: WorkoutRouteType | undefined;
 	if (routeType === undefined) {
@@ -968,8 +971,10 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 			isString(name) &&
 			Array.isArray(points) &&
 			restoredRouteType &&
+			(startingLocation === undefined || isString(startingLocation)) &&
 			id.trim().length > 0 &&
-			name.trim().length > 0
+			name.trim().length > 0 &&
+			(startingLocation === undefined || startingLocation.trim().length > 0)
 		)
 	) {
 		return;
@@ -1008,7 +1013,8 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		restoredPoints,
 		restoredBaseResistance,
 		restoredRouteType,
-		descriptionAttribution
+		descriptionAttribution,
+		startingLocation?.trim()
 	);
 }
 

@@ -147,10 +147,12 @@ function workoutMetadata(
 	difficulty: WorkoutDifficulty;
 	id: string;
 	routeType?: WorkoutRouteType;
+	startingLocation?: string;
 } {
 	const difficultyValue = xmlText(xmlDescendant(container, 'Difficulty'));
 	const descriptionAttributionValue = xmlText(xmlDescendant(container, 'DescriptionAttribution'));
 	const routeTypeValue = xmlText(xmlDescendant(container, 'CourseType'));
+	const startingLocation = xmlText(xmlDescendant(container, 'StartingLocation')).trim();
 	return {
 		baseResistance: xmlNumber(xmlDescendant(container, 'BaseResistance')),
 		descriptionAttribution: isWorkoutDescriptionAttribution(descriptionAttributionValue)
@@ -161,6 +163,7 @@ function workoutMetadata(
 			: WORKOUT_DIFFICULTY.MODERATE,
 		id: xmlText(xmlDescendant(container, 'WorkoutId')) || routeFingerprint(points),
 		routeType: isWorkoutRouteType(routeTypeValue) ? routeTypeValue : undefined,
+		startingLocation: startingLocation || undefined,
 	};
 }
 
@@ -211,6 +214,7 @@ export function workoutFileContents(course: WorkoutCourse): string {
 			<rc:BaseResistance>${course.baseResistance.toFixed(1)}</rc:BaseResistance>
 			<rc:CourseType>${course.routeType}</rc:CourseType>
 			${course.descriptionAttribution ? `<rc:DescriptionAttribution>${course.descriptionAttribution}</rc:DescriptionAttribution>` : ''}
+			${course.startingLocation ? `<rc:StartingLocation>${xmlEscape(course.startingLocation)}</rc:StartingLocation>` : ''}
 		</extensions>
 		<trkseg>${points}
 		</trkseg>
@@ -262,6 +266,7 @@ export function parseWorkoutFile(
 		name: parsed.name || fallbackName,
 		points,
 		routeType,
+		startingLocation: metadata.startingLocation,
 	});
 	if (!course) {
 		throw new Error(
@@ -283,6 +288,13 @@ export async function readWorkoutFile(
 	if (course.description !== IMPORTED_GPX_DESCRIPTION) {
 		return course;
 	}
+	if (course.startingLocation) {
+		return {
+			...course,
+			description: `Starts in ${course.startingLocation}.`,
+			descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
+		};
+	}
 	const [firstPoint] = course.points;
 	const city = firstPoint ? await resolveStartingCity(firstPoint) : undefined;
 	return city
@@ -290,6 +302,7 @@ export async function readWorkoutFile(
 				...course,
 				description: `Starts in ${city}.`,
 				descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
+				startingLocation: city,
 			}
 		: course;
 }
@@ -365,14 +378,16 @@ export function orderWorkoutCourses(
 export function moveWorkoutCourse(
 	courses: WorkoutCourse[],
 	movedCourseId: string,
-	targetCourseId: string
+	destinationIndex: number
 ): WorkoutCourse[] {
-	if (movedCourseId === targetCourseId) {
+	const movedIndex = courses.findIndex((course) => course.id === movedCourseId);
+	if (movedIndex < 0) {
 		return courses;
 	}
-	const movedIndex = courses.findIndex((course) => course.id === movedCourseId);
-	const targetIndex = courses.findIndex((course) => course.id === targetCourseId);
-	if (movedIndex < 0 || targetIndex < 0) {
+	const boundedDestination = Math.max(0, Math.min(Math.trunc(destinationIndex), courses.length));
+	const insertionIndex =
+		movedIndex < boundedDestination ? boundedDestination - 1 : boundedDestination;
+	if (movedIndex === insertionIndex) {
 		return courses;
 	}
 	const reordered = [...courses];
@@ -380,7 +395,7 @@ export function moveWorkoutCourse(
 	if (!movedCourse) {
 		return courses;
 	}
-	reordered.splice(targetIndex, 0, movedCourse);
+	reordered.splice(insertionIndex, 0, movedCourse);
 	return reordered;
 }
 

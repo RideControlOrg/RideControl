@@ -31,7 +31,6 @@ export function RenameWorkoutDialog({
 	return (
 		<div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm">
 			<section
-				aria-describedby="rename-workout-description"
 				aria-labelledby="rename-workout-title"
 				aria-modal="true"
 				className="w-full max-w-md rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/50 sm:p-6"
@@ -50,9 +49,6 @@ export function RenameWorkoutDialog({
 						×
 					</button>
 				</div>
-				<p className="mt-3 text-slate-400 text-sm" id="rename-workout-description">
-					The route and its duplicate-detection identifier will stay the same.
-				</p>
 				<form className="mt-5" onSubmit={submitRename}>
 					<label className="block font-semibold text-sm" htmlFor="workout-name">
 						Workout name

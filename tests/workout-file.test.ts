@@ -35,6 +35,7 @@ function customWorkout(): WorkoutCourse {
 		...builtIn,
 		id: 'ridge-river-test',
 		name: 'Ridge & River / Test',
+		startingLocation: 'Santa Cruz',
 	};
 }
 
@@ -86,6 +87,7 @@ describe('workout GPX files', () => {
 		expect(contents).toContain('<ele>');
 		expect(contents).toContain('<rc:BaseResistance>12.0</rc:BaseResistance>');
 		expect(contents).toContain('<rc:CourseType>loop</rc:CourseType>');
+		expect(contents).toContain('<rc:StartingLocation>Santa Cruz</rc:StartingLocation>');
 		expect(contents).not.toContain('elevationGain');
 		expect(contents).not.toContain('<rc:X>');
 		const parsed = parseWorkoutFile(
@@ -100,6 +102,7 @@ describe('workout GPX files', () => {
 			id: workout.id,
 			name: workout.name,
 			routeType: WORKOUT_ROUTE_TYPE.LOOP,
+			startingLocation: 'Santa Cruz',
 		});
 		expect(parsed.points).toHaveLength(workout.points.length);
 		expect(parsed.points[1]?.latitude).toBeCloseTo(workout.points[1]?.latitude ?? 0, 7);
@@ -140,6 +143,7 @@ describe('workout GPX files', () => {
 		expect(workout).toMatchObject({
 			description: 'Starts in Santa Cruz.',
 			descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
+			startingLocation: 'Santa Cruz',
 		});
 
 		const roundTripped = parseWorkoutFile(
@@ -149,6 +153,24 @@ describe('workout GPX files', () => {
 		expect(roundTripped.descriptionAttribution).toBe(
 			WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP
 		);
+		expect(roundTripped.startingLocation).toBe('Santa Cruz');
+	});
+
+	test('reuses a location saved with a workout instead of looking it up again', async () => {
+		const resolved = await readWorkoutFile(
+			{ name: 'city-loop.gpx', text: async () => gpxWithoutDescription() },
+			async () => 'Santa Cruz'
+		);
+		let resolverCalled = false;
+		const restored = await readWorkoutFile(
+			{ name: 'saved-city-loop.gpx', text: async () => workoutFileContents(resolved) },
+			() => {
+				resolverCalled = true;
+				return Promise.resolve('Unexpected city');
+			}
+		);
+		expect(resolverCalled).toBeFalse();
+		expect(restored.startingLocation).toBe('Santa Cruz');
 	});
 
 	test('keeps the generic description when the starting city is unavailable', async () => {
@@ -321,10 +343,15 @@ describe('workout GPX files', () => {
 			throw new Error('Expected at least three built-in workout courses');
 		}
 		const courses = [first, second, third];
-		expect(moveWorkoutCourse(courses, first.id, third.id)).toEqual([second, third, first]);
-		expect(moveWorkoutCourse(courses, third.id, first.id)).toEqual([third, first, second]);
-		expect(moveWorkoutCourse(courses, first.id, first.id)).toBe(courses);
-		expect(moveWorkoutCourse(courses, 'missing', third.id)).toBe(courses);
+		expect(moveWorkoutCourse(courses, first.id, courses.length)).toEqual([
+			second,
+			third,
+			first,
+		]);
+		expect(moveWorkoutCourse(courses, third.id, 0)).toEqual([third, first, second]);
+		expect(moveWorkoutCourse(courses, third.id, 1)).toEqual([first, third, second]);
+		expect(moveWorkoutCourse(courses, second.id, 2)).toBe(courses);
+		expect(moveWorkoutCourse(courses, 'missing', 0)).toBe(courses);
 		expect(orderWorkoutCourses(courses, [third.id, 'removed-workout', first.id])).toEqual([
 			third,
 			first,

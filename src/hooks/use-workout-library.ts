@@ -59,8 +59,8 @@ export function useWorkoutLibrary() {
 		},
 		[replaceCustomCourses]
 	);
-	const reorderCourse = useCallback((movedCourseId: string, targetCourseId: string) => {
-		const reordered = moveWorkoutCourse(coursesRef.current, movedCourseId, targetCourseId);
+	const reorderCourse = useCallback((movedCourseId: string, destinationIndex: number) => {
+		const reordered = moveWorkoutCourse(coursesRef.current, movedCourseId, destinationIndex);
 		if (reordered === coursesRef.current) {
 			return;
 		}

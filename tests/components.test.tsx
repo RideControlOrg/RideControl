@@ -31,6 +31,7 @@ import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
 import { formatSessionImportTime, sessionSummary } from '../src/lib/saved-sessions';
 import { SESSION_WORKFLOW_INTENT } from '../src/lib/session-workflow';
+import { WORKOUT_DESCRIPTION_ATTRIBUTION } from '../src/lib/workout-description';
 import { WORKOUT_ROUTE_TYPE } from '../src/lib/workout-schema';
 import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
 import { savedSessionFixture } from './fixtures/saved-session';
@@ -46,6 +47,7 @@ const noCustomWorkoutIds = new Set<string>();
 describe('view components', () => {
 	test('renders known and fallback icons', () => {
 		expect(render(<Icon name="heart" />)).toContain('<title>heart</title>');
+		expect(render(<Icon name="move-vertical" />)).toContain('<title>move-vertical</title>');
 		expect(render(<Icon name="unknown" />)).toContain('<title>unknown</title>');
 	});
 
@@ -485,7 +487,11 @@ describe('view components', () => {
 		expect(panel).toContain('href="https://bikegpx.com/bike_routes/"');
 		expect(panel).toContain('BikeGPX has thousands of GPX files');
 		expect(panel).toContain('data-gpx-drop-target="true"');
+		expect(panel).toContain('data-testid="workout-list"');
 		expect(panel).toContain('placeholder="Search by name or difficulty"');
+		expect(panel).toContain('data-testid="workout-status"');
+		expect(panel).toContain('role="status"');
+		expect(panel).not.toContain('Ride without a workout');
 		expect(panel).not.toContain(
 			'Choose a workout for your next session, then start it when you are ready.'
 		);
@@ -500,13 +506,21 @@ describe('view components', () => {
 		expect(panel).not.toContain('bg-lime text-ink');
 		expect(panel).not.toContain('aria-label="Rename Harbor Ring"');
 		expect(panel).toContain('aria-label="Drag Harbor Ring to reorder"');
+		expect(panel).toContain('<title>Move workout up or down</title>');
+		expect(panel).toContain('absolute top-3 right-3');
 		expect(panel.match(/draggable="true"/g)).toHaveLength(6);
+		expect(panel.match(/data-workout-drop-index=/g)).toHaveLength(7);
+		expect(panel).not.toContain('Move dragged workout to');
+		expect(panel).not.toContain('ring-2 ring-cyan-400/70');
 		expect(panel).toContain('data-side-tray="true"');
 		const importedCourse = {
 			...course,
+			description: 'Starts in Ålands Countryside.',
+			descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
 			id: 'imported-course',
 			name: 'Imported course',
 			routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
+			startingLocation: 'Ålands Countryside',
 		};
 		const customPanel = render(
 			<WorkoutPanel
@@ -524,6 +538,11 @@ describe('view components', () => {
 			/>
 		);
 		expect(customPanel).toContain('Imported course');
+		expect(customPanel).toContain('Starts in Ålands Countryside.');
+		expect(customPanel).toContain('View the route area and starting point on OpenStreetMap');
+		expect(customPanel).toContain('https://www.openstreetmap.org/?minlon=');
+		expect(customPanel).toContain('target="_blank"');
+		expect(customPanel).toContain('© OpenStreetMap contributors');
 		expect(customPanel).toContain('aria-label="Rename Imported course"');
 		expect(customPanel).toContain('title="Rename imported workout"');
 		expect(customPanel).toContain('Imported');
@@ -539,7 +558,7 @@ describe('view components', () => {
 		);
 		expect(renameDialog).toContain('Rename workout');
 		expect(renameDialog).not.toContain('IMPORTED GPX');
-		expect(renameDialog).toContain(
+		expect(renameDialog).not.toContain(
 			'The route and its duplicate-detection identifier will stay the same.'
 		);
 		expect(renameDialog).toContain('value="Imported course"');
@@ -562,6 +581,25 @@ describe('view components', () => {
 		);
 		expect(lockedPanel).toContain('placeholder="Search by name or difficulty"');
 		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(6);
+		expect(lockedPanel).not.toContain('Clear selected workout');
+		const selectedPanel = render(
+			<WorkoutPanel
+				activeCourse={course}
+				courses={WORKOUT_COURSES}
+				customCourseIds={noCustomWorkoutIds}
+				onClose={() => undefined}
+				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
+				onRemoveCourse={() => undefined}
+				onRenameCourse={() => course}
+				onReorderCourse={() => undefined}
+				onSelect={() => undefined}
+				open
+				selectionLocked={false}
+				speedUnit="mph"
+			/>
+		);
+		expect(selectedPanel).toContain('Clear selected workout');
+		expect(selectedPanel).not.toContain('Ride without a workout');
 
 		const terrain = workoutTerrainAtDistance(course, course.distance * 2 + 2);
 		const shiftedWorkoutResistance = 42.4;

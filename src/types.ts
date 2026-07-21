@@ -40,6 +40,7 @@ export interface WorkoutCourse {
 	name: string;
 	points: WorkoutRoutePoint[];
 	routeType: WorkoutRouteType;
+	startingLocation?: string;
 }
 
 export interface SessionWorkout {

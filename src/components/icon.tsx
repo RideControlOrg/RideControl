@@ -8,6 +8,7 @@ const paths: Record<string, string> = {
 	imported:
 		'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-6-6 6 6m-6-6v6h6M8 15l2 2 5-5',
 	minus: 'M5 12h14',
+	'move-vertical': 'M8 7l4-4 4 4M12 3v18M8 17l4 4 4-4',
 	pause: 'M9 5v14m6-14v14',
 	play: 'm9 5 10 7-10 7V5Z',
 	plus: 'M12 5v14M5 12h14',
