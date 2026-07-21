@@ -265,6 +265,7 @@ export function SessionHistory({
 						highlightedSessionIds={highlightedSessionIds}
 						onLoadMore={loadMore}
 						onSelect={selectSession}
+						open={open}
 						selectedId={selectedId}
 						speedUnit={speedUnit}
 						summaries={summaries}

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { formatDuration } from '../lib/format';
 import {
 	feelingLabel,
@@ -6,6 +7,7 @@ import {
 	groupSessionsByDate,
 	isImportedSession,
 } from '../lib/saved-sessions';
+import { SESSION_HISTORY_SCROLL_POSITION_STORAGE_KEY } from '../lib/session-history-preferences';
 import { formatDistance } from '../lib/units';
 import type { SavedSessionSummary, SpeedUnit } from '../types';
 import { Icon } from './icon';
@@ -15,6 +17,7 @@ export function SessionHistoryList({
 	highlightedSessionIds,
 	onLoadMore,
 	onSelect,
+	open,
 	selectedId,
 	speedUnit,
 	summaries,
@@ -24,6 +27,7 @@ export function SessionHistoryList({
 	highlightedSessionIds: string[];
 	onLoadMore: () => void;
 	onSelect: (id: string) => void;
+	open: boolean;
 	selectedId?: string;
 	speedUnit: SpeedUnit;
 	summaries: SavedSessionSummary[];
@@ -31,9 +35,19 @@ export function SessionHistoryList({
 }) {
 	const groups = useMemo(() => groupSessionsByDate(summaries), [summaries]);
 	const highlightedIds = useMemo(() => new Set(highlightedSessionIds), [highlightedSessionIds]);
+	const sessionListScroll = usePersistentScrollPosition<HTMLElement>(
+		SESSION_HISTORY_SCROLL_POSITION_STORAGE_KEY,
+		open,
+		summaries.length
+	);
 
 	return (
-		<aside className="max-h-64 shrink-0 overflow-y-auto border-line border-b bg-[#12171d] p-3 md:max-h-none md:w-80 md:border-r md:border-b-0">
+		<aside
+			className="max-h-64 shrink-0 overflow-y-auto border-line border-b bg-[#12171d] p-3 md:max-h-none md:w-80 md:border-r md:border-b-0"
+			data-testid="session-list"
+			onScroll={sessionListScroll.onScroll}
+			ref={sessionListScroll.ref}
+		>
 			{error ? <p className="p-3 text-rose-300 text-sm">{error}</p> : null}
 			{summaries.length === 0 && !error ? (
 				<div className="p-6 text-center">

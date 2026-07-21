@@ -8,6 +8,7 @@ import {
 	listSavedSessions,
 	sessionListAfterDelete,
 } from '../lib/saved-sessions';
+import { loadSelectedSessionId, saveSelectedSessionId } from '../lib/session-history-preferences';
 import { downloadSessionTcxArchive } from '../lib/tcx-archive';
 import { importTcxUpload, tcxImportResultMessage } from '../lib/tcx-import';
 import type { SavedSession, SavedSessionSummary } from '../types';
@@ -18,7 +19,8 @@ export function useSessionHistory(open: boolean) {
 	const [summaries, setSummaries] = useState<SavedSessionSummary[]>([]);
 	const [total, setTotal] = useState(0);
 	const [selected, setSelected] = useState<SavedSession>();
-	const [selectedId, setSelectedId] = useState<string>();
+	const [selectedId, setSelectedId] = useState(loadSelectedSessionId);
+	const selectedIdRef = useRef(selectedId);
 	const [loading, setLoading] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [exporting, setExporting] = useState(false);
@@ -29,18 +31,27 @@ export function useSessionHistory(open: boolean) {
 	const deleteInProgress = useRef(false);
 	const historyLoadGeneration = useRef(0);
 
-	const selectSession = useCallback(async (id: string) => {
+	const rememberSelectedSession = useCallback((id: string | undefined) => {
+		selectedIdRef.current = id;
 		setSelectedId(id);
-		setLoading(true);
-		try {
-			setSelected(await getSavedSession(id));
-			setError('');
-		} catch (loadError) {
-			setError(errorMessage(loadError));
-		} finally {
-			setLoading(false);
-		}
+		saveSelectedSessionId(id);
 	}, []);
+
+	const selectSession = useCallback(
+		async (id: string) => {
+			rememberSelectedSession(id);
+			setLoading(true);
+			try {
+				setSelected(await getSavedSession(id));
+				setError('');
+			} catch (loadError) {
+				setError(errorMessage(loadError));
+			} finally {
+				setLoading(false);
+			}
+		},
+		[rememberSelectedSession]
+	);
 
 	const loadHistory = useCallback(
 		async (preferredSessionId?: string, includeAll = false) => {
@@ -56,15 +67,17 @@ export function useSessionHistory(open: boolean) {
 			setSummaries(sessions);
 			setTotal(count);
 			setError('');
-			const nextSessionId = preferredSessionId ?? sessions[0]?.id;
+			const nextSessionId = sessions.some((session) => session.id === preferredSessionId)
+				? preferredSessionId
+				: sessions[0]?.id;
 			if (nextSessionId) {
 				await selectSession(nextSessionId);
 			} else {
 				setSelected(undefined);
-				setSelectedId(undefined);
+				rememberSelectedSession(undefined);
 			}
 		},
-		[selectSession]
+		[rememberSelectedSession, selectSession]
 	);
 
 	useEffect(() => {
@@ -74,7 +87,10 @@ export function useSessionHistory(open: boolean) {
 			setHighlightedSessionIds([]);
 			return;
 		}
-		loadHistory().catch((loadError: unknown) => setError(errorMessage(loadError)));
+		const rememberedSessionId = selectedIdRef.current;
+		loadHistory(rememberedSessionId, rememberedSessionId !== undefined).catch(
+			(loadError: unknown) => setError(errorMessage(loadError))
+		);
 	}, [loadHistory, open]);
 
 	const importTcxFile = useCallback(
@@ -138,7 +154,7 @@ export function useSessionHistory(open: boolean) {
 				await selectSession(updated.next.id);
 			} else {
 				setSelected(undefined);
-				setSelectedId(undefined);
+				rememberSelectedSession(undefined);
 			}
 			return true;
 		} catch (deleteError) {
@@ -148,7 +164,7 @@ export function useSessionHistory(open: boolean) {
 			deleteInProgress.current = false;
 			setDeleting(false);
 		}
-	}, [selected, selectSession, summaries]);
+	}, [rememberSelectedSession, selected, selectSession, summaries]);
 
 	const loadMore = useCallback(async () => {
 		const last = summaries.at(-1);
