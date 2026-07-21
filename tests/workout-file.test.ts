@@ -11,6 +11,7 @@ import {
 	moveWorkoutCourse,
 	orderWorkoutCourses,
 	parseWorkoutFile,
+	prioritizeWorkoutCourse,
 	readWorkoutFile,
 	renameCustomWorkout,
 	saveCustomWorkouts,
@@ -363,6 +364,14 @@ describe('workout GPX files', () => {
 			first,
 			second,
 		]);
+		const imported = customWorkout();
+		expect(
+			prioritizeWorkoutCourse(
+				[...courses, imported],
+				[third.id, first.id, second.id],
+				imported.id
+			)
+		).toEqual([imported, third, first, second]);
 
 		let savedOrder = '';
 		const storage = {

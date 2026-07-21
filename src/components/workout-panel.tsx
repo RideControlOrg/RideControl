@@ -5,7 +5,6 @@ import {
 	type DragEndEvent,
 	type DraggableAttributes,
 	type DraggableSyntheticListeners,
-	type DragMoveEvent,
 	PointerSensor,
 	pointerWithin,
 	useSensor,
@@ -277,33 +276,8 @@ function SortableWorkoutCourseCard(
 	);
 }
 
-function WorkoutDropBoundary({
-	active,
-	enabled,
-	index,
-}: {
-	active: boolean;
-	enabled: boolean;
-	index: number;
-}) {
-	let lineClassName = 'bg-transparent';
-	if (enabled) {
-		lineClassName = active
-			? 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,.8)]'
-			: 'bg-cyan-400/20';
-	}
-	return (
-		<div
-			aria-hidden="true"
-			className="relative h-4"
-			data-active={active ? 'true' : undefined}
-			data-workout-drop-index={index}
-		>
-			<span
-				className={`pointer-events-none absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full transition ${lineClassName}`}
-			/>
-		</div>
-	);
+function WorkoutDropBoundary({ index }: { index: number }) {
+	return <div aria-hidden="true" className="h-4" data-workout-drop-index={index} />;
 }
 
 export function WorkoutPanel({
@@ -339,8 +313,6 @@ export function WorkoutPanel({
 	const [importError, setImportError] = useState('');
 	const [renamingCourse, setRenamingCourse] = useState<WorkoutCourse>();
 	const [mappedCourse, setMappedCourse] = useState<WorkoutCourse>();
-	const [draggedCourseId, setDraggedCourseId] = useState('');
-	const [dropTargetIndex, setDropTargetIndex] = useState<number>();
 	const [searchQuery, setSearchQuery] = useState('');
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -368,6 +340,7 @@ export function WorkoutPanel({
 			try {
 				const course = await onImportFile(file);
 				setSearchQuery('');
+				workoutListScroll.scrollToTop();
 				setLibraryStatus(`${course.name} imported and saved on this device.`);
 			} catch (error) {
 				setImportError(errorMessage(error));
@@ -375,7 +348,7 @@ export function WorkoutPanel({
 				setImporting(false);
 			}
 		},
-		[onImportFile]
+		[onImportFile, workoutListScroll.scrollToTop]
 	);
 	const { active: fileDropActive, targetRef: fileDropTarget } = useFileDrop(
 		open && !importing,
@@ -385,14 +358,8 @@ export function WorkoutPanel({
 	const closePanel = () => {
 		setRenamingCourse(undefined);
 		setMappedCourse(undefined);
-		setDraggedCourseId('');
-		setDropTargetIndex(undefined);
 		setSearchQuery('');
 		onClose();
-	};
-	const finishDragging = () => {
-		setDraggedCourseId('');
-		setDropTargetIndex(undefined);
 	};
 	const reorderCourse = (movedCourseId: string, destinationIndex: number) => {
 		if (!movedCourseId) {
@@ -414,9 +381,7 @@ export function WorkoutPanel({
 			? courses.findIndex((course) => course.id === previousCourse.id) + 1
 			: courses.length;
 	};
-	const canDropAtBoundary = (boundaryIndex: number): boolean =>
-		canMoveWorkoutCourse(courses, draggedCourseId, destinationForBoundary(boundaryIndex));
-	const targetBoundaryForDrag = (event: DragMoveEvent | DragEndEvent): number | undefined => {
+	const targetBoundaryForDrag = (event: DragEndEvent): number | undefined => {
 		const activeCourseId = String(event.active.id);
 		const activeCourseIndex = filteredCourses.findIndex(
 			(course) => course.id === activeCourseId
@@ -443,7 +408,6 @@ export function WorkoutPanel({
 		if (movedCourse && boundaryIndex !== undefined) {
 			reorderCourse(movedCourse.id, destinationForBoundary(boundaryIndex));
 		}
-		finishDragging();
 	};
 
 	return (
@@ -556,17 +520,7 @@ export function WorkoutPanel({
 					<DndContext
 						collisionDetection={workoutCollisionDetection}
 						modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-						onDragCancel={finishDragging}
 						onDragEnd={moveDraggedCourse}
-						onDragMove={(event) => setDropTargetIndex(targetBoundaryForDrag(event))}
-						onDragStart={(event) => {
-							const activeCourseId = String(event.active.id);
-							const movedCourse = filteredCourses.find(
-								(course) => course.id === activeCourseId
-							);
-							setDraggedCourseId(movedCourse?.id ?? '');
-							setDropTargetIndex(undefined);
-						}}
 						sensors={sensors}
 					>
 						<div
@@ -581,11 +535,7 @@ export function WorkoutPanel({
 							>
 								{filteredCourses.map((course, index) => (
 									<Fragment key={course.id}>
-										<WorkoutDropBoundary
-											active={dropTargetIndex === index}
-											enabled={canDropAtBoundary(index)}
-											index={index}
-										/>
+										<WorkoutDropBoundary index={index} />
 										<SortableWorkoutCourseCard
 											course={course}
 											custom={customCourseIds.has(course.id)}
@@ -614,11 +564,7 @@ export function WorkoutPanel({
 									</Fragment>
 								))}
 								{filteredCourses.length > 0 ? (
-									<WorkoutDropBoundary
-										active={dropTargetIndex === filteredCourses.length}
-										enabled={canDropAtBoundary(filteredCourses.length)}
-										index={filteredCourses.length}
-									/>
+									<WorkoutDropBoundary index={filteredCourses.length} />
 								) : null}
 							</SortableContext>
 							{filteredCourses.length === 0 ? (

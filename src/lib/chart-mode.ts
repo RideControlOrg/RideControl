@@ -5,6 +5,7 @@ export const CHART_MODE = {
 	CADENCE: 'cadence',
 	ELEVATION: 'elevation',
 	GEAR: CONTROL_MODE.GEAR,
+	GRADE: 'grade',
 	HEART_RATE: 'heartRate',
 	POWER: 'power',
 	RESISTANCE: CONTROL_MODE.RESISTANCE,
@@ -20,7 +21,9 @@ const PERSISTED_CHART_MODES = new Set<unknown>([
 	CHART_MODE.CADENCE,
 	CHART_MODE.HEART_RATE,
 	CHART_MODE.GEAR,
+	CHART_MODE.GRADE,
 	CHART_MODE.RESISTANCE,
+	CHART_MODE.ELEVATION,
 ]);
 
 export function isPersistedChartMode(value: unknown): value is ChartMode {

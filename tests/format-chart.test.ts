@@ -59,6 +59,8 @@ describe('chart utilities', () => {
 		expect(storedChartMode({ getItem: () => 'power' })).toBe('power');
 		expect(storedChartMode({ getItem: () => 'resistance' })).toBe('resistance');
 		expect(storedChartMode({ getItem: () => 'gear' })).toBe('gear');
-		expect(storedChartMode({ getItem: () => 'elevation' })).toBe('all');
+		expect(storedChartMode({ getItem: () => 'grade' })).toBe('grade');
+		expect(storedChartMode({ getItem: () => 'elevation' })).toBe('elevation');
+		expect(storedChartMode({ getItem: () => 'unsupported' })).toBe('all');
 	});
 });

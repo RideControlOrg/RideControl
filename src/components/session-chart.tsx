@@ -1,14 +1,17 @@
 import { useSelector } from '@tanstack/react-store';
 import { Fragment, useCallback, useEffect, useMemo } from 'react';
-import { chartModesForControl, chartPath, roundedChartMaximum } from '../lib/chart';
+import { chartPath, roundedChartMaximum } from '../lib/chart';
 import { CHART_MODE } from '../lib/chart-mode';
-import { CONTROL_MODE, isControlMode } from '../lib/control-mode';
+import { CONTROL_MODE } from '../lib/control-mode';
 import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
 import { formatChartSeconds } from '../lib/format';
 import { MAX_GEAR, MIN_GEAR } from '../lib/gears';
 import {
 	ELEVATION_METRIC_PRESENTATION,
+	GEAR_METRIC_PRESENTATION,
+	GRADE_METRIC_PRESENTATION,
 	METRIC_PRESENTATION,
+	RESISTANCE_METRIC_PRESENTATION,
 	STANDARD_METRIC_KEYS,
 } from '../lib/metric-presentation';
 import { MAX_RESISTANCE, MIN_RESISTANCE } from '../lib/resistance';
@@ -114,16 +117,11 @@ export function SessionChart({
 		(history.some((sample) => sample.gear !== undefined)
 			? CONTROL_MODE.GEAR
 			: CONTROL_MODE.RESISTANCE);
-	const modeForAvailableControl = isControlMode(selectedMode)
-		? resolvedControlMode
-		: selectedMode;
-	const effectiveMode =
-		modeForAvailableControl === CHART_MODE.ELEVATION && route.length === 0
-			? CHART_MODE.ALL
-			: modeForAvailableControl;
 	const series = useMemo(() => {
 		const speedValues = history.map((sample) => convertSpeed(sample.speed, speedUnit));
 		const routeElevations = route.map((point) => convertElevation(point.elevation, speedUnit));
+		const gradeValues = history.map((sample) => sample.grade);
+		const hasRecordedGear = history.some((sample) => sample.gear !== undefined);
 		const standardSeries = STANDARD_METRIC_KEYS.map((key) => {
 			const presentation = METRIC_PRESENTATION[key];
 			const values = history.map((sample) => sample[key]);
@@ -142,28 +140,51 @@ export function SessionChart({
 				values,
 			};
 		});
-		const controlSeries =
-			resolvedControlMode === CONTROL_MODE.GEAR
-				? {
-						chartMaximum: MAX_GEAR,
-						color: '#adf5bd',
-						decimals: 0,
-						key: CONTROL_MODE.GEAR,
-						label: 'Gear',
-						minimum: MIN_GEAR,
-						unit: '',
-						values: history.map((sample) => sample.gear),
-					}
-				: {
-						chartMaximum: MAX_RESISTANCE,
-						color: '#adf5bd',
-						decimals: 0,
-						key: CONTROL_MODE.RESISTANCE,
-						label: 'Resistance',
-						minimum: MIN_RESISTANCE,
-						unit: '%',
-						values: history.map((sample) => sample.resistance),
-					};
+		const controlSeries = [
+			...(resolvedControlMode === CONTROL_MODE.GEAR || hasRecordedGear
+				? [
+						{
+							chartMaximum: MAX_GEAR,
+							color: GEAR_METRIC_PRESENTATION.chartColor,
+							decimals: 0,
+							key: CONTROL_MODE.GEAR,
+							label: GEAR_METRIC_PRESENTATION.label,
+							minimum: MIN_GEAR,
+							unit: '',
+							values: history.map((sample) => sample.gear),
+						},
+					]
+				: []),
+			{
+				chartMaximum: MAX_RESISTANCE,
+				color: RESISTANCE_METRIC_PRESENTATION.chartColor,
+				decimals: 0,
+				key: CONTROL_MODE.RESISTANCE,
+				label: RESISTANCE_METRIC_PRESENTATION.label,
+				minimum: MIN_RESISTANCE,
+				unit: RESISTANCE_METRIC_PRESENTATION.unit,
+				values: history.map((sample) => sample.resistance),
+			},
+		];
+		const maximumAbsoluteGrade = Math.max(
+			...gradeValues.map((grade) => Math.abs(grade ?? 0)),
+			0
+		);
+		const gradeMaximum = roundedChartMaximum(maximumAbsoluteGrade, 5, 5);
+		const gradeSeries = gradeValues.some((grade) => grade !== undefined)
+			? [
+					{
+						chartMaximum: gradeMaximum,
+						color: GRADE_METRIC_PRESENTATION.chartColor,
+						decimals: 1,
+						key: CHART_MODE.GRADE,
+						label: GRADE_METRIC_PRESENTATION.label,
+						minimum: -gradeMaximum,
+						unit: GRADE_METRIC_PRESENTATION.unit,
+						values: gradeValues,
+					},
+				]
+			: [];
 		const elevationSeries = route.length
 			? [
 					{
@@ -198,23 +219,25 @@ export function SessionChart({
 				values: speedValues,
 			},
 			...standardSeries,
-			controlSeries,
+			...controlSeries,
+			...gradeSeries,
 			...elevationSeries,
 		];
 	}, [history, resolvedControlMode, route, speedUnit]);
+	const effectiveMode =
+		selectedMode === CHART_MODE.ALL || series.some((item) => item.key === selectedMode)
+			? selectedMode
+			: CHART_MODE.ALL;
 	const visibleSeries =
 		effectiveMode === CHART_MODE.ALL
 			? series
 			: series.filter((item) => item.key === effectiveMode);
 	const availableModes = useMemo(
-		() =>
-			route.length
-				? [
-						...chartModesForControl(resolvedControlMode),
-						{ label: 'Elevation', value: CHART_MODE.ELEVATION },
-					]
-				: chartModesForControl(resolvedControlMode),
-		[resolvedControlMode, route.length]
+		() => [
+			{ label: 'All', value: CHART_MODE.ALL },
+			...series.map(({ key, label }) => ({ label, value: key })),
+		],
+		[series]
 	);
 	const historyPositions = history.map((sample) => sample.elapsedSeconds);
 	const historyStart = history[0]?.elapsedSeconds ?? 0;
@@ -257,29 +280,27 @@ export function SessionChart({
 
 	return (
 		<div className="mt-6 overflow-hidden rounded-xl border border-line bg-[#12171d] p-4">
-			<div className="flex flex-wrap items-center justify-end gap-3">
-				<div className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-[#0d1217] p-1">
-					{availableModes.map((mode) => (
-						<button
-							className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 font-semibold text-[11px] transition ${effectiveMode === mode.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-200'}`}
-							key={mode.value}
-							onClick={() => selectMode(mode.value)}
-							type="button"
-						>
-							{mode.value === CHART_MODE.ALL ? null : (
-								<span
-									className="h-2 w-2 rounded-full"
-									style={{
-										backgroundColor:
-											series.find((item) => item.key === mode.value)?.color ??
-											'#adf5bd',
-									}}
-								/>
-							)}
-							{mode.label}
-						</button>
-					))}
-				</div>
+			<div className="flex w-full gap-1 overflow-x-auto rounded-lg bg-[#0d1217] p-1">
+				{availableModes.map((mode) => (
+					<button
+						className={`inline-flex min-w-max flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 py-2 font-semibold text-[13px] transition ${effectiveMode === mode.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-200'}`}
+						key={mode.value}
+						onClick={() => selectMode(mode.value)}
+						type="button"
+					>
+						{mode.value === CHART_MODE.ALL ? null : (
+							<span
+								className="h-1.5 w-1.5 shrink-0 rounded-full"
+								style={{
+									backgroundColor:
+										series.find((item) => item.key === mode.value)?.color ??
+										'#adf5bd',
+								}}
+							/>
+						)}
+						{mode.label}
+					</button>
+				))}
 			</div>
 			<div className="mt-4">
 				<div className="relative w-full">

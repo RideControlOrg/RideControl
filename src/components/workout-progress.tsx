@@ -1,13 +1,21 @@
 import { formatGrade } from '../lib/format';
+import {
+	GRADE_METRIC_PRESENTATION,
+	RESISTANCE_METRIC_PRESENTATION,
+} from '../lib/metric-presentation';
 import { formatDistanceProgress, formatElevation } from '../lib/units';
 import { WORKOUT_ROUTE_TYPE, WORKOUT_VIEW, type WorkoutRouteType } from '../lib/workout-schema';
 import type { ElevationTotals, SessionWorkout, SpeedUnit, WorkoutTerrain } from '../types';
 import { WorkoutRouteVisualization } from './workout-route-visualization';
 
 interface WorkoutStat {
+	color?: string;
 	label: string;
 	value: string;
 }
+
+const WORKOUT_MAP_PANEL_CLASS = 'bg-[#12171d] px-4 pt-4 pb-2 sm:px-5 sm:pt-5';
+const WORKOUT_MAP_VISUALIZATION_CLASS = 'mt-1 h-36';
 
 function workoutCompletionLabels(routeType: WorkoutRouteType): {
 	completed: string;
@@ -35,6 +43,7 @@ function WorkoutStats({
 }) {
 	const labelSize = highlighted ? 'text-[10px]' : 'text-[9px]';
 	const valueSize = highlighted ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl';
+	const defaultValueColor = highlighted ? 'text-mint' : 'text-white';
 	return (
 		<div className="grid grid-cols-3 gap-5 text-center tabular-nums">
 			{stats.map((stat) => (
@@ -45,7 +54,8 @@ function WorkoutStats({
 						{stat.label}
 					</p>
 					<p
-						className={`mt-1 whitespace-nowrap font-bold leading-none ${valueSize} ${highlighted ? 'text-mint' : 'text-white'}`}
+						className={`mt-1 whitespace-nowrap font-bold leading-none ${valueSize} ${stat.color ? '' : defaultValueColor}`}
+						style={{ color: stat.color }}
 					>
 						{stat.value}
 					</p>
@@ -80,10 +90,12 @@ export function WorkoutProgress({
 	const mapStats = [
 		{ label: 'Progress', value: `${Math.round(terrain.progress * 100)}%` },
 		{
+			color: GRADE_METRIC_PRESENTATION.chartColor,
 			label: 'Grade',
 			value: formatGrade(terrain.grade),
 		},
 		{
+			color: RESISTANCE_METRIC_PRESENTATION.chartColor,
 			label: 'Resistance',
 			value: `${Math.round(targetResistance ?? terrain.resistance)}%`,
 		},
@@ -111,7 +123,7 @@ export function WorkoutProgress({
 				</div>
 			</header>
 			<div className="grid gap-px bg-line md:grid-cols-2">
-				<div className="bg-[#12171d] p-4 sm:p-5">
+				<div className={WORKOUT_MAP_PANEL_CLASS}>
 					<div className="flex flex-wrap items-start justify-between gap-3">
 						<div>
 							<h3 className="font-bold text-[10px] text-slate-500 uppercase tracking-[.14em]">
@@ -128,14 +140,14 @@ export function WorkoutProgress({
 						<WorkoutStats highlighted stats={mapStats} />
 					</div>
 					<WorkoutRouteVisualization
-						className="mt-2 h-44"
+						className={WORKOUT_MAP_VISUALIZATION_CLASS}
 						course={course}
 						isRiding={isRiding}
 						terrain={terrain}
 						view={WORKOUT_VIEW.MAP}
 					/>
 				</div>
-				<div className="bg-[#12171d] p-4 sm:p-5">
+				<div className={WORKOUT_MAP_PANEL_CLASS}>
 					<div className="flex flex-wrap items-start justify-between gap-3">
 						<h3 className="font-bold text-[10px] text-slate-500 uppercase tracking-[.14em]">
 							Elevation profile
@@ -143,7 +155,7 @@ export function WorkoutProgress({
 						<WorkoutStats stats={elevationStats} />
 					</div>
 					<WorkoutRouteVisualization
-						className="mt-2 h-44"
+						className={WORKOUT_MAP_VISUALIZATION_CLASS}
 						course={course}
 						isRiding={isRiding}
 						terrain={terrain}

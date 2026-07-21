@@ -375,6 +375,17 @@ export function orderWorkoutCourses(
 	return [...ordered, ...coursesById.values()];
 }
 
+export function prioritizeWorkoutCourse(
+	courses: WorkoutCourse[],
+	currentCourseIds: string[],
+	prioritizedCourseId: string
+): WorkoutCourse[] {
+	return orderWorkoutCourses(courses, [
+		prioritizedCourseId,
+		...currentCourseIds.filter((courseId) => courseId !== prioritizedCourseId),
+	]);
+}
+
 function workoutMove(
 	courses: WorkoutCourse[],
 	movedCourseId: string,

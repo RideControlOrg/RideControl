@@ -23,7 +23,7 @@ export function SessionOverview({
 	workout?: SessionWorkout;
 }) {
 	return (
-		<div className="rounded-2xl border border-line bg-panel p-5 sm:p-6">
+		<div className="rounded-2xl border border-line bg-panel p-4">
 			<div className="grid grid-cols-3 divide-x divide-line rounded-xl bg-[#12171d] ring-1 ring-slate-500 ring-inset">
 				<SessionSummary
 					calories={rideCalories}

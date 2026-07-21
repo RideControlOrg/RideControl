@@ -5,6 +5,7 @@ import {
 	loadWorkoutOrder,
 	moveWorkoutCourse,
 	orderWorkoutCourses,
+	prioritizeWorkoutCourse,
 	readWorkoutFile,
 	renameCustomWorkout,
 	saveCustomWorkouts,
@@ -34,15 +35,25 @@ export function useWorkoutLibrary() {
 		customCoursesRef.current = next;
 		setCustomCourses(next);
 	}, []);
+	const replaceCourseOrder = useCallback((next: string[]) => {
+		saveWorkoutOrder(next);
+		setCourseOrder(next);
+	}, []);
 
 	const importFile = useCallback(
 		async (file: File) => {
 			const course = await readWorkoutFile(file);
 			const result = addCustomWorkout(customCoursesRef.current, course);
+			const nextCourses = prioritizeWorkoutCourse(
+				[...WORKOUT_COURSES, ...result.courses],
+				coursesRef.current.map((currentCourse) => currentCourse.id),
+				result.course.id
+			);
 			replaceCustomCourses(result.courses);
+			replaceCourseOrder(nextCourses.map((nextCourse) => nextCourse.id));
 			return result.course;
 		},
-		[replaceCustomCourses]
+		[replaceCourseOrder, replaceCustomCourses]
 	);
 
 	const removeCourse = useCallback(
@@ -59,15 +70,20 @@ export function useWorkoutLibrary() {
 		},
 		[replaceCustomCourses]
 	);
-	const reorderCourse = useCallback((movedCourseId: string, destinationIndex: number) => {
-		const reordered = moveWorkoutCourse(coursesRef.current, movedCourseId, destinationIndex);
-		if (reordered === coursesRef.current) {
-			return;
-		}
-		const nextOrder = reordered.map((course) => course.id);
-		saveWorkoutOrder(nextOrder);
-		setCourseOrder(nextOrder);
-	}, []);
+	const reorderCourse = useCallback(
+		(movedCourseId: string, destinationIndex: number) => {
+			const reordered = moveWorkoutCourse(
+				coursesRef.current,
+				movedCourseId,
+				destinationIndex
+			);
+			if (reordered === coursesRef.current) {
+				return;
+			}
+			replaceCourseOrder(reordered.map((course) => course.id));
+		},
+		[replaceCourseOrder]
+	);
 
 	return {
 		courses,

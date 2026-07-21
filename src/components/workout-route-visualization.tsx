@@ -29,7 +29,7 @@ function WorkoutRouteMarker({
 	}
 	if (isMap) {
 		return (
-			<g className={isRiding ? 'animate-pulse' : undefined}>
+			<g className={isRiding ? 'functional-status-pulse' : undefined}>
 				<circle
 					cx={marker.x}
 					cy={marker.y}
@@ -45,7 +45,7 @@ function WorkoutRouteMarker({
 	return (
 		<span
 			aria-hidden="true"
-			className={`pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-mint shadow-[0_0_0_4px_rgba(173,245,189,.18)] ${isRiding ? 'animate-pulse' : ''}`}
+			className={`pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-mint shadow-[0_0_0_4px_rgba(173,245,189,.18)] ${isRiding ? 'functional-status-pulse' : ''}`}
 			data-profile-marker="true"
 			style={{
 				left: `clamp(0.5rem, ${marker.x}%, calc(100% - 0.5rem))`,
