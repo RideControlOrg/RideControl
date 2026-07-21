@@ -12,7 +12,13 @@ import {
 	fetchBikeGpxRoute,
 } from '../lib/bikegpx';
 import { errorMessage } from '../lib/errors';
-import { convertDistance, distanceUnitLabel, formatDistance, formatElevation } from '../lib/units';
+import {
+	convertDistance,
+	distanceUnitLabel,
+	formatDescriptionDistance,
+	formatDistance,
+	formatElevation,
+} from '../lib/units';
 import {
 	isWorkoutDifficulty,
 	WORKOUT_DIFFICULTY,
@@ -24,12 +30,7 @@ import { WorkoutRouteMap } from './workout-route-map';
 
 const ESTIMATED_ROUTE_ROW_HEIGHT = 88;
 const ROUTE_LIST_OVERSCAN = 6;
-const ROUTE_ANALYSIS_CONCURRENCY = 2;
 const EMPTY_ROUTE_ANALYSES: Record<string, BikeGpxRouteAnalysis> = {};
-const CATALOG_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
-	dateStyle: 'medium',
-	timeStyle: 'short',
-});
 const routeResultCache = new Map<string, BikeGpxRouteResult>();
 const routeResultRequests = new Map<string, Promise<BikeGpxRouteResult>>();
 
@@ -94,74 +95,6 @@ function optionalDistance(value: string): number | undefined {
 	return Number.isFinite(distance) && distance >= 0 ? distance : undefined;
 }
 
-function useRouteAnalyzer(
-	analyses: Record<string, BikeGpxRouteAnalysis>,
-	onAnalyzeRoute: (routeId: string, analysis: BikeGpxRouteAnalysis) => void
-) {
-	const activeCount = useRef(0);
-	const alive = useRef(true);
-	const failedRouteIds = useRef(new Set<string>());
-	const onAnalyzeRouteRef = useRef(onAnalyzeRoute);
-	const pumpRef = useRef<() => void>(() => undefined);
-	const queuedRouteIds = useRef(new Set<string>());
-	const routesToAnalyze = useRef<BikeGpxRouteSummary[]>([]);
-	onAnalyzeRouteRef.current = onAnalyzeRoute;
-
-	useEffect(() => {
-		alive.current = true;
-		return () => {
-			alive.current = false;
-		};
-	}, []);
-
-	const pump = useCallback(() => {
-		while (
-			alive.current &&
-			activeCount.current < ROUTE_ANALYSIS_CONCURRENCY &&
-			routesToAnalyze.current.length > 0
-		) {
-			const route = routesToAnalyze.current.shift();
-			if (!route) {
-				break;
-			}
-			activeCount.current += 1;
-			requestRouteCourse(route)
-				.then(({ analysis }) => {
-					if (alive.current) {
-						onAnalyzeRouteRef.current(route.id, analysis);
-					}
-				})
-				.catch(() => {
-					failedRouteIds.current.add(route.id);
-				})
-				.finally(() => {
-					activeCount.current -= 1;
-					queuedRouteIds.current.delete(route.id);
-					pumpRef.current();
-				});
-		}
-	}, []);
-	pumpRef.current = pump;
-
-	return useCallback(
-		(routes: BikeGpxRouteSummary[]) => {
-			for (const route of routes) {
-				if (
-					analyses[route.id] ||
-					queuedRouteIds.current.has(route.id) ||
-					failedRouteIds.current.has(route.id)
-				) {
-					continue;
-				}
-				queuedRouteIds.current.add(route.id);
-				routesToAnalyze.current.push(route);
-			}
-			pump();
-		},
-		[analyses, pump]
-	);
-}
-
 function RouteListItem({
 	analysis,
 	onSelect,
@@ -175,7 +108,7 @@ function RouteListItem({
 	selected: boolean;
 	speedUnit: SpeedUnit;
 }) {
-	const difficulty = analysis ? workoutDifficultyLabel(analysis.difficulty) : 'Analyzing';
+	const difficulty = analysis ? workoutDifficultyLabel(analysis.difficulty) : 'Not analyzed';
 	return (
 		<button
 			aria-pressed={selected}
@@ -195,7 +128,7 @@ function RouteListItem({
 					title={
 						analysis
 							? 'Difficulty calculated from distance, climbing, and maximum grade'
-							: 'Terrain analysis is in progress'
+							: 'Select this route to calculate its terrain difficulty'
 					}
 				>
 					{difficulty} · {formatDistance(route.distanceKm, speedUnit, 0)}
@@ -203,7 +136,7 @@ function RouteListItem({
 			</span>
 			{route.summary ? (
 				<span className="mt-1 block text-[11px] text-slate-400 leading-relaxed">
-					{route.summary}
+					{formatDescriptionDistance(route.summary, route.distanceKm, speedUnit)}
 				</span>
 			) : null}
 		</button>
@@ -225,7 +158,6 @@ function RouteSidebar({
 	onMaximumDistanceChange,
 	onMinimumDistanceChange,
 	onQueryChange,
-	onAnalyzeRoutes,
 	onRefreshCatalog,
 	onSelectRoute,
 	query,
@@ -247,7 +179,6 @@ function RouteSidebar({
 	onMaximumDistanceChange: (distance: string) => void;
 	onMinimumDistanceChange: (distance: string) => void;
 	onQueryChange: (query: string) => void;
-	onAnalyzeRoutes: (routes: BikeGpxRouteSummary[]) => void;
 	onRefreshCatalog: () => Promise<void>;
 	onSelectRoute: (route: BikeGpxRouteSummary) => void;
 	query: string;
@@ -266,13 +197,6 @@ function RouteSidebar({
 		useFlushSync: false,
 	});
 	const selectedIndex = routes.findIndex((route) => route.id === selectedRouteId);
-	const virtualRoutes = routeVirtualizer
-		.getVirtualItems()
-		.flatMap((item) => routes[item.index] ?? []);
-
-	useEffect(() => {
-		onAnalyzeRoutes(virtualRoutes);
-	});
 
 	useEffect(() => {
 		if (selectedIndex >= 0) {
@@ -364,25 +288,6 @@ function RouteSidebar({
 				<p className="text-[10px] text-slate-600">
 					Difficulty uses distance, climbing, and maximum grade as routes load.
 				</p>
-				<div className="flex items-center justify-between gap-3 text-[11px] text-slate-500">
-					<span className="font-bold text-cyan-300 text-sm tabular-nums">
-						{routes.length.toLocaleString()} routes
-					</span>
-					<button
-						className="shrink-0 rounded-md border border-slate-700 px-2.5 py-1.5 font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-						disabled={catalogLoading}
-						onClick={onRefreshCatalog}
-						title="Reload the catalog currently stored by the Ride Control backend"
-						type="button"
-					>
-						{catalogLoading ? 'Reloading…' : 'Reload routes'}
-					</button>
-				</div>
-				{catalog ? (
-					<div className="whitespace-nowrap text-[11px] text-slate-500">
-						Updated {CATALOG_DATE_FORMATTER.format(catalog.fetchedAt)}
-					</div>
-				) : null}
 				{catalogError && catalog ? (
 					<p className="text-[11px] text-amber-300" role="status">
 						{catalogError} The saved route list is still available.
@@ -538,7 +443,9 @@ function RoutePreviewDetails({
 					<h3 className="truncate font-bold text-sm">{route.name}</h3>
 					<p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400 leading-relaxed">
 						{route.country}
-						{route.summary ? ` · ${route.summary}` : ''}
+						{route.summary
+							? ` · ${formatDescriptionDistance(route.summary, route.distanceKm, speedUnit)}`
+							: ''}
 					</p>
 					{course && analysis ? (
 						<p className="mt-1 text-[11px] text-slate-300 tabular-nums">
@@ -627,7 +534,7 @@ function RoutePreview({
 					className="absolute inset-0 grid place-items-center text-slate-400 text-sm"
 					role="status"
 				>
-					Loading route map…
+					Preparing route…
 				</div>
 			) : null}
 			{preview.error ? (
@@ -656,7 +563,11 @@ function RoutePreview({
 					speedUnit={speedUnit}
 					status={visibleFeedback?.status ?? ''}
 				/>
-			) : null}
+			) : (
+				<div className="absolute inset-0 grid place-items-center px-8 text-center text-slate-400 text-sm">
+					Select a route to prepare its map and terrain analysis.
+				</div>
+			)}
 		</div>
 	);
 }
@@ -692,7 +603,6 @@ export function BikeGpxBrowserDialog({
 	const deferredQuery = useDeferredValue(query);
 	const routes = catalog?.routes ?? [];
 	const analyses = catalog?.analyses ?? EMPTY_ROUTE_ANALYSES;
-	const analyzeRoutes = useRouteAnalyzer(analyses, onAnalyzeRoute);
 	const countries = useMemo(
 		() => [...new Set(routes.map((route) => route.country))].sort(),
 		[routes]
@@ -722,12 +632,6 @@ export function BikeGpxBrowserDialog({
 	);
 	const selectedRoute = filteredRoutes.find((route) => route.id === selectedRouteId);
 
-	useEffect(() => {
-		if (!selectedRoute && filteredRoutes[0]) {
-			setSelectedRouteId(filteredRoutes[0].id);
-		}
-	}, [filteredRoutes, selectedRoute]);
-
 	const selectRoute = (route: BikeGpxRouteSummary) => {
 		setSelectedRouteId(route.id);
 	};
@@ -748,16 +652,23 @@ export function BikeGpxBrowserDialog({
 			>
 				<header className="flex items-start gap-4 border-line border-b bg-[#12171d] px-5 py-4 sm:px-6">
 					<div className="mr-auto min-w-0">
-						<h2 className="font-bold text-xl" id="bikegpx-browser-title">
-							<a
-								className="underline decoration-cyan-400/50 underline-offset-4 transition hover:text-cyan-300 hover:decoration-cyan-300"
-								href={BIKEGPX_ROUTES_URL}
-								rel="noreferrer"
-								target="_blank"
-							>
-								Browse BikeGPX routes
-							</a>
-						</h2>
+						<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+							<h2 className="font-bold text-xl" id="bikegpx-browser-title">
+								<a
+									className="underline decoration-cyan-400/50 underline-offset-4 transition hover:text-cyan-300 hover:decoration-cyan-300"
+									href={BIKEGPX_ROUTES_URL}
+									rel="noreferrer"
+									target="_blank"
+								>
+									Browse BikeGPX routes
+								</a>
+							</h2>
+							{catalog ? (
+								<span className="font-bold text-cyan-300 text-sm tabular-nums">
+									{filteredRoutes.length.toLocaleString()} routes
+								</span>
+							) : null}
+						</div>
 						<p className="mt-1 text-slate-400 text-xs leading-relaxed">
 							Search thousands of public routes, preview the complete course, then
 							import it directly into Ride Control. Thanks to BikeGPX for making this
@@ -785,7 +696,6 @@ export function BikeGpxBrowserDialog({
 						difficulty={difficulty}
 						maximumDistance={maximumDistance}
 						minimumDistance={minimumDistance}
-						onAnalyzeRoutes={analyzeRoutes}
 						onCountryChange={(nextCountry) => {
 							setCountry(nextCountry);
 							setSelectedRouteId('');

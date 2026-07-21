@@ -4,6 +4,7 @@ import {
 	convertDistance,
 	convertElevation,
 	convertSpeed,
+	formatDescriptionDistance,
 	formatDistance,
 	formatDistanceProgress,
 	formatDistanceValue,
@@ -29,6 +30,18 @@ describe('unit conversions', () => {
 		expect(formatDistanceValue(16.093_44, 'mph')).toBe('10.00');
 		expect(formatElevation(304.8, 'mph')).toBe('1000 ft');
 		expect(formatElevation(304.8, 'kmh')).toBe('305 m');
+	});
+
+	test('formats a route description distance in the selected dashboard unit', () => {
+		expect(formatDescriptionDistance('Near Saltvik → Near Finström — 11 km', 11, 'mph')).toBe(
+			'Near Saltvik → Near Finström — 7 mi'
+		);
+		expect(formatDescriptionDistance('Near Saltvik → Near Finström — 11 km', 11, 'kmh')).toBe(
+			'Near Saltvik → Near Finström — 11 km'
+		);
+		expect(formatDescriptionDistance('Original terrain workout', 11, 'mph')).toBe(
+			'Original terrain workout'
+		);
 	});
 
 	test('converts stored SI and ride timing values consistently', () => {

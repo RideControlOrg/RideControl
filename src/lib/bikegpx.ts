@@ -7,6 +7,7 @@ export const BIKEGPX_ROUTES_URL = 'https://bikegpx.com/bike_routes/';
 const SEARCH_WHITESPACE = /\s+/u;
 const NUMERIC_ROUTE_ID = /^\d+$/;
 const API_ROOT = (import.meta.env.VITE_RIDECONTROL_API_URL || '/api').replace(/\/$/u, '');
+const ROUTE_QUEUE_STATUS = 'queued';
 
 export interface BikeGpxRouteSummary {
 	country: string;
@@ -31,6 +32,12 @@ export interface BikeGpxRouteAnalysis {
 export interface BikeGpxRouteResult {
 	analysis: BikeGpxRouteAnalysis;
 	course: WorkoutCourse;
+}
+
+interface BikeGpxRouteQueued {
+	position: number;
+	retryAfterSeconds: number;
+	status: typeof ROUTE_QUEUE_STATUS;
 }
 
 export function bikeGpxRouteMatchesQuery(
@@ -184,15 +191,64 @@ function restoreBikeGpxRouteResult(value: unknown): BikeGpxRouteResult | undefin
 	return analysis && course ? { analysis, course } : undefined;
 }
 
-async function apiJson(path: string, signal?: AbortSignal): Promise<unknown> {
+function restoreQueuedRoute(value: unknown): BikeGpxRouteQueued | undefined {
+	if (
+		!(
+			isRecord(value) &&
+			value.status === ROUTE_QUEUE_STATUS &&
+			isFiniteNumber(value.position) &&
+			value.position >= 1 &&
+			isFiniteNumber(value.retryAfterSeconds) &&
+			value.retryAfterSeconds >= 0
+		)
+	) {
+		return;
+	}
+	return {
+		position: value.position,
+		retryAfterSeconds: value.retryAfterSeconds,
+		status: value.status,
+	};
+}
+
+async function apiResponse(
+	path: string,
+	signal?: AbortSignal
+): Promise<{ response: Response; value: unknown }> {
 	const response = await fetch(`${API_ROOT}${path}`, { signal });
 	const value: unknown = await response.json();
+	return { response, value };
+}
+
+function backendError(value: unknown): Error {
+	const message =
+		isRecord(value) && isString(value.error) ? value.error : 'Backend request failed.';
+	return new Error(message);
+}
+
+async function apiJson(path: string, signal?: AbortSignal): Promise<unknown> {
+	const { response, value } = await apiResponse(path, signal);
 	if (!response.ok) {
-		const message =
-			isRecord(value) && isString(value.error) ? value.error : 'Backend request failed.';
-		throw new Error(message);
+		throw backendError(value);
 	}
 	return value;
+}
+
+function waitForRoute(retryAfterSeconds: number, signal?: AbortSignal): Promise<void> {
+	if (signal?.aborted) {
+		return Promise.reject(signal.reason);
+	}
+	return new Promise((resolve, reject) => {
+		const onAbort = () => {
+			clearTimeout(timeout);
+			reject(signal?.reason);
+		};
+		const timeout = setTimeout(() => {
+			signal?.removeEventListener('abort', onAbort);
+			resolve();
+		}, retryAfterSeconds * 1000);
+		signal?.addEventListener('abort', onAbort, { once: true });
+	});
 }
 
 export async function fetchBikeGpxCatalog(signal?: AbortSignal): Promise<BikeGpxCatalog> {
@@ -207,13 +263,22 @@ export async function fetchBikeGpxRoute(
 	route: BikeGpxRouteSummary,
 	signal?: AbortSignal
 ): Promise<BikeGpxRouteResult> {
-	const result = restoreBikeGpxRouteResult(
-		await apiJson(`/bikegpx/routes/${encodeURIComponent(route.id)}`, signal)
-	);
-	if (!result) {
-		throw new Error('The Ride Control backend returned an invalid BikeGPX route.');
+	const path = `/bikegpx/routes/${encodeURIComponent(route.id)}`;
+	for (;;) {
+		const { response, value } = await apiResponse(path, signal);
+		if (!response.ok) {
+			throw backendError(value);
+		}
+		const result = restoreBikeGpxRouteResult(value);
+		if (result) {
+			return result;
+		}
+		const queued = restoreQueuedRoute(value);
+		if (!queued) {
+			throw new Error('The Ride Control backend returned an invalid BikeGPX route.');
+		}
+		await waitForRoute(queued.retryAfterSeconds, signal);
 	}
-	return result;
 }
 
 export function bikeGpxRouteUrl(routeId: string): string {

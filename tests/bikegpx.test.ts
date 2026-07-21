@@ -96,6 +96,24 @@ describe('BikeGPX backend client', () => {
 		expect(fetchMock).toHaveBeenCalledWith('/api/bikegpx/routes/2635', { signal: undefined });
 	});
 
+	test('waits for an explicitly queued route to finish processing', async () => {
+		const result = {
+			analysis: catalog.analyses[route.id],
+			course,
+		};
+		const fetchMock = mock(async () =>
+			fetchMock.mock.calls.length === 1
+				? Response.json(
+						{ position: 1, retryAfterSeconds: 0, status: 'queued' },
+						{ status: 202 }
+					)
+				: Response.json(result)
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		expect(await fetchBikeGpxRoute(route)).toEqual(result);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
 	test('surfaces backend errors', async () => {
 		globalThis.fetch = mock(async () =>
 			Response.json({ error: 'BikeGPX is unavailable.' }, { status: 502 })

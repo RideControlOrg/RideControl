@@ -1,14 +1,17 @@
 import 'leaflet/dist/leaflet.css';
 import { useCloseOnEscape } from '../hooks/use-dialog-behavior';
-import type { WorkoutCourse } from '../types';
+import { formatDescriptionDistance } from '../lib/units';
+import type { SpeedUnit, WorkoutCourse } from '../types';
 import { WorkoutRouteMap } from './workout-route-map';
 
 export function WorkoutMapDialog({
 	course,
 	onClose,
+	speedUnit,
 }: {
 	course: WorkoutCourse;
 	onClose: () => void;
+	speedUnit: SpeedUnit;
 }) {
 	useCloseOnEscape(true, onClose);
 
@@ -32,7 +35,11 @@ export function WorkoutMapDialog({
 							{course.name}
 						</h2>
 						<p className="mt-1 text-slate-400 text-xs leading-relaxed">
-							{course.description}
+							{formatDescriptionDistance(
+								course.description,
+								course.distance,
+								speedUnit
+							)}
 						</p>
 					</div>
 					<button

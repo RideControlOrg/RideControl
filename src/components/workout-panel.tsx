@@ -27,7 +27,7 @@ import { useBikeGpxCatalog } from '../hooks/use-bikegpx-catalog';
 import { useFileDrop } from '../hooks/use-file-drop';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { errorMessage } from '../lib/errors';
-import { formatDistance, formatElevation } from '../lib/units';
+import { formatDescriptionDistance, formatDistance, formatElevation } from '../lib/units';
 import {
 	OPENSTREETMAP_ATTRIBUTION_URL,
 	WORKOUT_DESCRIPTION_ATTRIBUTION,
@@ -168,10 +168,18 @@ function WorkoutCourseCard({
 									title="View the route map"
 									type="button"
 								>
-									{course.description}
+									{formatDescriptionDistance(
+										course.description,
+										course.distance,
+										speedUnit
+									)}
 								</button>
 							) : (
-								course.description
+								formatDescriptionDistance(
+									course.description,
+									course.distance,
+									speedUnit
+								)
 							)}
 						</p>
 					</div>
@@ -655,6 +663,7 @@ export function WorkoutPanel({
 					<WorkoutMapDialog
 						course={mappedCourse}
 						onClose={() => setMappedCourse(undefined)}
+						speedUnit={speedUnit}
 					/>
 				</Suspense>
 			) : null}
