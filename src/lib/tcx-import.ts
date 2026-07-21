@@ -17,7 +17,7 @@ import { nonNegativeNumber } from './numbers';
 import { clampResistance } from './resistance';
 import { listAllSavedSessions, saveSession } from './saved-sessions';
 import { addMetricAggregates } from './session';
-import { IMPORTED_TCX_ID_PREFIX, RIDECONTROL_TCX_EXTENSION_NAMESPACE } from './tcx-schema';
+import { IMPORTED_TCX_ID_PREFIX, isRideControlTcxExtensionNamespace } from './tcx-schema';
 import {
 	KILOMETERS_PER_HOUR_PER_METER_PER_SECOND,
 	kilometersForMeters,
@@ -286,8 +286,8 @@ function parseActivity(activity: Element): SavedSession {
 	);
 	const distanceMeters = lapDistanceMeters || trackpointDistanceMeters;
 	const calories = positiveSum(laps.map((lap) => numberValue(child(lap, 'Calories'))));
-	const exportedSessionId = descendants(activity, 'SessionId').find(
-		(element) => element.namespaceURI === RIDECONTROL_TCX_EXTENSION_NAMESPACE
+	const exportedSessionId = descendants(activity, 'SessionId').find((element) =>
+		isRideControlTcxExtensionNamespace(element.namespaceURI)
 	);
 	const hasGear =
 		allSamples.some((sample) => sample.gear !== undefined) ||

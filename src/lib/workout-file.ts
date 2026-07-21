@@ -27,7 +27,7 @@ import { xmlDescendant, xmlEscape, xmlNumber, xmlText } from './xml';
 export const CUSTOM_WORKOUTS_STORAGE_KEY = 'ride-control-custom-workouts';
 export const WORKOUT_ORDER_STORAGE_KEY = 'ride-control-workout-order';
 export const WORKOUT_GPX_EXTENSION_NAMESPACE =
-	'https://github.com/lookfirst/RideControl/xmlschemas/WorkoutExtension/v1';
+	'https://github.com/RideControlOrg/RideControl/xmlschemas/WorkoutExtension/v1';
 export const WORKOUT_GPX_FORMAT_VERSION = 2;
 export const MAX_WORKOUT_NAME_LENGTH = 100;
 

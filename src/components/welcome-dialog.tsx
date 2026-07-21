@@ -62,7 +62,7 @@ export function WelcomeDialog({
 					Ride Control is a freely available, open-source GPLv3 application. View the{' '}
 					<a
 						className="font-semibold text-mint underline decoration-mint/40 underline-offset-2 hover:decoration-mint"
-						href="https://github.com/lookfirst/RideControl"
+						href="https://github.com/RideControlOrg/RideControl"
 						rel="noreferrer"
 						target="_blank"
 					>

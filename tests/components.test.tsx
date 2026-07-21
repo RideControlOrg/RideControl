@@ -349,7 +349,7 @@ describe('view components', () => {
 		expect(panel).toContain('Copy Chrome Bluetooth settings address');
 		expect(panel).toContain('Use the new permissions backend for Web Bluetooth');
 		expect(panel).toContain('Relaunch Chrome, then pair each device once more.');
-		expect(panel).not.toContain('github.com/lookfirst/RideControl#automatic-reconnect');
+		expect(panel).not.toContain('github.com/RideControlOrg/RideControl#automatic-reconnect');
 		expect(panel).toContain('+ Controller');
 		expect(panel.indexOf('+ Controller')).toBeLessThan(panel.indexOf('− Controller'));
 		expect(panel).toContain('connection-status-pulse');
@@ -770,10 +770,10 @@ describe('view components', () => {
 		expect(html).toContain('Ride Control');
 		expect(html).toContain('Build:');
 		expect(html).toContain(
-			'href="https://github.com/lookfirst/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
+			'href="https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
 		);
 		expect(html).toContain('<time dateTime=');
-		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
+		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
 		expect(html).toContain('Sponsor');
 		expect(html).not.toContain('WELCOME TO');
@@ -800,7 +800,7 @@ describe('view components', () => {
 		expect(html).toContain('type="checkbox"');
 		expect(html).toContain('open-source GPLv3 application');
 		expect(html).toContain('source code on GitHub');
-		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
+		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
 		expect(html).toContain('all ride data stays in your browser');
 		expect(html).toContain('We don&#x27;t upload it anywhere');
 		expect(html).toContain('would only upload data with your permission');

@@ -3,11 +3,11 @@ import { BUILD_PR_URL, buildPullRequestUrl, formatBuildTimestamp } from '../src/
 
 describe('build information', () => {
 	test('links exact builds to their PR and defaults PR lists to closed', () => {
-		expect(buildPullRequestUrl('https://github.com/lookfirst/RideControl/pull/12')).toBe(
-			'https://github.com/lookfirst/RideControl/pull/12'
+		expect(buildPullRequestUrl('https://github.com/RideControlOrg/RideControl/pull/12')).toBe(
+			'https://github.com/RideControlOrg/RideControl/pull/12'
 		);
-		expect(buildPullRequestUrl('https://github.com/lookfirst/RideControl/pulls')).toBe(
-			'https://github.com/lookfirst/RideControl/pulls?q=is%3Apr+is%3Aclosed'
+		expect(buildPullRequestUrl('https://github.com/RideControlOrg/RideControl/pulls')).toBe(
+			'https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed'
 		);
 		expect(BUILD_PR_URL).toContain('q=is%3Apr+is%3Aclosed');
 	});

@@ -46,6 +46,12 @@ describe('TCX import', () => {
 		expect(imported?.aggregates.gear.maximum).toBe(10);
 	});
 
+	test('recognizes Ride Control exports created under a previous repository owner', () => {
+		const legacyExport = sessionToTcx(session).replace('RideControlOrg', 'previous-owner');
+		const [imported] = parseTcxSessions(legacyExport);
+		expect(imported?.id).toBe(session.id);
+	});
+
 	test('creates a stable fallback identifier for third-party TCX files', () => {
 		const withoutSessionId = sessionToTcx(session).replace(SESSION_ID_ELEMENT, '');
 		const [first] = parseTcxSessions(withoutSessionId);

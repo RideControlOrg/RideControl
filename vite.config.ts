@@ -6,7 +6,7 @@ import { defineConfig } from 'vite';
 const buildTimestampUtc = process.env.VITE_BUILD_TIMESTAMP ?? new Date().toISOString();
 const buildPrUrl =
 	process.env.VITE_BUILD_PR_URL ??
-	'https://github.com/lookfirst/RideControl/pulls?q=is%3Apr+is%3Aclosed';
+	'https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed';
 
 export default defineConfig({
 	define: {
