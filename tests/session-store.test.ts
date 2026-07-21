@@ -69,7 +69,7 @@ describe('session store', () => {
 		subscription.unsubscribe();
 	});
 
-	test('uses trainer distance deltas and records virtual gears independently', () => {
+	test('uses trainer distance deltas and records virtual gear with applied resistance', () => {
 		const store = createSessionStore(restoredSession(), 1000);
 		store.actions.syncRiding(true);
 		store.actions.recordTick({
@@ -82,9 +82,9 @@ describe('session store', () => {
 		expect(store.get().distance).toBe(0.01);
 		expect(store.get().controlMode).toBe('gear');
 		expect(store.get().history[0]?.gear).toBe(16);
-		expect(store.get().history[0]?.resistance).toBeUndefined();
+		expect(store.get().history[0]?.resistance).toBe(42);
 		expect(store.get().aggregates.gear).toEqual({ count: 1, maximum: 16, sum: 16 });
-		expect(store.get().aggregates.resistance).toEqual({ count: 0, sum: 0 });
+		expect(store.get().aggregates.resistance).toEqual({ count: 1, maximum: 42, sum: 42 });
 	});
 
 	test('retains resistance and gear maxima after lower control samples', () => {
@@ -190,9 +190,9 @@ describe('session store', () => {
 			workoutLap: 1,
 		});
 		expect(store.get().history[0]?.elevation).toBeGreaterThan(0);
-		expect(store.get().history[0]?.resistance).toBeUndefined();
+		expect(store.get().history[0]?.resistance).toBe(20);
 		expect(store.get().aggregates.gear).toEqual({ count: 1, maximum: 8, sum: 8 });
-		expect(store.get().aggregates.resistance).toEqual({ count: 0, sum: 0 });
+		expect(store.get().aggregates.resistance).toEqual({ count: 1, maximum: 20, sum: 20 });
 	});
 
 	test('replaces an unstarted workout when its saved definition is revised', () => {

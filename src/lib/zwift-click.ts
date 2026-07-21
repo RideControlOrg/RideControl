@@ -13,6 +13,11 @@ export const ZWIFT_MANUFACTURER_ID = 2378;
 export const CLICK_DEVICE_IDS_STORAGE_KEY = 'zwift-click-v2-device-ids';
 export const CLICK_CONTROLLER_ROLES_STORAGE_KEY = 'zwift-click-v2-controller-roles';
 export const MAX_CLICK_CONTROLLERS = 2;
+export const CLICK_MINUS_REFRESH_INTERVAL_MS = 50_000;
+export const CLICK_SHIFT = {
+	DOWN: 'down',
+	UP: 'up',
+} as const;
 
 const CONTROLLER_NOTIFICATION = 0x23;
 const MINUS_BUTTON_MASK = 0x01_00;
@@ -21,8 +26,13 @@ const ALL_BUTTONS_RELEASED = 0xff_ff_ff_ff;
 const CLICK_CONNECTION_TIMEOUT_MS = BLUETOOTH_GATT_CONNECTION_TIMEOUT_MS;
 const CLICK_V2_RIGHT_SIDE = 0x0a;
 const CLICK_V2_LEFT_SIDE = 0x0b;
+const CLICK_V2_RESET = 0x18;
+const CLICK_V2_STOPPED_SESSION_PREFIXES = [
+	[0xff, 0x05, 0x00, 0xea, 0x05],
+	[0xff, 0x05, 0x00, 0xfa, 0x05],
+] as const;
 
-export type ClickShift = 'down' | 'up';
+export type ClickShift = (typeof CLICK_SHIFT)[keyof typeof CLICK_SHIFT];
 export type ClickControllerRoles = Record<string, ClickShift>;
 
 export function clickControllerRoleFromManufacturerData(
@@ -34,11 +44,35 @@ export function clickControllerRoleFromManufacturerData(
 	}
 	const side = zwiftData.getUint8(0);
 	if (side === CLICK_V2_RIGHT_SIDE) {
-		return 'up';
+		return CLICK_SHIFT.UP;
 	}
 	if (side === CLICK_V2_LEFT_SIDE) {
-		return 'down';
+		return CLICK_SHIFT.DOWN;
 	}
+}
+
+export function clickControllerNeedsPeriodicRefresh(role: ClickShift | undefined): boolean {
+	return role === CLICK_SHIFT.DOWN;
+}
+
+export function shouldMaintainClickConnection(
+	automaticReconnect: boolean,
+	connectionActive: boolean,
+	forgotten: boolean
+): boolean {
+	return automaticReconnect && connectionActive && !forgotten;
+}
+
+export function shouldScheduleClickReconnect(
+	automaticReconnect: boolean,
+	connectionActive: boolean,
+	forgotten: boolean,
+	restarting: boolean
+): boolean {
+	return (
+		!restarting &&
+		shouldMaintainClickConnection(automaticReconnect, connectionActive, forgotten)
+	);
 }
 
 export function filterClickShiftsForController(
@@ -136,10 +170,10 @@ export function registerClickControllerRole(
 function pressedShifts(buttonMap: number): ClickShift[] {
 	const shifts: ClickShift[] = [];
 	if ((buttonMap & MINUS_BUTTON_MASK) === 0) {
-		shifts.push('down');
+		shifts.push(CLICK_SHIFT.DOWN);
 	}
 	if ((buttonMap & PLUS_BUTTON_MASK) === 0) {
-		shifts.push('up');
+		shifts.push(CLICK_SHIFT.UP);
 	}
 	return shifts;
 }
@@ -148,6 +182,20 @@ export function clickV2StartCommand(): ArrayBuffer {
 	const command = new ArrayBuffer(8);
 	new Uint8Array(command).set([0x52, 0x69, 0x64, 0x65, 0x4f, 0x6e, 0x02, 0x03]);
 	return command;
+}
+
+export function clickV2ResetCommand(): ArrayBuffer {
+	const command = new ArrayBuffer(1);
+	new Uint8Array(command)[0] = CLICK_V2_RESET;
+	return command;
+}
+
+export function clickV2SessionStopped(value: DataView): boolean {
+	const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+	return CLICK_V2_STOPPED_SESSION_PREFIXES.some(
+		(prefix) =>
+			bytes.length >= prefix.length && prefix.every((byte, index) => bytes[index] === byte)
+	);
 }
 
 function readButtonMap(message: Uint8Array): number | undefined {
@@ -199,10 +247,10 @@ export function parseClickV2Shift(
 	}
 	const shifts: ClickShift[] = [];
 	if ((previousButtonMap & MINUS_BUTTON_MASK) !== 0 && (buttonMap & MINUS_BUTTON_MASK) === 0) {
-		shifts.push('down');
+		shifts.push(CLICK_SHIFT.DOWN);
 	}
 	if ((previousButtonMap & PLUS_BUTTON_MASK) !== 0 && (buttonMap & PLUS_BUTTON_MASK) === 0) {
-		shifts.push('up');
+		shifts.push(CLICK_SHIFT.UP);
 	}
 	return { buttonMap, heldShifts: pressedShifts(buttonMap), shifts };
 }
@@ -226,7 +274,10 @@ export function storedClickControllerRoles(
 		}
 		const roles: ClickControllerRoles = {};
 		for (const [deviceId, role] of Object.entries(saved)) {
-			if ((role === 'up' || role === 'down') && !Object.values(roles).includes(role)) {
+			if (
+				(role === CLICK_SHIFT.UP || role === CLICK_SHIFT.DOWN) &&
+				!Object.values(roles).includes(role)
+			) {
 				roles[deviceId] = role;
 			}
 		}

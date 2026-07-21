@@ -1,5 +1,6 @@
 import { createBluetoothNotificationSubscription } from './bluetooth-notifications';
 import {
+	clickV2ResetCommand,
 	clickV2StartCommand,
 	connectClickGatt,
 	withClickConnectionTimeout,
@@ -35,11 +36,16 @@ interface ClickDeviceCallbacks {
 	onMessage: (event: Event) => void;
 }
 
+export interface ClickDeviceConnection {
+	cleanup: () => void;
+	restart: () => Promise<void>;
+}
+
 export async function connectClickDevice(
 	device: BluetoothDevice,
 	rediscover: boolean,
 	{ isCurrent, isOperational, onDisconnect, onMessage }: ClickDeviceCallbacks
-): Promise<() => void> {
+): Promise<ClickDeviceConnection> {
 	const server = await connectClickGatt(device, rediscover);
 	ensureCurrentConnection(isCurrent);
 	const service = await withClickConnectionTimeout(
@@ -103,7 +109,14 @@ export async function connectClickDevice(
 			}
 		}
 		ensureCurrentConnection(isCurrent);
-		return cleanup;
+		return {
+			cleanup,
+			restart: () =>
+				withClickConnectionTimeout(
+					syncRxCharacteristic.writeValueWithoutResponse(clickV2ResetCommand()),
+					CLICK_SETUP_STEP_TIMEOUT_MS
+				),
+		};
 	} catch (error) {
 		cleanup();
 		throw error;

@@ -34,7 +34,11 @@ import { CONTROL_MODE, type ControlMode } from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
-import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
+import {
+	loadStoredSession,
+	requestUnloadConfirmation,
+	sessionNeedsUnloadWarning,
+} from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import {
 	workoutDashboardPreview,
@@ -79,6 +83,7 @@ export function App() {
 		setActiveOverlayState(overlay);
 	}, []);
 	const devicesOpen = activeOverlay === APP_OVERLAY.DEVICES;
+	const [initialClickConnectionActive] = useState(() => !loadStoredSession().ended);
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
 	const heartRate = useHeartRateMonitor(rememberedDevices, trainer.setNotice);
@@ -86,7 +91,8 @@ export function App() {
 		handleClickShift,
 		trainer.setNotice,
 		devicesOpen,
-		rememberedDevices
+		rememberedDevices,
+		initialClickConnectionActive
 	);
 	const liveMetrics = metricsWithHeartRate(
 		trainer.metrics,
@@ -111,11 +117,12 @@ export function App() {
 		ready: virtualShiftingReady,
 		setNotice: trainer.setNotice,
 	});
+	const activeControlMode = controlModeForClick(click.paired);
 	const session = useSession(
 		liveMetrics,
 		{
 			gear: gearControl.gear,
-			mode: controlModeForClick(click.paired),
+			mode: activeControlMode,
 			resistance: trainer.resistance,
 		},
 		trainer.lastPedalingAt,
@@ -150,6 +157,9 @@ export function App() {
 		resistance: workoutResistance,
 	});
 	const workflow = useSessionWorkflow(session, trainer.setNotice, trainer.settleAfterRide);
+	useEffect(() => {
+		click.setConnectionActive(!session.ended);
+	}, [click.setConnectionActive, session.ended]);
 	const dashboardKeyboardEnabled = activeOverlay === undefined && !workflow.saveDialogOpen;
 	clickShiftRef.current = shiftHandlerUnlessBlocked(
 		gearControl.shiftGear,
@@ -349,7 +359,7 @@ export function App() {
 				) : null}
 				<DashboardWorkspace>
 					<SessionOverview
-						controlMode={session.controlMode}
+						controlMode={activeControlMode}
 						elapsedSeconds={session.elapsedSeconds}
 						history={session.history}
 						keyboardEnabled={dashboardKeyboardEnabled}
@@ -358,27 +368,25 @@ export function App() {
 						speedUnit={speedUnit}
 						workout={session.workout}
 					/>
-					{workoutTerrain && !virtualShiftingActive ? null : (
-						<TrainingControl
-							connected={virtualShiftingActive ? virtualShiftingReady : connected}
-							control={
-								virtualShiftingActive
-									? {
-											gear: gearControl.gear,
-											mode: CONTROL_MODE.GEAR,
-											onShift: gearControl.shiftGear,
-											shiftFlash: gearControl.shiftFlash,
-										}
-									: {
-											keyboardFlash: trainer.resistanceKeyFlash,
-											mode: CONTROL_MODE.RESISTANCE,
-											onChange: trainer.updateResistance,
-											ramp: trainer.resistanceRamp,
-											resistance: trainer.resistance,
-										}
-							}
-						/>
-					)}
+					<TrainingControl
+						connected={virtualShiftingActive ? virtualShiftingReady : connected}
+						control={
+							virtualShiftingActive
+								? {
+										gear: gearControl.gear,
+										mode: CONTROL_MODE.GEAR,
+										onShift: gearControl.shiftGear,
+										shiftFlash: gearControl.shiftFlash,
+									}
+								: {
+										keyboardFlash: trainer.resistanceKeyFlash,
+										mode: CONTROL_MODE.RESISTANCE,
+										onChange: trainer.updateResistance,
+										ramp: trainer.resistanceRamp,
+										resistance: trainer.resistance,
+									}
+						}
+					/>
 				</DashboardWorkspace>
 			</Dashboard>
 			<AppFooter onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)} />

@@ -65,16 +65,16 @@ describe('TCX export', () => {
 		expect(tcx).toContain('<rc:Point>');
 	});
 
-	test('exports gear instead of resistance for a virtual shifting session', () => {
+	test('exports gear and applied resistance for a virtual shifting session', () => {
 		const gearSession: SavedSession = {
 			...session,
 			aggregates: {
 				...session.aggregates,
 				gear: { count: 2, maximum: 14, sum: 27 },
-				resistance: { count: 0, maximum: 0, sum: 0 },
+				resistance: { count: 2, maximum: 45, sum: 85 },
 			},
 			controlMode: 'gear',
-			history: session.history.map(({ resistance: _resistance, ...sample }, index) => ({
+			history: session.history.map((sample, index) => ({
 				...sample,
 				gear: 13 + index,
 			})),
@@ -83,6 +83,7 @@ describe('TCX export', () => {
 		expect(tcx).toContain('<rc:Gear>14</rc:Gear>');
 		expect(tcx).toContain('<rc:AverageGear>13.5</rc:AverageGear>');
 		expect(tcx).toContain('<rc:MaximumGear>14</rc:MaximumGear>');
-		expect(tcx).not.toContain('<rc:Resistance>');
+		expect(tcx).toContain('<rc:Resistance>45.0</rc:Resistance>');
+		expect(tcx).toContain('<rc:AverageResistance>42.5</rc:AverageResistance>');
 	});
 });

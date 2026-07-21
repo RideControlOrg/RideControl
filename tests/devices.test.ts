@@ -3,7 +3,10 @@ import { HEART_RATE } from '../src/constants';
 import { parseHeartRateMeasurement } from '../src/lib/heart-rate';
 import { connectHeartRateDevice } from '../src/lib/heart-rate-device';
 import {
+	clickControllerNeedsPeriodicRefresh,
 	clickControllerRoleFromManufacturerData,
+	clickV2ResetCommand,
+	clickV2SessionStopped,
 	clickV2StartCommand,
 	connectClickGatt,
 	filterAcceptedClickShifts,
@@ -11,11 +14,14 @@ import {
 	parseClickV2Shift,
 	registerClickControllerRole,
 	shouldAcceptClickShift,
+	shouldMaintainClickConnection,
+	shouldScheduleClickReconnect,
 	storedClickControllerRoles,
 	storedClickDeviceIds,
 	waitForUsableClickNotification,
 	withClickConnectionTimeout,
 } from '../src/lib/zwift-click';
+import { connectClickDevice } from '../src/lib/zwift-click-device';
 
 function view(bytes: number[]) {
 	return new DataView(new Uint8Array(bytes).buffer);
@@ -139,6 +145,85 @@ describe('paired device protocols', () => {
 		expect([...new Uint8Array(clickV2StartCommand())]).toEqual([
 			0x52, 0x69, 0x64, 0x65, 0x4f, 0x6e, 0x02, 0x03,
 		]);
+	});
+
+	test('refreshes the minus controller session before its event stream expires', () => {
+		expect([...new Uint8Array(clickV2ResetCommand())]).toEqual([0x18]);
+		expect(clickControllerNeedsPeriodicRefresh('down')).toBeTrue();
+		expect(clickControllerNeedsPeriodicRefresh('up')).toBeFalse();
+		expect(clickControllerNeedsPeriodicRefresh(undefined)).toBeFalse();
+	});
+
+	test('recognizes both Click V2 session-expired frames', () => {
+		expect(clickV2SessionStopped(view([0xff, 0x05, 0x00, 0xea, 0x05]))).toBeTrue();
+		expect(clickV2SessionStopped(view([0xff, 0x05, 0x00, 0xfa, 0x05, 0x01]))).toBeTrue();
+		expect(clickV2SessionStopped(view([0x23, 0x08, 0xff, 0xff]))).toBeFalse();
+	});
+
+	test('keeps Click connections only while a ride session is active', () => {
+		expect(shouldMaintainClickConnection(true, true, false)).toBeTrue();
+		expect(shouldMaintainClickConnection(true, false, false)).toBeFalse();
+		expect(shouldMaintainClickConnection(false, true, false)).toBeFalse();
+		expect(shouldMaintainClickConnection(true, true, true)).toBeFalse();
+	});
+
+	test('lets an intentional Click refresh own its disconnect and replacement connection', () => {
+		expect(shouldScheduleClickReconnect(true, true, false, false)).toBeTrue();
+		expect(shouldScheduleClickReconnect(true, true, false, true)).toBeFalse();
+	});
+
+	test('sends the Click reset opcode through an established controller session', async () => {
+		const writes: number[][] = [];
+		const notificationCharacteristic = {
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			startNotifications: () => Promise.resolve(),
+		} as unknown as BluetoothRemoteGATTCharacteristic;
+		const syncRxCharacteristic = {
+			writeValueWithoutResponse: (value: BufferSource) => {
+				const bytes = ArrayBuffer.isView(value)
+					? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+					: new Uint8Array(value);
+				writes.push([...bytes]);
+				return Promise.resolve();
+			},
+		} as unknown as BluetoothRemoteGATTCharacteristic;
+		let characteristicIndex = 0;
+		const service = {
+			getCharacteristic: () => {
+				const characteristic = [
+					notificationCharacteristic,
+					notificationCharacteristic,
+					syncRxCharacteristic,
+				][characteristicIndex];
+				characteristicIndex += 1;
+				return Promise.resolve(characteristic);
+			},
+		} as unknown as BluetoothRemoteGATTService;
+		const server = {
+			getPrimaryService: () => Promise.resolve(service),
+		} as unknown as BluetoothRemoteGATTServer;
+		const device = {
+			addEventListener: () => undefined,
+			gatt: {
+				connect: () => Promise.resolve(server),
+				connected: false,
+				disconnect: () => undefined,
+			},
+			id: 'click-reset-protocol',
+			removeEventListener: () => undefined,
+		} as unknown as BluetoothDevice;
+		const connection = await connectClickDevice(device, false, {
+			isCurrent: () => true,
+			isOperational: () => false,
+			onDisconnect: () => undefined,
+			onMessage: () => undefined,
+		});
+
+		expect(writes[0]).toEqual([0x52, 0x69, 0x64, 0x65, 0x4f, 0x6e, 0x02, 0x03]);
+		await connection.restart();
+		expect(writes[1]).toEqual([0x18]);
+		connection.cleanup();
 	});
 
 	test('identifies Click V2 controller sides from their advertisements', () => {

@@ -50,16 +50,27 @@ export function createZwiftClickStore() {
 				}));
 			},
 			removeControllerPhase: (deviceId: string) => {
-				setState((current) => ({
-					...current,
-					controllerPhases: removeConnectionPhase(current.controllerPhases, deviceId),
-				}));
+				setState((current) => {
+					const controllerPhases = removeConnectionPhase(
+						current.controllerPhases,
+						deviceId
+					);
+					return controllerPhases === current.controllerPhases
+						? current
+						: { ...current, controllerPhases };
+				});
 			},
 			setControllerPhase: (deviceId: string, phase: DeviceConnectionPhase) => {
-				setState((current) => ({
-					...current,
-					controllerPhases: setConnectionPhase(current.controllerPhases, deviceId, phase),
-				}));
+				setState((current) => {
+					const controllerPhases = setConnectionPhase(
+						current.controllerPhases,
+						deviceId,
+						phase
+					);
+					return controllerPhases === current.controllerPhases
+						? current
+						: { ...current, controllerPhases };
+				});
 			},
 			setControllerPhases: (controllerPhases: Record<string, DeviceConnectionPhase>) => {
 				setState((current) => ({ ...current, controllerPhases }));

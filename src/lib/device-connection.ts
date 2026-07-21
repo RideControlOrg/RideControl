@@ -53,6 +53,10 @@ export function aggregateConnectionPhase(
 	return 'offline';
 }
 
+export function connectedDeviceCount(phases: readonly DeviceConnectionPhase[]): number {
+	return phases.filter((phase) => phase === 'connected').length;
+}
+
 export function setConnectionPhase(
 	phases: Readonly<Record<string, DeviceConnectionPhase>>,
 	deviceId: string,

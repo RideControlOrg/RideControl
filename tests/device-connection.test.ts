@@ -8,6 +8,7 @@ import {
 } from '../src/lib/bluetooth-reconnect';
 import {
 	aggregateConnectionPhase,
+	connectedDeviceCount,
 	deviceConnectionView,
 	removeConnectionPhase,
 	setConnectionPhase,
@@ -41,6 +42,8 @@ describe('device connection state', () => {
 		expect(aggregateConnectionPhase(['connected', 'reconnecting'])).toBe('reconnecting');
 		expect(aggregateConnectionPhase(['connected', 'connecting'])).toBe('connecting');
 		expect(aggregateConnectionPhase(['connected', 'offline'])).toBe('offline');
+		expect(connectedDeviceCount(['connected', 'reconnecting'])).toBe(1);
+		expect(connectedDeviceCount(['offline', 'reconnecting'])).toBe(0);
 	});
 
 	test('updates keyed controller phases without publishing no-op changes', () => {
