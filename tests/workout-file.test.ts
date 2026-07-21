@@ -4,6 +4,7 @@ import { WORKOUT_DESCRIPTION_ATTRIBUTION } from '../src/lib/workout-description'
 import {
 	addCustomWorkout,
 	CUSTOM_WORKOUTS_STORAGE_KEY,
+	canMoveWorkoutCourse,
 	loadCustomWorkouts,
 	loadWorkoutOrder,
 	MAX_WORKOUT_NAME_LENGTH,
@@ -352,6 +353,11 @@ describe('workout GPX files', () => {
 		expect(moveWorkoutCourse(courses, third.id, 1)).toEqual([first, third, second]);
 		expect(moveWorkoutCourse(courses, second.id, 2)).toBe(courses);
 		expect(moveWorkoutCourse(courses, 'missing', 0)).toBe(courses);
+		expect(canMoveWorkoutCourse(courses, second.id, 1)).toBeFalse();
+		expect(canMoveWorkoutCourse(courses, second.id, 2)).toBeFalse();
+		expect(canMoveWorkoutCourse(courses, second.id, 0)).toBeTrue();
+		expect(canMoveWorkoutCourse(courses, second.id, courses.length)).toBeTrue();
+		expect(canMoveWorkoutCourse(courses, 'missing', 0)).toBeFalse();
 		expect(orderWorkoutCourses(courses, [third.id, 'removed-workout', first.id])).toEqual([
 			third,
 			first,

@@ -195,7 +195,7 @@ export function SessionHistory({
 				<header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-line border-b px-5 py-3">
 					<div className="mr-auto min-w-0">
 						<h2 className="font-bold text-xl" id="session-history-title">
-							Session history
+							Sessions
 						</h2>
 						<p
 							aria-live="polite"

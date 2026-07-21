@@ -705,7 +705,7 @@ describe('view components', () => {
 		expect(html).toContain('Resistance control');
 		expect(html).not.toContain('Import GPX');
 		expect(html).toContain('Pair devices');
-		expect(html).toContain('History');
+		expect(html).toContain('Sessions');
 		expect(html).toContain('Show keyboard controls');
 		expect(html).toContain('Ride Control');
 		expect(html).toContain('Build:');
@@ -985,7 +985,7 @@ describe('view components', () => {
 				speedUnit="kmh"
 			/>
 		);
-		expect(html).toContain('Session history');
+		expect(html).toContain('Sessions');
 		expect(html).toContain('data-side-tray="true"');
 		expect(html).toContain('No saved sessions yet');
 		expect(html).toContain('Import TCX');

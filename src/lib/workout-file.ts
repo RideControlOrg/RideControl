@@ -375,27 +375,44 @@ export function orderWorkoutCourses(
 	return [...ordered, ...coursesById.values()];
 }
 
+function workoutMove(
+	courses: WorkoutCourse[],
+	movedCourseId: string,
+	destinationIndex: number
+): { insertionIndex: number; movedIndex: number } | undefined {
+	const movedIndex = courses.findIndex((course) => course.id === movedCourseId);
+	if (movedIndex < 0) {
+		return;
+	}
+	const boundedDestination = Math.max(0, Math.min(Math.trunc(destinationIndex), courses.length));
+	const insertionIndex =
+		movedIndex < boundedDestination ? boundedDestination - 1 : boundedDestination;
+	return movedIndex === insertionIndex ? undefined : { insertionIndex, movedIndex };
+}
+
+export function canMoveWorkoutCourse(
+	courses: WorkoutCourse[],
+	movedCourseId: string,
+	destinationIndex: number
+): boolean {
+	return Boolean(workoutMove(courses, movedCourseId, destinationIndex));
+}
+
 export function moveWorkoutCourse(
 	courses: WorkoutCourse[],
 	movedCourseId: string,
 	destinationIndex: number
 ): WorkoutCourse[] {
-	const movedIndex = courses.findIndex((course) => course.id === movedCourseId);
-	if (movedIndex < 0) {
-		return courses;
-	}
-	const boundedDestination = Math.max(0, Math.min(Math.trunc(destinationIndex), courses.length));
-	const insertionIndex =
-		movedIndex < boundedDestination ? boundedDestination - 1 : boundedDestination;
-	if (movedIndex === insertionIndex) {
+	const move = workoutMove(courses, movedCourseId, destinationIndex);
+	if (!move) {
 		return courses;
 	}
 	const reordered = [...courses];
-	const [movedCourse] = reordered.splice(movedIndex, 1);
+	const [movedCourse] = reordered.splice(move.movedIndex, 1);
 	if (!movedCourse) {
 		return courses;
 	}
-	reordered.splice(insertionIndex, 0, movedCourse);
+	reordered.splice(move.insertionIndex, 0, movedCourse);
 	return reordered;
 }
 

@@ -16,7 +16,7 @@ import {
 	OPENSTREETMAP_ATTRIBUTION_URL,
 	WORKOUT_DESCRIPTION_ATTRIBUTION,
 } from '../lib/workout-description';
-import { downloadWorkoutFile } from '../lib/workout-file';
+import { canMoveWorkoutCourse, downloadWorkoutFile } from '../lib/workout-file';
 import { WORKOUT_VIEW, workoutRouteLabel } from '../lib/workout-schema';
 import { workoutDifficultyLabel, workoutMatchesSearch, workoutMaximumGrade } from '../lib/workouts';
 import type { SpeedUnit, WorkoutCourse } from '../types';
@@ -332,11 +332,27 @@ export function WorkoutPanel({
 			? courses.findIndex((course) => course.id === previousCourse.id) + 1
 			: courses.length;
 	};
+	const canDropAtBoundary = (boundaryIndex: number): boolean =>
+		canMoveWorkoutCourse(courses, draggedCourseId, destinationForBoundary(boundaryIndex));
 	const dropAtBoundary = (event: DragEvent<HTMLDivElement>, boundaryIndex: number) => {
-		event.preventDefault();
 		const movedCourseId = draggedCourseId || event.dataTransfer.getData('text/plain');
-		reorderCourse(movedCourseId, destinationForBoundary(boundaryIndex));
+		const destinationIndex = destinationForBoundary(boundaryIndex);
+		if (!canMoveWorkoutCourse(courses, movedCourseId, destinationIndex)) {
+			finishDragging();
+			return;
+		}
+		event.preventDefault();
+		reorderCourse(movedCourseId, destinationIndex);
 		finishDragging();
+	};
+	const dragOverBoundary = (event: DragEvent<HTMLDivElement>, boundaryIndex: number) => {
+		if (!canDropAtBoundary(boundaryIndex)) {
+			setDropTargetIndex(undefined);
+			return;
+		}
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'move';
+		setDropTargetIndex(boundaryIndex);
 	};
 
 	return (
@@ -456,13 +472,9 @@ export function WorkoutPanel({
 							<Fragment key={course.id}>
 								<WorkoutDropBoundary
 									active={dropTargetIndex === index}
-									enabled={Boolean(draggedCourseId)}
+									enabled={canDropAtBoundary(index)}
 									index={index}
-									onDragOver={(event) => {
-										event.preventDefault();
-										event.dataTransfer.dropEffect = 'move';
-										setDropTargetIndex(index);
-									}}
+									onDragOver={(event) => dragOverBoundary(event, index)}
 									onDrop={(event) => dropAtBoundary(event, index)}
 								/>
 								<WorkoutCourseCard
@@ -474,6 +486,15 @@ export function WorkoutPanel({
 									onDragStart={(event) => {
 										event.dataTransfer.effectAllowed = 'move';
 										event.dataTransfer.setData('text/plain', course.id);
+										const card = event.currentTarget.closest('article');
+										if (card) {
+											const bounds = card.getBoundingClientRect();
+											event.dataTransfer.setDragImage(
+												card,
+												Math.max(0, event.clientX - bounds.left),
+												Math.max(0, event.clientY - bounds.top)
+											);
+										}
 										setDraggedCourseId(course.id);
 										setDropTargetIndex(undefined);
 									}}
@@ -500,13 +521,11 @@ export function WorkoutPanel({
 						{filteredCourses.length > 0 ? (
 							<WorkoutDropBoundary
 								active={dropTargetIndex === filteredCourses.length}
-								enabled={Boolean(draggedCourseId)}
+								enabled={canDropAtBoundary(filteredCourses.length)}
 								index={filteredCourses.length}
-								onDragOver={(event) => {
-									event.preventDefault();
-									event.dataTransfer.dropEffect = 'move';
-									setDropTargetIndex(filteredCourses.length);
-								}}
+								onDragOver={(event) =>
+									dragOverBoundary(event, filteredCourses.length)
+								}
 								onDrop={(event) => dropAtBoundary(event, filteredCourses.length)}
 							/>
 						) : null}
