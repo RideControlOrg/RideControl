@@ -1,4 +1,4 @@
-const DEFAULT_BUILD_PR_URL = 'https://github.com/lookfirst/RideControl/pulls';
+const DEFAULT_BUILD_PR_URL = 'https://github.com/RideControlOrg/RideControl/pulls';
 
 export function buildPullRequestUrl(url: string) {
 	return url.endsWith('/pulls') ? `${url}?q=is%3Apr+is%3Aclosed` : url;

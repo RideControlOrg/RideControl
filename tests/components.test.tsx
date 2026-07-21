@@ -349,7 +349,7 @@ describe('view components', () => {
 		expect(panel).toContain('Copy Chrome Bluetooth settings address');
 		expect(panel).toContain('Use the new permissions backend for Web Bluetooth');
 		expect(panel).toContain('Relaunch Chrome, then pair each device once more.');
-		expect(panel).not.toContain('github.com/lookfirst/RideControl#automatic-reconnect');
+		expect(panel).not.toContain('github.com/RideControlOrg/RideControl#automatic-reconnect');
 		expect(panel).toContain('+ Controller');
 		expect(panel.indexOf('+ Controller')).toBeLessThan(panel.indexOf('− Controller'));
 		expect(panel).toContain('connection-status-pulse');
@@ -508,6 +508,7 @@ describe('view components', () => {
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
 				onClose={() => undefined}
+				onImportCourse={() => Promise.reject(new Error('Not used in this render test'))}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
 				onRenameCourse={() => course}
@@ -528,8 +529,8 @@ describe('view components', () => {
 		expect(panel).toContain('Harbor Ring course map');
 		expect(panel).toContain('Harbor Ring elevation profile');
 		expect(panel).toContain('Import GPX');
-		expect(panel).toContain('href="https://bikegpx.com/bike_routes/"');
-		expect(panel).toContain('BikeGPX has thousands of GPX files');
+		expect(panel).toContain('Browse BikeGPX');
+		expect(panel).toContain('Browse thousands of public BikeGPX routes');
 		expect(panel).toContain('data-gpx-drop-target="true"');
 		expect(panel).toContain('data-testid="workout-list"');
 		expect(panel).toContain('placeholder="Search by name or difficulty"');
@@ -575,6 +576,7 @@ describe('view components', () => {
 				courses={[...WORKOUT_COURSES, importedCourse]}
 				customCourseIds={new Set([importedCourse.id])}
 				onClose={() => undefined}
+				onImportCourse={() => Promise.reject(new Error('Not used in this render test'))}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
 				onRenameCourse={() => importedCourse}
@@ -621,6 +623,7 @@ describe('view components', () => {
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
 				onClose={() => undefined}
+				onImportCourse={() => Promise.reject(new Error('Not used in this render test'))}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
 				onRenameCourse={() => course}
@@ -640,6 +643,7 @@ describe('view components', () => {
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
 				onClose={() => undefined}
+				onImportCourse={() => Promise.reject(new Error('Not used in this render test'))}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
 				onRenameCourse={() => course}
@@ -766,10 +770,10 @@ describe('view components', () => {
 		expect(html).toContain('Ride Control');
 		expect(html).toContain('Build:');
 		expect(html).toContain(
-			'href="https://github.com/lookfirst/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
+			'href="https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
 		);
 		expect(html).toContain('<time dateTime=');
-		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
+		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
 		expect(html).toContain('Sponsor');
 		expect(html).not.toContain('WELCOME TO');
@@ -796,11 +800,13 @@ describe('view components', () => {
 		expect(html).toContain('type="checkbox"');
 		expect(html).toContain('open-source GPLv3 application');
 		expect(html).toContain('source code on GitHub');
-		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
+		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
 		expect(html).toContain('all ride data stays in your browser');
 		expect(html).toContain('We don&#x27;t upload it anywhere');
 		expect(html).toContain('would only upload data with your permission');
-		expect(html).toContain('From the history, you can download your rides as TCX files');
+		expect(html).toContain(
+			'From the history, you can download your rides as Strava-compatible FIT files'
+		);
 	});
 
 	test('renders the keyboard controls reference', () => {
@@ -1073,10 +1079,11 @@ describe('view components', () => {
 		expect(html).toContain('data-side-tray="true"');
 		expect(html).toContain('No saved sessions yet');
 		expect(html).toContain('data-testid="session-list"');
-		expect(html).toContain('Import TCX');
+		expect(html).toContain('Import FIT/TCX');
+		expect(html).toContain('aria-label="Download all format"');
 		expect(html).toContain('Download all');
 		expect(html).toContain('.tcx,.zip');
-		expect(html).toContain('End a session or import a TCX file to add it here.');
+		expect(html).toContain('End a session or import a FIT or TCX file to add it here.');
 		expect(html).toContain('ml-auto');
 		expect(html).toContain('translate-x-0');
 		expect(html).toContain('Show history keyboard controls');
@@ -1097,8 +1104,8 @@ describe('view components', () => {
 				total={1}
 			/>
 		);
-		expect(html).toContain('aria-label="Imported from TCX file"');
-		expect(html).toContain('<title>Imported from TCX file</title>');
+		expect(html).toContain('aria-label="Imported from activity file"');
+		expect(html).toContain('<title>Imported from activity file</title>');
 		expect(html).toContain('absolute right-2.5 bottom-3');
 		expect(html).toContain('class="h-5 w-5"');
 		expect(html).toContain('ring-cyan-400/70');
@@ -1119,7 +1126,7 @@ describe('view components', () => {
 				total={1}
 			/>
 		);
-		expect(list).toContain('aria-label="Imported from TCX file"');
+		expect(list).toContain('aria-label="Imported from activity file"');
 		expect(list).not.toContain('>Imported<');
 		expect(list).not.toContain('ring-cyan-400/70');
 		const detail = render(<SessionDetail session={importedSession} speedUnit="kmh" />);
@@ -1228,6 +1235,7 @@ describe('view components', () => {
 		expect(html).toContain('Delete session');
 		expect(html).toContain('Start new session');
 		expect(html).toContain('Download TCX');
+		expect(html).toContain('Download FIT');
 		expect(html).toContain('No recorded samples to export');
 		expect(html).toContain('role="alertdialog"');
 		expect(html).not.toContain('until');

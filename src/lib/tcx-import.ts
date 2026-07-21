@@ -1,4 +1,3 @@
-import { strFromU8, unzip } from 'fflate';
 import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
 import type {
 	MetricAggregate,
@@ -8,16 +7,15 @@ import type {
 	SessionFeeling,
 	SessionWorkout,
 } from '../types';
+import { sessionImportFingerprint } from './activity-file';
 import { evenlySample } from './arrays';
 import { CONTROL_MODE } from './control-mode';
 import { elevationTotalsForSamples } from './elevation';
-import { errorMessage } from './errors';
 import { clampGear } from './gears';
 import { nonNegativeNumber } from './numbers';
 import { clampResistance } from './resistance';
-import { listAllSavedSessions, saveSession } from './saved-sessions';
 import { addMetricAggregates } from './session';
-import { IMPORTED_TCX_ID_PREFIX, RIDECONTROL_TCX_EXTENSION_NAMESPACE } from './tcx-schema';
+import { IMPORTED_TCX_ID_PREFIX, isRideControlTcxExtensionNamespace } from './tcx-schema';
 import {
 	KILOMETERS_PER_HOUR_PER_METER_PER_SECOND,
 	kilometersForMeters,
@@ -34,42 +32,10 @@ import {
 	xmlText as text,
 } from './xml';
 
-const TCX_FILE_EXTENSION = /\.tcx$/i;
-const ZIP_FILE_EXTENSION = /\.zip$/i;
-const MAX_TCX_FILES_PER_IMPORT = 500;
-const MAX_TCX_FILE_BYTES = 20 * 1024 * 1024;
-const MAX_TCX_ARCHIVE_BYTES = 100 * 1024 * 1024;
 const LINE_BREAK = /\r?\n/;
 const FEELING_NOTE = /^Feeling:\s*(.+)$/i;
 const COMMENTS_NOTE_PREFIX = /^Comments:\s*/i;
 const VALID_FEELINGS = new Set<SessionFeeling>(['great', 'good', 'okay', 'tough', 'exhausted']);
-
-interface NamedTcxFile {
-	contents: string;
-	name: string;
-}
-
-interface ImportDependencies {
-	listSessions: () => Promise<SavedSession[]>;
-	saveSession: (session: SavedSession) => Promise<void>;
-}
-
-export interface TcxImportFailure {
-	fileName: string;
-	message: string;
-}
-
-export interface TcxImportResult {
-	duplicateCount: number;
-	failures: TcxImportFailure[];
-	importedSessions: SavedSession[];
-	tcxFileCount: number;
-}
-
-const DEFAULT_IMPORT_DEPENDENCIES: ImportDependencies = {
-	listSessions: listAllSavedSessions,
-	saveSession,
-};
 
 function dateValue(value: string): number | undefined {
 	const timestamp = Date.parse(value);
@@ -239,13 +205,7 @@ export function tcxSessionFingerprint(
 		'calories' | 'distance' | 'elapsedSeconds' | 'history' | 'startedAt'
 	>
 ): string {
-	return fingerprintValues(
-		session.startedAt,
-		session.elapsedSeconds,
-		session.distance,
-		session.calories,
-		session.history.length
-	);
+	return sessionImportFingerprint(session);
 }
 
 function parseActivity(activity: Element): SavedSession {
@@ -286,8 +246,8 @@ function parseActivity(activity: Element): SavedSession {
 	);
 	const distanceMeters = lapDistanceMeters || trackpointDistanceMeters;
 	const calories = positiveSum(laps.map((lap) => numberValue(child(lap, 'Calories'))));
-	const exportedSessionId = descendants(activity, 'SessionId').find(
-		(element) => element.namespaceURI === RIDECONTROL_TCX_EXTENSION_NAMESPACE
+	const exportedSessionId = descendants(activity, 'SessionId').find((element) =>
+		isRideControlTcxExtensionNamespace(element.namespaceURI)
 	);
 	const hasGear =
 		allSamples.some((sample) => sample.gear !== undefined) ||
@@ -362,116 +322,4 @@ export function parseTcxSessions(contents: string): SavedSession[] {
 		throw new Error('The TCX file contains no activities.');
 	}
 	return activities.map(parseActivity);
-}
-
-function unzipArchive(data: Uint8Array): Promise<Record<string, Uint8Array>> {
-	let tcxFileCount = 0;
-	let totalBytes = 0;
-	let limitExceeded = false;
-	return new Promise((resolve, reject) => {
-		unzip(
-			data,
-			{
-				filter: (file) => {
-					if (!TCX_FILE_EXTENSION.test(file.name)) {
-						return false;
-					}
-					tcxFileCount += 1;
-					totalBytes += file.originalSize;
-					limitExceeded =
-						tcxFileCount > MAX_TCX_FILES_PER_IMPORT ||
-						file.originalSize > MAX_TCX_FILE_BYTES ||
-						totalBytes > MAX_TCX_ARCHIVE_BYTES;
-					return !limitExceeded;
-				},
-			},
-			(error, files) => {
-				if (error) {
-					reject(error);
-					return;
-				}
-				if (limitExceeded) {
-					reject(new Error('The ZIP contains too many or excessively large TCX files.'));
-					return;
-				}
-				resolve(files);
-			}
-		);
-	});
-}
-
-async function uploadedTcxFiles(file: File): Promise<NamedTcxFile[]> {
-	if (TCX_FILE_EXTENSION.test(file.name)) {
-		if (file.size > MAX_TCX_FILE_BYTES) {
-			throw new Error('The TCX file is too large to import.');
-		}
-		return [{ contents: await file.text(), name: file.name }];
-	}
-	if (!ZIP_FILE_EXTENSION.test(file.name)) {
-		throw new Error('Choose a .tcx file or a .zip containing TCX files.');
-	}
-	const files = await unzipArchive(new Uint8Array(await file.arrayBuffer()));
-	const entries = Object.entries(files);
-	if (entries.length === 0) {
-		throw new Error('The ZIP contains no TCX files.');
-	}
-	return entries.map(([name, contents]) => ({ contents: strFromU8(contents), name }));
-}
-
-export async function importTcxUpload(
-	file: File,
-	dependencies: ImportDependencies = DEFAULT_IMPORT_DEPENDENCIES
-): Promise<TcxImportResult> {
-	const tcxFiles = await uploadedTcxFiles(file);
-	const importedAt = Date.now();
-	const savedSessions = await dependencies.listSessions();
-	const savedIds = new Set(savedSessions.map((session) => session.id));
-	const savedFingerprints = new Set(savedSessions.map(tcxSessionFingerprint));
-	const result: TcxImportResult = {
-		duplicateCount: 0,
-		failures: [],
-		importedSessions: [],
-		tcxFileCount: tcxFiles.length,
-	};
-	for (const tcxFile of tcxFiles) {
-		try {
-			const sessions = parseTcxSessions(tcxFile.contents);
-			for (const session of sessions) {
-				const fingerprint = tcxSessionFingerprint(session);
-				if (savedIds.has(session.id) || savedFingerprints.has(fingerprint)) {
-					result.duplicateCount += 1;
-					continue;
-				}
-				const importedSession = { ...session, importedAt };
-				await dependencies.saveSession(importedSession);
-				savedIds.add(session.id);
-				savedFingerprints.add(fingerprint);
-				result.importedSessions.push(importedSession);
-			}
-		} catch (error) {
-			result.failures.push({ fileName: tcxFile.name, message: errorMessage(error) });
-		}
-	}
-	return result;
-}
-
-export function tcxImportResultMessage(result: TcxImportResult): string {
-	const messages: string[] = [];
-	const imported = result.importedSessions.length;
-	if (imported > 0) {
-		messages.push(`Imported ${imported} ${imported === 1 ? 'session' : 'sessions'}`);
-	} else {
-		messages.push('No new sessions imported');
-	}
-	if (result.duplicateCount > 0) {
-		messages.push(
-			`${result.duplicateCount} ${result.duplicateCount === 1 ? 'duplicate' : 'duplicates'} skipped`
-		);
-	}
-	if (result.failures.length > 0) {
-		messages.push(
-			`${result.failures.length} ${result.failures.length === 1 ? 'file' : 'files'} could not be imported`
-		);
-	}
-	return messages.join(' · ');
 }

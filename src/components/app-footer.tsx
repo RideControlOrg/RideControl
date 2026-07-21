@@ -13,7 +13,7 @@ export function AppFooter({ onOpenWelcome }: { onOpenWelcome: () => void }) {
 			<span aria-hidden="true">·</span>
 			<a
 				className="transition hover:text-slate-400"
-				href="https://github.com/lookfirst/RideControl"
+				href="https://github.com/RideControlOrg/RideControl"
 				rel="noreferrer"
 				target="_blank"
 			>

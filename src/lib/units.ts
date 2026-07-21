@@ -8,6 +8,7 @@ export const METERS_PER_FOOT = 0.3048;
 export const KILOMETERS_PER_MILE = 1.609_344;
 export const KILOMETERS_PER_HOUR_PER_METER_PER_SECOND = 3.6;
 export const SPEED_UNIT_STORAGE_KEY = 'speed-unit';
+const DESCRIPTION_DISTANCE_SUFFIX = /(?:—|-)\s*\d+(?:[.,]\d+)?\s*(?:km|mi)\s*$/iu;
 
 export const SPEED_UNIT_OPTIONS: { label: string; value: SpeedUnit }[] = [
 	{ label: 'KM/H', value: 'kmh' },
@@ -52,6 +53,17 @@ export function formatDistanceValue(kilometers: number, unit: SpeedUnit, decimal
 
 export function formatDistance(kilometers: number, unit: SpeedUnit, decimals = 2): string {
 	return `${formatDistanceValue(kilometers, unit, decimals)} ${distanceUnitLabel(unit)}`;
+}
+
+export function formatDescriptionDistance(
+	description: string,
+	kilometers: number,
+	unit: SpeedUnit
+): string {
+	return description.replace(
+		DESCRIPTION_DISTANCE_SUFFIX,
+		`— ${formatDistance(kilometers, unit, 0)}`
+	);
 }
 
 export function formatDistanceProgress(
