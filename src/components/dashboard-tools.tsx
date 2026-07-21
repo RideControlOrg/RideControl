@@ -28,7 +28,7 @@ export function DashboardTools({
 				onClick={onOpenHistory}
 				type="button"
 			>
-				History
+				Sessions
 			</button>
 			<div className="flex h-10 rounded-lg border border-line bg-[#10151a] p-1">
 				{SPEED_UNIT_OPTIONS.map((option) => (

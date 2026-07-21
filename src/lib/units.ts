@@ -59,9 +59,8 @@ export function formatDistanceProgress(
 	totalKilometers: number,
 	unit: SpeedUnit
 ): string {
-	const current = formatDistanceValue(currentKilometers, unit, 1);
-	const formattedTotal = formatDistanceValue(totalKilometers, unit, 1);
-	const total = formattedTotal.endsWith('.0') ? formattedTotal.slice(0, -2) : formattedTotal;
+	const current = formatDistanceValue(currentKilometers, unit, 2);
+	const total = formatDistanceValue(totalKilometers, unit, 2);
 	return `${current} / ${total} ${distanceUnitLabel(unit)}`;
 }
 

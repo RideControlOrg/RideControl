@@ -1,4 +1,5 @@
 import type { ControlMode } from './lib/control-mode';
+import type { WorkoutDescriptionAttribution } from './lib/workout-description';
 import type { WorkoutDifficulty, WorkoutRouteType } from './lib/workout-schema';
 
 export type { ChartMode } from './lib/chart-mode';
@@ -31,6 +32,7 @@ export interface WorkoutRoutePoint extends GeographicRoutePoint {
 export interface WorkoutCourse {
 	baseResistance: number;
 	description: string;
+	descriptionAttribution?: WorkoutDescriptionAttribution;
 	difficulty: WorkoutDifficulty;
 	distance: number;
 	elevationGain: number;
@@ -38,6 +40,7 @@ export interface WorkoutCourse {
 	name: string;
 	points: WorkoutRoutePoint[];
 	routeType: WorkoutRouteType;
+	startingLocation?: string;
 }
 
 export interface SessionWorkout {

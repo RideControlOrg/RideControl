@@ -35,6 +35,25 @@
 	button:disabled {
 		cursor: not-allowed;
 	}
+	.ride-control-map-tiles {
+		filter: brightness(0.72) saturate(0.72) contrast(1.08);
+	}
+	.ride-control-bike-marker {
+		background: transparent;
+		border: 0;
+	}
+	.ride-control-bike-marker__body {
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		font-size: 21px;
+		line-height: 1;
+		background: rgb(16 21 26 / 92%);
+		border: 2px solid var(--color-mint);
+		border-radius: 9999px;
+		box-shadow: 0 3px 14px rgb(0 0 0 / 55%);
+	}
 }
 
 @property --ramp-progress {
@@ -164,6 +183,16 @@
 	}
 }
 
+@keyframes functional-status-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.45;
+	}
+}
+
 .connecting-dot {
 	display: inline-block;
 	width: 0.3em;
@@ -186,10 +215,16 @@
 	animation: connection-status-pulse 1.1s ease-in-out infinite;
 }
 
+.functional-status-pulse {
+	animation: functional-status-pulse 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.connection-status-pulse {
-		opacity: 1;
-		transform: none;
-		animation: none;
+		animation: connection-status-pulse 1.1s ease-in-out infinite !important;
+	}
+
+	.functional-status-pulse {
+		animation: functional-status-pulse 1.4s ease-in-out infinite !important;
 	}
 }

@@ -195,10 +195,10 @@ export function createSessionStore(restored: StoredSession, now = Date.now()) {
 					return current;
 				}
 				const elapsedSeconds = current.elapsedSeconds + seconds;
-				const controlSample =
-					control.mode === CONTROL_MODE.GEAR
-						? { gear: control.gear }
-						: { resistance: control.resistance };
+				const controlSample = {
+					...(control.mode === CONTROL_MODE.GEAR ? { gear: control.gear } : {}),
+					resistance: control.resistance,
+				};
 				const distance =
 					current.distance +
 					(distanceDelta ?? kilometersTraveled(metrics.speed, seconds));

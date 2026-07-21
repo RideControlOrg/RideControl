@@ -22,7 +22,7 @@ export function RideMetrics({
 	const rideAverageSpeed = averageSpeed(rideDistance, elapsedSeconds);
 	const { cadence, heartRate, power, speed } = METRIC_PRESENTATION;
 	return (
-		<section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+		<section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 			<Metric
 				accent={speed.accent}
 				average={formatSpeed(rideAverageSpeed, speedUnit)}

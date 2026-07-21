@@ -38,22 +38,22 @@ export function Metric({
 	icon?: string;
 }) {
 	return (
-		<div className="rounded-2xl border border-line bg-panel p-5">
+		<div className="rounded-2xl border border-line bg-panel p-4">
 			<div className="flex items-center justify-between">
 				<span className="font-bold text-slate-500 text-xs tracking-[.14em]">{label}</span>
 				{icon ? (
 					<Icon className={`h-5 w-5 ${metricIconClass(accent)}`} name={icon} />
 				) : null}
 			</div>
-			<div className="mt-4 flex items-baseline gap-2">
+			<div className="mt-3 flex items-baseline gap-2">
 				<span className="font-semibold text-6xl tracking-tight">{value}</span>
 				<span className="text-slate-400 text-sm">{unit}</span>
 			</div>
-			<div className="mt-4 grid grid-cols-2 gap-3 border-line border-t pt-3">
+			<div className="mt-3 grid grid-cols-2 gap-3 border-line border-t pt-3">
 				<MetricSummary label="AVG" value={average} />
 				<MetricSummary label="MAX" rightAligned value={maximum} />
 			</div>
-			<div className={`mt-3 h-1 rounded-full ${metricAccentClass(accent)}`} />
+			<div className={`mt-2 h-1 rounded-full ${metricAccentClass(accent)}`} />
 		</div>
 	);
 }
@@ -70,7 +70,7 @@ export function SmallMetric({
 	value: string;
 }) {
 	return (
-		<div className="p-4 sm:p-5">
+		<div className={large ? 'px-4 py-3 sm:px-5' : 'p-4 sm:p-5'}>
 			<p className="font-bold text-[11px] text-slate-500 tracking-[.12em]">{label}</p>
 			<p
 				className={`mt-1 flex items-baseline gap-2 font-semibold tracking-tight ${large ? 'text-3xl sm:text-5xl' : 'text-lg sm:text-2xl'}`}

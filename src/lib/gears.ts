@@ -1,14 +1,33 @@
 import { clamp } from './numbers';
 import { clampResistance } from './resistance';
 
+export const VIRTUAL_FRONT_CHAINRING_TEETH = [39, 53] as const;
+export const VIRTUAL_REAR_CASSETTE_TEETH = [
+	12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24,
+] as const;
+export const VIRTUAL_GEAR_COMBINATIONS = Object.freeze(
+	VIRTUAL_FRONT_CHAINRING_TEETH.flatMap((chainringTeeth) =>
+		VIRTUAL_REAR_CASSETTE_TEETH.map((cassetteTeeth) => ({
+			cassetteTeeth,
+			chainringTeeth,
+			ratio: chainringTeeth / cassetteTeeth,
+		}))
+	).sort((left, right) => left.ratio - right.ratio)
+);
+
 export const MIN_GEAR = 1;
-export const MAX_GEAR = 24;
+export const MAX_GEAR = VIRTUAL_GEAR_COMBINATIONS.length;
 export const DEFAULT_GEAR = 12;
 export const GEAR_STORAGE_KEY = 'trainer-virtual-gear';
 export const SHIFTING_CONNECTION_MESSAGE =
 	'Connect the trainer and controllers before shifting gears.';
+export const MINIMUM_VIRTUAL_DRIVE_RATIO = Math.min(
+	...VIRTUAL_GEAR_COMBINATIONS.map(({ ratio }) => ratio)
+);
+export const MAXIMUM_VIRTUAL_DRIVE_RATIO = Math.max(
+	...VIRTUAL_GEAR_COMBINATIONS.map(({ ratio }) => ratio)
+);
 
-const GEAR_STEPS_PER_RESISTANCE_DOUBLING = 12;
 const RESISTANCE_PRECISION = 10;
 
 export function clampGear(gear: number): number {
@@ -28,7 +47,10 @@ export function shiftedGear(current: number, change: number): number {
 }
 
 export function virtualGearRatio(gear: number): number {
-	return 2 ** ((clampGear(gear) - DEFAULT_GEAR) / GEAR_STEPS_PER_RESISTANCE_DOUBLING);
+	return (
+		VIRTUAL_GEAR_COMBINATIONS.at(clampGear(gear) - MIN_GEAR)?.ratio ??
+		MINIMUM_VIRTUAL_DRIVE_RATIO
+	);
 }
 
 function roundedResistance(resistance: number): number {
@@ -36,7 +58,9 @@ function roundedResistance(resistance: number): number {
 }
 
 export function resistanceForVirtualGear(baseResistance: number, gear: number): number {
-	return roundedResistance(baseResistance * virtualGearRatio(gear));
+	return roundedResistance(
+		baseResistance * (virtualGearRatio(gear) / MINIMUM_VIRTUAL_DRIVE_RATIO)
+	);
 }
 
 export function resistanceAfterGearShift(

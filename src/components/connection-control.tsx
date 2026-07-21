@@ -25,7 +25,7 @@ export function ConnectionControl({
 					className="inline-flex h-10 items-center gap-2 px-1 font-medium text-slate-400 text-sm"
 					role="status"
 				>
-					<span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-lime" />
+					<span className="functional-status-pulse h-2 w-2 shrink-0 rounded-full bg-lime" />
 					{status}
 				</div>
 				<button

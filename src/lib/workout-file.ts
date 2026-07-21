@@ -2,7 +2,12 @@ import type { GeographicRoutePoint, WorkoutCourse } from '../types';
 import { evenlySample } from './arrays';
 import { downloadBrowserFile } from './download';
 import { parseGpxDocument } from './gpx';
-import { isRecord } from './type-guards';
+import { reverseGeocodeStartingCity } from './reverse-geocode';
+import { isRecord, isString } from './type-guards';
+import {
+	isWorkoutDescriptionAttribution,
+	WORKOUT_DESCRIPTION_ATTRIBUTION,
+} from './workout-description';
 import {
 	isWorkoutDifficulty,
 	isWorkoutRouteType,
@@ -20,20 +25,24 @@ import {
 import { xmlDescendant, xmlEscape, xmlNumber, xmlText } from './xml';
 
 export const CUSTOM_WORKOUTS_STORAGE_KEY = 'ride-control-custom-workouts';
+export const WORKOUT_ORDER_STORAGE_KEY = 'ride-control-workout-order';
 export const WORKOUT_GPX_EXTENSION_NAMESPACE =
 	'https://github.com/lookfirst/RideControl/xmlschemas/WorkoutExtension/v1';
 export const WORKOUT_GPX_FORMAT_VERSION = 2;
+export const MAX_WORKOUT_NAME_LENGTH = 100;
 
 const WORKOUT_LIBRARY_FORMAT = 'ride-control-workout-library';
 const WORKOUT_LIBRARY_VERSION = 1;
 const WORKOUT_MIME_TYPE = 'application/gpx+xml';
 const MAX_CUSTOM_WORKOUTS = 50;
 const MAX_WORKOUT_FILE_POINTS = 200;
-const MAX_LOOP_SOURCE_POINTS = MAX_WORKOUT_FILE_POINTS - 1;
+const MAX_DIRECT_SOURCE_POINTS = MAX_WORKOUT_FILE_POINTS - 1;
 const MAX_OUT_AND_BACK_SOURCE_POINTS = Math.floor((MAX_WORKOUT_FILE_POINTS - 1) / 2);
 const NON_FILENAME_CHARACTERS = /[^a-z0-9]+/g;
 const EDGE_HYPHENS = /^-+|-+$/g;
 const GPX_FILE_EXTENSION = /(?:\.workout)?\.gpx$/i;
+const GPX_WORKOUT_ID_PREFIX = 'gpx-';
+const IMPORTED_GPX_DESCRIPTION = 'Imported from a GPX route with elevation data.';
 
 interface WorkoutLibraryData {
 	courses: WorkoutCourse[];
@@ -59,6 +68,7 @@ function restoredCourses(value: unknown): WorkoutCourse[] {
 	return value.courses
 		.slice(0, MAX_CUSTOM_WORKOUTS)
 		.map(restoreWorkoutCourse)
+		.map((course) => (course ? migrateLegacyImportedOutAndBack(course) : undefined))
 		.filter((course): course is WorkoutCourse => {
 			if (!course || uniqueIds.has(course.id) || workoutIsBuiltIn(course.id)) {
 				return false;
@@ -66,6 +76,41 @@ function restoredCourses(value: unknown): WorkoutCourse[] {
 			uniqueIds.add(course.id);
 			return true;
 		});
+}
+
+function migrateLegacyImportedOutAndBack(course: WorkoutCourse): WorkoutCourse {
+	if (
+		!(
+			course.id.startsWith(GPX_WORKOUT_ID_PREFIX) &&
+			course.routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK
+		)
+	) {
+		return course;
+	}
+	const distance = course.distance / 2;
+	const points = course.points.filter((point) => point.distance <= distance);
+	return (
+		restoreWorkoutCourse({
+			...course,
+			distance,
+			points,
+			routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
+		}) ?? course
+	);
+}
+
+function restoredWorkoutOrder(value: unknown): string[] {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	const uniqueIds = new Set<string>();
+	return value.filter((id): id is string => {
+		if (!(isString(id) && id && !uniqueIds.has(id))) {
+			return false;
+		}
+		uniqueIds.add(id);
+		return true;
+	});
 }
 
 function gpxPointXml(point: GeographicRoutePoint): string {
@@ -90,7 +135,7 @@ function routeFingerprint(points: GeographicRoutePoint[]): string {
 		hash ^= source.charCodeAt(index);
 		hash = Math.imul(hash, 16_777_619);
 	}
-	return `gpx-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+	return `${GPX_WORKOUT_ID_PREFIX}${(hash >>> 0).toString(16).padStart(8, '0')}`;
 }
 
 function workoutMetadata(
@@ -98,19 +143,27 @@ function workoutMetadata(
 	points: GeographicRoutePoint[]
 ): {
 	baseResistance?: number;
+	descriptionAttribution?: WorkoutCourse['descriptionAttribution'];
 	difficulty: WorkoutDifficulty;
 	id: string;
 	routeType?: WorkoutRouteType;
+	startingLocation?: string;
 } {
 	const difficultyValue = xmlText(xmlDescendant(container, 'Difficulty'));
+	const descriptionAttributionValue = xmlText(xmlDescendant(container, 'DescriptionAttribution'));
 	const routeTypeValue = xmlText(xmlDescendant(container, 'CourseType'));
+	const startingLocation = xmlText(xmlDescendant(container, 'StartingLocation')).trim();
 	return {
 		baseResistance: xmlNumber(xmlDescendant(container, 'BaseResistance')),
+		descriptionAttribution: isWorkoutDescriptionAttribution(descriptionAttributionValue)
+			? descriptionAttributionValue
+			: undefined,
 		difficulty: isWorkoutDifficulty(difficultyValue)
 			? difficultyValue
 			: WORKOUT_DIFFICULTY.MODERATE,
 		id: xmlText(xmlDescendant(container, 'WorkoutId')) || routeFingerprint(points),
 		routeType: isWorkoutRouteType(routeTypeValue) ? routeTypeValue : undefined,
+		startingLocation: startingLocation || undefined,
 	};
 }
 
@@ -160,6 +213,8 @@ export function workoutFileContents(course: WorkoutCourse): string {
 			<rc:Difficulty>${course.difficulty}</rc:Difficulty>
 			<rc:BaseResistance>${course.baseResistance.toFixed(1)}</rc:BaseResistance>
 			<rc:CourseType>${course.routeType}</rc:CourseType>
+			${course.descriptionAttribution ? `<rc:DescriptionAttribution>${course.descriptionAttribution}</rc:DescriptionAttribution>` : ''}
+			${course.startingLocation ? `<rc:StartingLocation>${xmlEscape(course.startingLocation)}</rc:StartingLocation>` : ''}
 		</extensions>
 		<trkseg>${points}
 		</trkseg>
@@ -193,34 +248,63 @@ export function parseWorkoutFile(
 	const sourceCloses = workoutRouteCloses(sourcePoints);
 	const routeType =
 		metadata.routeType ??
-		(sourceCloses ? WORKOUT_ROUTE_TYPE.LOOP : WORKOUT_ROUTE_TYPE.OUT_AND_BACK);
+		(sourceCloses ? WORKOUT_ROUTE_TYPE.LOOP : WORKOUT_ROUTE_TYPE.POINT_TO_POINT);
 	let points: GeographicRoutePoint[];
 	if (routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK) {
 		points = outAndBackPoints(sourcePoints, sourceCloses);
 	} else {
-		points = evenlySample(sourcePoints, MAX_LOOP_SOURCE_POINTS);
+		points = evenlySample(sourcePoints, MAX_DIRECT_SOURCE_POINTS);
 	}
 	const distance = points.at(-1)?.distance ?? 0;
 	const course = restoreWorkoutCourse({
 		baseResistance: metadata.baseResistance,
-		description: parsed.description || 'Imported from a GPX route with elevation data.',
+		description: parsed.description || IMPORTED_GPX_DESCRIPTION,
+		descriptionAttribution: metadata.descriptionAttribution,
 		difficulty: metadata.difficulty,
 		distance,
 		id: metadata.id,
 		name: parsed.name || fallbackName,
 		points,
 		routeType,
+		startingLocation: metadata.startingLocation,
 	});
 	if (!course) {
 		throw new Error(
-			'The GPX route must describe a valid loop or out-and-back course with increasing distance and elevation data.'
+			'The GPX route must describe a valid point-to-point, loop, or out-and-back course with increasing distance and elevation data.'
 		);
 	}
 	return course;
 }
 
-export async function readWorkoutFile(file: Pick<File, 'name' | 'text'>): Promise<WorkoutCourse> {
-	return parseWorkoutFile(await file.text(), new DOMParser(), workoutNameFromFile(file.name));
+export async function readWorkoutFile(
+	file: Pick<File, 'name' | 'text'>,
+	resolveStartingCity: typeof reverseGeocodeStartingCity = reverseGeocodeStartingCity
+): Promise<WorkoutCourse> {
+	const course = parseWorkoutFile(
+		await file.text(),
+		new DOMParser(),
+		workoutNameFromFile(file.name)
+	);
+	if (course.description !== IMPORTED_GPX_DESCRIPTION) {
+		return course;
+	}
+	if (course.startingLocation) {
+		return {
+			...course,
+			description: `Starts in ${course.startingLocation}.`,
+			descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
+		};
+	}
+	const [firstPoint] = course.points;
+	const city = firstPoint ? await resolveStartingCity(firstPoint) : undefined;
+	return city
+		? {
+				...course,
+				description: `Starts in ${city}.`,
+				descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
+				startingLocation: city,
+			}
+		: course;
 }
 
 export function loadCustomWorkouts(
@@ -259,6 +343,90 @@ export function saveCustomWorkouts(
 	storage.setItem(CUSTOM_WORKOUTS_STORAGE_KEY, JSON.stringify(library));
 }
 
+export function loadWorkoutOrder(storage: Pick<Storage, 'getItem'> = localStorage): string[] {
+	try {
+		const saved = storage.getItem(WORKOUT_ORDER_STORAGE_KEY);
+		return saved ? restoredWorkoutOrder(JSON.parse(saved)) : [];
+	} catch {
+		return [];
+	}
+}
+
+export function saveWorkoutOrder(
+	courseIds: string[],
+	storage: Pick<Storage, 'setItem'> = localStorage
+): void {
+	storage.setItem(WORKOUT_ORDER_STORAGE_KEY, JSON.stringify(restoredWorkoutOrder(courseIds)));
+}
+
+export function orderWorkoutCourses(
+	courses: WorkoutCourse[],
+	courseIds: string[]
+): WorkoutCourse[] {
+	const coursesById = new Map(courses.map((course) => [course.id, course]));
+	const ordered = courseIds.flatMap((id) => {
+		const course = coursesById.get(id);
+		if (!course) {
+			return [];
+		}
+		coursesById.delete(id);
+		return [course];
+	});
+	return [...ordered, ...coursesById.values()];
+}
+
+export function prioritizeWorkoutCourse(
+	courses: WorkoutCourse[],
+	currentCourseIds: string[],
+	prioritizedCourseId: string
+): WorkoutCourse[] {
+	return orderWorkoutCourses(courses, [
+		prioritizedCourseId,
+		...currentCourseIds.filter((courseId) => courseId !== prioritizedCourseId),
+	]);
+}
+
+function workoutMove(
+	courses: WorkoutCourse[],
+	movedCourseId: string,
+	destinationIndex: number
+): { insertionIndex: number; movedIndex: number } | undefined {
+	const movedIndex = courses.findIndex((course) => course.id === movedCourseId);
+	if (movedIndex < 0) {
+		return;
+	}
+	const boundedDestination = Math.max(0, Math.min(Math.trunc(destinationIndex), courses.length));
+	const insertionIndex =
+		movedIndex < boundedDestination ? boundedDestination - 1 : boundedDestination;
+	return movedIndex === insertionIndex ? undefined : { insertionIndex, movedIndex };
+}
+
+export function canMoveWorkoutCourse(
+	courses: WorkoutCourse[],
+	movedCourseId: string,
+	destinationIndex: number
+): boolean {
+	return Boolean(workoutMove(courses, movedCourseId, destinationIndex));
+}
+
+export function moveWorkoutCourse(
+	courses: WorkoutCourse[],
+	movedCourseId: string,
+	destinationIndex: number
+): WorkoutCourse[] {
+	const move = workoutMove(courses, movedCourseId, destinationIndex);
+	if (!move) {
+		return courses;
+	}
+	const reordered = [...courses];
+	const [movedCourse] = reordered.splice(move.movedIndex, 1);
+	if (!movedCourse) {
+		return courses;
+	}
+	reordered.splice(move.insertionIndex, 0, movedCourse);
+	return reordered;
+}
+
 export function addCustomWorkout(
 	courses: WorkoutCourse[],
 	course: WorkoutCourse
@@ -273,6 +441,31 @@ export function addCustomWorkout(
 	return {
 		course,
 		courses: [course, ...courses].slice(0, MAX_CUSTOM_WORKOUTS),
+	};
+}
+
+export function renameCustomWorkout(
+	courses: WorkoutCourse[],
+	workoutId: string,
+	name: string
+): { course: WorkoutCourse; courses: WorkoutCourse[] } {
+	const nextName = name.trim();
+	if (!nextName) {
+		throw new Error('Enter a workout name.');
+	}
+	if (nextName.length > MAX_WORKOUT_NAME_LENGTH) {
+		throw new Error(`Workout names can be at most ${MAX_WORKOUT_NAME_LENGTH} characters.`);
+	}
+	const existing = courses.find((candidate) => candidate.id === workoutId);
+	if (!existing) {
+		throw new Error('This imported workout is no longer available.');
+	}
+	const renamedCourse = { ...existing, name: nextName };
+	return {
+		course: renamedCourse,
+		courses: courses.map((candidate) =>
+			candidate.id === workoutId ? renamedCourse : candidate
+		),
 	};
 }
 

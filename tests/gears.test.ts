@@ -3,11 +3,14 @@ import {
 	clampGear,
 	DEFAULT_GEAR,
 	MAX_GEAR,
+	MAXIMUM_VIRTUAL_DRIVE_RATIO,
 	MIN_GEAR,
+	MINIMUM_VIRTUAL_DRIVE_RATIO,
 	resistanceAfterGearShift,
 	resistanceForVirtualGear,
 	shiftedGear,
 	storedGear,
+	VIRTUAL_GEAR_COMBINATIONS,
 	virtualGearRatio,
 } from '../src/lib/gears';
 
@@ -30,27 +33,58 @@ describe('virtual gears', () => {
 		expect(storedGear({ getItem: () => null })).toBe(DEFAULT_GEAR);
 	});
 
-	test('uses evenly spaced ratios across the 24-gear range', () => {
-		expect(virtualGearRatio(DEFAULT_GEAR)).toBe(1);
-		expect(virtualGearRatio(MAX_GEAR)).toBe(2);
-		expect(virtualGearRatio(MIN_GEAR)).toBeCloseTo(0.53, 2);
-		expect(virtualGearRatio(13) / virtualGearRatio(12)).toBeCloseTo(
-			virtualGearRatio(12) / virtualGearRatio(11),
-			10
+	test('orders every physical 2×12 combination from easiest to hardest', () => {
+		expect(
+			VIRTUAL_GEAR_COMBINATIONS.map(
+				({ cassetteTeeth, chainringTeeth }) => `${chainringTeeth}/${cassetteTeeth}`
+			)
+		).toEqual([
+			'39/24',
+			'39/22',
+			'39/21',
+			'39/20',
+			'39/19',
+			'39/18',
+			'53/24',
+			'39/17',
+			'53/22',
+			'39/16',
+			'53/21',
+			'39/15',
+			'53/20',
+			'39/14',
+			'53/19',
+			'53/18',
+			'39/13',
+			'53/17',
+			'39/12',
+			'53/16',
+			'53/15',
+			'53/14',
+			'53/13',
+			'53/12',
+		]);
+		expect(virtualGearRatio(MIN_GEAR)).toBe(MINIMUM_VIRTUAL_DRIVE_RATIO);
+		expect(virtualGearRatio(MAX_GEAR)).toBeCloseTo(MAXIMUM_VIRTUAL_DRIVE_RATIO, 10);
+		expect(MINIMUM_VIRTUAL_DRIVE_RATIO).toBe(39 / 24);
+		expect(MAXIMUM_VIRTUAL_DRIVE_RATIO).toBe(53 / 12);
+		expect(virtualGearRatio(2) / virtualGearRatio(1)).not.toBeCloseTo(
+			virtualGearRatio(3) / virtualGearRatio(2),
+			3
 		);
 	});
 
-	test('scales terrain resistance around neutral gear and clamps trainer targets', () => {
-		expect(resistanceForVirtualGear(30, DEFAULT_GEAR)).toBe(30);
-		expect(resistanceForVirtualGear(30, MAX_GEAR)).toBe(60);
-		expect(resistanceForVirtualGear(30, MIN_GEAR)).toBe(15.9);
+	test('scales terrain resistance from the easiest physical ratio and clamps targets', () => {
+		expect(resistanceForVirtualGear(30, MIN_GEAR)).toBe(30);
+		expect(resistanceForVirtualGear(30, DEFAULT_GEAR)).toBe(48);
+		expect(resistanceForVirtualGear(30, MAX_GEAR)).toBe(81.5);
 		expect(resistanceForVirtualGear(80, MAX_GEAR)).toBe(100);
 	});
 
-	test('applies the same ratio curve to consecutive free-ride shifts', () => {
+	test('applies each physical ratio change to consecutive free-ride shifts', () => {
 		const harder = resistanceAfterGearShift(30, 12, 13);
-		expect(harder).toBe(31.8);
+		expect(harder).toBe(30.6);
 		expect(resistanceAfterGearShift(harder, 13, 12)).toBeCloseTo(30, 1);
-		expect(resistanceAfterGearShift(3, 12, 1)).toBe(1.6);
+		expect(resistanceAfterGearShift(3, 12, 1)).toBe(1.9);
 	});
 });

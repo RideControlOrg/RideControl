@@ -24,12 +24,21 @@ import { useTrainer } from './hooks/use-trainer';
 import { useWorkoutResistance } from './hooks/use-workout';
 import { useWorkoutLibrary } from './hooks/use-workout-library';
 import { useZwiftClick } from './hooks/use-zwift-click';
-import { APP_OVERLAY, type AppOverlay } from './lib/app-overlay';
+import {
+	APP_OVERLAY,
+	type AppOverlay,
+	loadOpenSideTray,
+	persistOpenSideTray,
+} from './lib/app-overlay';
 import { CONTROL_MODE, type ControlMode } from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
-import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
+import {
+	loadStoredSession,
+	requestUnloadConfirmation,
+	sessionNeedsUnloadWarning,
+} from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import {
 	workoutDashboardPreview,
@@ -66,10 +75,15 @@ function controlModeForClick(paired: boolean): ControlMode {
 export function App() {
 	const rememberedDevices = useRememberedBluetoothDevices();
 	const trainer = useTrainer(rememberedDevices);
-	const [activeOverlay, setActiveOverlay] = useState<AppOverlay | undefined>(() =>
-		shouldShowWelcome() ? APP_OVERLAY.WELCOME : undefined
+	const [activeOverlay, setActiveOverlayState] = useState<AppOverlay | undefined>(
+		() => loadOpenSideTray() ?? (shouldShowWelcome() ? APP_OVERLAY.WELCOME : undefined)
 	);
+	const setActiveOverlay = useCallback((overlay: AppOverlay | undefined) => {
+		persistOpenSideTray(overlay);
+		setActiveOverlayState(overlay);
+	}, []);
 	const devicesOpen = activeOverlay === APP_OVERLAY.DEVICES;
+	const [initialClickConnectionActive] = useState(() => !loadStoredSession().ended);
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
 	const heartRate = useHeartRateMonitor(rememberedDevices, trainer.setNotice);
@@ -77,7 +91,8 @@ export function App() {
 		handleClickShift,
 		trainer.setNotice,
 		devicesOpen,
-		rememberedDevices
+		rememberedDevices,
+		initialClickConnectionActive
 	);
 	const liveMetrics = metricsWithHeartRate(
 		trainer.metrics,
@@ -102,11 +117,12 @@ export function App() {
 		ready: virtualShiftingReady,
 		setNotice: trainer.setNotice,
 	});
+	const activeControlMode = controlModeForClick(click.paired);
 	const session = useSession(
 		liveMetrics,
 		{
 			gear: gearControl.gear,
-			mode: controlModeForClick(click.paired),
+			mode: activeControlMode,
 			resistance: trainer.resistance,
 		},
 		trainer.lastPedalingAt,
@@ -141,6 +157,9 @@ export function App() {
 		resistance: workoutResistance,
 	});
 	const workflow = useSessionWorkflow(session, trainer.setNotice, trainer.settleAfterRide);
+	useEffect(() => {
+		click.setConnectionActive(!session.ended);
+	}, [click.setConnectionActive, session.ended]);
 	const dashboardKeyboardEnabled = activeOverlay === undefined && !workflow.saveDialogOpen;
 	clickShiftRef.current = shiftHandlerUnlessBlocked(
 		gearControl.shiftGear,
@@ -229,29 +248,33 @@ export function App() {
 		handleNewSessionShortcut,
 		session.ended,
 		session.togglePause,
+		setActiveOverlay,
 		workflow.endSession,
 		workflow.saveDialogOpen,
 	]);
 
-	const closeWelcome = useCallback((dontShowAgain: boolean) => {
-		if (dontShowAgain) {
-			rememberWelcomeDismissal();
-		}
-		setActiveOverlay(undefined);
-	}, []);
+	const closeWelcome = useCallback(
+		(dontShowAgain: boolean) => {
+			if (dontShowAgain) {
+				rememberWelcomeDismissal();
+			}
+			setActiveOverlay(undefined);
+		},
+		[setActiveOverlay]
+	);
 	const continueFromHistory = useCallback(
 		(savedSession: SavedSession) => {
 			setActiveOverlay(undefined);
 			workflow.requestContinuation(savedSession);
 		},
-		[workflow.requestContinuation]
+		[setActiveOverlay, workflow.requestContinuation]
 	);
 	const selectWorkout = useCallback(
 		(course?: WorkoutCourse) => {
 			session.selectWorkout(course);
 			setActiveOverlay(undefined);
 		},
-		[session.selectWorkout]
+		[session.selectWorkout, setActiveOverlay]
 	);
 	const selectedWorkoutCourse = session.selectedWorkout?.course;
 	const selectedWorkoutId = selectedWorkoutCourse?.id;
@@ -336,7 +359,7 @@ export function App() {
 				) : null}
 				<DashboardWorkspace>
 					<SessionOverview
-						controlMode={session.controlMode}
+						controlMode={activeControlMode}
 						elapsedSeconds={session.elapsedSeconds}
 						history={session.history}
 						keyboardEnabled={dashboardKeyboardEnabled}
@@ -345,27 +368,25 @@ export function App() {
 						speedUnit={speedUnit}
 						workout={session.workout}
 					/>
-					{workoutTerrain && !virtualShiftingActive ? null : (
-						<TrainingControl
-							connected={virtualShiftingActive ? virtualShiftingReady : connected}
-							control={
-								virtualShiftingActive
-									? {
-											gear: gearControl.gear,
-											mode: CONTROL_MODE.GEAR,
-											onShift: gearControl.shiftGear,
-											shiftFlash: gearControl.shiftFlash,
-										}
-									: {
-											keyboardFlash: trainer.resistanceKeyFlash,
-											mode: CONTROL_MODE.RESISTANCE,
-											onChange: trainer.updateResistance,
-											ramp: trainer.resistanceRamp,
-											resistance: trainer.resistance,
-										}
-							}
-						/>
-					)}
+					<TrainingControl
+						connected={virtualShiftingActive ? virtualShiftingReady : connected}
+						control={
+							virtualShiftingActive
+								? {
+										gear: gearControl.gear,
+										mode: CONTROL_MODE.GEAR,
+										onShift: gearControl.shiftGear,
+										shiftFlash: gearControl.shiftFlash,
+									}
+								: {
+										keyboardFlash: trainer.resistanceKeyFlash,
+										mode: CONTROL_MODE.RESISTANCE,
+										onChange: trainer.updateResistance,
+										ramp: trainer.resistanceRamp,
+										resistance: trainer.resistance,
+									}
+						}
+					/>
 				</DashboardWorkspace>
 			</Dashboard>
 			<AppFooter onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)} />
@@ -394,10 +415,11 @@ export function App() {
 				activeCourse={session.selectedWorkout?.course}
 				courses={workoutLibrary.courses}
 				customCourseIds={workoutLibrary.customCourseIds}
-				ended={session.ended}
 				onClose={() => setActiveOverlay(undefined)}
 				onImportFile={workoutLibrary.importFile}
 				onRemoveCourse={removeWorkout}
+				onRenameCourse={workoutLibrary.renameCourse}
+				onReorderCourse={workoutLibrary.reorderCourse}
 				onSelect={selectWorkout}
 				open={activeOverlay === APP_OVERLAY.WORKOUTS}
 				selectionLocked={workoutLocked}

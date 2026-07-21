@@ -42,10 +42,16 @@ function trackpointXml(sample: MetricSample, timestamp: number, distanceMeters: 
 		sample.elevation === undefined
 			? ''
 			: `\n\t\t\t\t\t\t<AltitudeMeters>${nonNegativeNumber(sample.elevation).toFixed(2)}</AltitudeMeters>`;
-	const controlExtension =
+	const controlExtensions = [
 		sample.gear === undefined
-			? `<rc:Resistance>${nonNegativeNumber(sample.resistance).toFixed(1)}</rc:Resistance>`
-			: `<rc:Gear>${Math.round(nonNegativeNumber(sample.gear))}</rc:Gear>`;
+			? ''
+			: `<rc:Gear>${Math.round(nonNegativeNumber(sample.gear))}</rc:Gear>`,
+		sample.resistance === undefined
+			? ''
+			: `<rc:Resistance>${nonNegativeNumber(sample.resistance).toFixed(1)}</rc:Resistance>`,
+	]
+		.filter(Boolean)
+		.join('\n\t\t\t\t\t\t\t');
 	const workoutExtensions = [
 		sample.grade === undefined ? '' : `<rc:Grade>${sample.grade.toFixed(2)}</rc:Grade>`,
 		sample.workoutDistance === undefined
@@ -73,7 +79,7 @@ function trackpointXml(sample: MetricSample, timestamp: number, distanceMeters: 
 								<ns3:Speed>${metersPerSecond(nonNegativeNumber(sample.speed)).toFixed(3)}</ns3:Speed>
 								<ns3:Watts>${Math.round(nonNegativeNumber(sample.power))}</ns3:Watts>
 							</ns3:TPX>
-							${controlExtension}${workoutExtensions ? `\n\t\t\t\t\t\t\t${workoutExtensions}` : ''}
+							${controlExtensions}${workoutExtensions ? `\n\t\t\t\t\t\t\t${workoutExtensions}` : ''}
 						</Extensions>
 					</Trackpoint>`;
 }
@@ -130,12 +136,22 @@ export function sessionToTcx(session: SavedSession): string {
 	const averageHeartRate = aggregateAverage(session.aggregates.heartRate);
 	const averageCadence = aggregateAverage(session.aggregates.cadence);
 	const averagePower = aggregateAverage(session.aggregates.power);
-	const controlSummary =
-		session.controlMode === CONTROL_MODE.GEAR
+	const hasRecordedGear =
+		session.controlMode === CONTROL_MODE.GEAR || session.aggregates.gear.count > 0;
+	const hasRecordedResistance =
+		session.controlMode === CONTROL_MODE.RESISTANCE || session.aggregates.resistance.count > 0;
+	const controlSummary = [
+		hasRecordedGear
 			? `<rc:AverageGear>${aggregateAverage(session.aggregates.gear).toFixed(1)}</rc:AverageGear>
 						<rc:MaximumGear>${Math.max(aggregateMaximum(session.aggregates.gear), ...session.history.map((sample) => nonNegativeNumber(sample.gear))).toFixed(0)}</rc:MaximumGear>`
-			: `<rc:AverageResistance>${aggregateAverage(session.aggregates.resistance).toFixed(1)}</rc:AverageResistance>
-						<rc:MaximumResistance>${Math.max(aggregateMaximum(session.aggregates.resistance), ...session.history.map((sample) => nonNegativeNumber(sample.resistance))).toFixed(1)}</rc:MaximumResistance>`;
+			: '',
+		hasRecordedResistance
+			? `<rc:AverageResistance>${aggregateAverage(session.aggregates.resistance).toFixed(1)}</rc:AverageResistance>
+						<rc:MaximumResistance>${Math.max(aggregateMaximum(session.aggregates.resistance), ...session.history.map((sample) => nonNegativeNumber(sample.resistance))).toFixed(1)}</rc:MaximumResistance>`
+			: '',
+	]
+		.filter(Boolean)
+		.join('\n\t\t\t\t\t\t');
 	const distanceMeters = metersForKilometers(nonNegativeNumber(session.distance));
 	const averageSpeed = session.elapsedSeconds > 0 ? distanceMeters / session.elapsedSeconds : 0;
 

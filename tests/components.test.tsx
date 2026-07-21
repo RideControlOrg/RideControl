@@ -8,6 +8,7 @@ import { Icon } from '../src/components/icon';
 import { KeyboardShortcutsDialog } from '../src/components/keyboard-shortcuts-dialog';
 import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
 import { Notification } from '../src/components/notification';
+import { RenameWorkoutDialog } from '../src/components/rename-workout-dialog';
 import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionChart } from '../src/components/session-chart';
 import { SessionControls } from '../src/components/session-controls';
@@ -30,6 +31,7 @@ import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
 import { formatSessionImportTime, sessionSummary } from '../src/lib/saved-sessions';
 import { SESSION_WORKFLOW_INTENT } from '../src/lib/session-workflow';
+import { WORKOUT_DESCRIPTION_ATTRIBUTION } from '../src/lib/workout-description';
 import { WORKOUT_ROUTE_TYPE } from '../src/lib/workout-schema';
 import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
 import { savedSessionFixture } from './fixtures/saved-session';
@@ -45,6 +47,7 @@ const noCustomWorkoutIds = new Set<string>();
 describe('view components', () => {
 	test('renders known and fallback icons', () => {
 		expect(render(<Icon name="heart" />)).toContain('<title>heart</title>');
+		expect(render(<Icon name="move-vertical" />)).toContain('<title>move-vertical</title>');
 		expect(render(<Icon name="unknown" />)).toContain('<title>unknown</title>');
 	});
 
@@ -61,6 +64,8 @@ describe('view components', () => {
 		);
 		expect(html).toContain('POWER');
 		expect(html).toContain('200');
+		expect(html).toContain('rounded-2xl border border-line bg-panel p-4');
+		expect(html).toContain('mt-3 flex items-baseline gap-2');
 		expect(html).toContain('grid grid-cols-2 gap-3 border-line border-t pt-3');
 		expect(html).toContain('font-semibold text-6xl tracking-tight');
 		expect(html).toContain('font-semibold text-4xl text-white tabular-nums tracking-tight');
@@ -75,9 +80,9 @@ describe('view components', () => {
 
 	test('renders a compact session metric', () => {
 		expect(render(<SmallMetric label="TIME" value="01:02:03" />)).toContain('01:02:03');
-		expect(render(<SmallMetric label="TIME" large value="01:02:03" />)).toContain(
-			'text-3xl sm:text-5xl'
-		);
+		const largeMetric = render(<SmallMetric label="TIME" large value="01:02:03" />);
+		expect(largeMetric).toContain('px-4 py-3 sm:px-5');
+		expect(largeMetric).toContain('text-3xl sm:text-5xl');
 		const distance = render(<SmallMetric label="DISTANCE" large unit="mi" value="10.00" />);
 		expect(distance).toContain('>10.00</span>');
 		expect(distance).toContain('text-base sm:text-xl');
@@ -283,6 +288,7 @@ describe('view components', () => {
 					...common,
 					busy: true,
 					connectedCount: 0,
+					connectionActive: true,
 					controllers: [
 						{
 							active: false,
@@ -350,6 +356,45 @@ describe('view components', () => {
 		expect(panel).toContain('bg-mint/10');
 		expect(panel).not.toContain('shadow-[inset_0_0_18px');
 		expect(panel).not.toContain('divide-y');
+		const inactiveClickPanel = render(
+			<DevicePairingPanel
+				browserNotice=""
+				click={{
+					...common,
+					connectedCount: 0,
+					connectionActive: false,
+					controllers: [
+						{
+							active: false,
+							busy: false,
+							connected: false,
+							id: 'saved-plus-click',
+							label: '+ Controller',
+							paired: true,
+							phase: 'offline',
+							reconnecting: false,
+							status: 'Paired · offline',
+						},
+					],
+					onForgetController: () => undefined,
+					paired: true,
+					pairedCount: 1,
+					pairing: false,
+					phase: 'offline',
+					reconnecting: false,
+					status: 'Paired · offline',
+				}}
+				heartRate={common}
+				onClose={() => undefined}
+				open
+				trainer={common}
+			/>
+		);
+		expect(inactiveClickPanel).toContain('Connects during an active session');
+		expect(inactiveClickPanel).not.toContain('>Reconnect</button>');
+		expect(inactiveClickPanel).toContain(
+			'Saved controllers connect for an active ride session and disconnect when it ends.'
+		);
 		const configuredPanel = render(
 			<DevicePairingPanel
 				automaticReconnectConfigured
@@ -357,6 +402,7 @@ describe('view components', () => {
 				click={{
 					...common,
 					connectedCount: 0,
+					connectionActive: true,
 					controllers: [],
 					onForgetController: () => undefined,
 					pairedCount: 0,
@@ -378,6 +424,7 @@ describe('view components', () => {
 				click={{
 					...common,
 					connectedCount: 0,
+					connectionActive: true,
 					controllers: [],
 					onForgetController: () => undefined,
 					pairedCount: 0,
@@ -460,10 +507,11 @@ describe('view components', () => {
 			<WorkoutPanel
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
-				ended={false}
 				onClose={() => undefined}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
+				onRenameCourse={() => course}
+				onReorderCourse={() => undefined}
 				onSelect={() => undefined}
 				open
 				selectionLocked={false}
@@ -480,6 +528,17 @@ describe('view components', () => {
 		expect(panel).toContain('Harbor Ring course map');
 		expect(panel).toContain('Harbor Ring elevation profile');
 		expect(panel).toContain('Import GPX');
+		expect(panel).toContain('href="https://bikegpx.com/bike_routes/"');
+		expect(panel).toContain('BikeGPX has thousands of GPX files');
+		expect(panel).toContain('data-gpx-drop-target="true"');
+		expect(panel).toContain('data-testid="workout-list"');
+		expect(panel).toContain('placeholder="Search by name or difficulty"');
+		expect(panel).toContain('data-testid="workout-status"');
+		expect(panel).toContain('role="status"');
+		expect(panel).not.toContain('Ride without a workout');
+		expect(panel).not.toContain(
+			'Choose a workout for your next session, then start it when you are ready.'
+		);
 		expect(panel.match(/Download GPX/g)).toHaveLength(6);
 		expect(panel).toContain('10.0 mi out &amp; back');
 		expect(panel).toContain('15.0 mi loop');
@@ -489,21 +548,37 @@ describe('view components', () => {
 		expect(panel).toContain('stroke="#64748b"');
 		expect(panel).toContain('bg-slate-800/70');
 		expect(panel).not.toContain('bg-lime text-ink');
+		expect(panel).not.toContain('aria-label="Rename Harbor Ring"');
+		expect(panel).toContain('aria-label="Drag Harbor Ring to reorder"');
+		expect(panel).toContain('<title>Move workout up or down</title>');
+		expect(panel).toContain('absolute top-3 right-3');
+		expect(panel).not.toContain('draggable="true"');
+		expect(panel.match(/aria-label="Drag [^"]+ to reorder"/g)).toHaveLength(6);
+		expect(panel.match(/data-workout-drop-index=/g)).toHaveLength(7);
+		expect(panel).not.toContain('bg-cyan-400/20');
+		expect(panel).not.toContain('shadow-[0_0_10px_rgba(103,232,249,.8)]');
+		expect(panel).not.toContain('Move dragged workout to');
+		expect(panel).not.toContain('ring-2 ring-cyan-400/70');
+		expect(panel).not.toContain('View map');
 		expect(panel).toContain('data-side-tray="true"');
 		const importedCourse = {
 			...course,
+			description: 'Starts in Ålands Countryside.',
+			descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
 			id: 'imported-course',
 			name: 'Imported course',
-			routeType: WORKOUT_ROUTE_TYPE.OUT_AND_BACK,
+			routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
+			startingLocation: 'Ålands Countryside',
 		};
 		const customPanel = render(
 			<WorkoutPanel
 				courses={[...WORKOUT_COURSES, importedCourse]}
 				customCourseIds={new Set([importedCourse.id])}
-				ended={false}
 				onClose={() => undefined}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
+				onRenameCourse={() => importedCourse}
+				onReorderCourse={() => undefined}
 				onSelect={() => undefined}
 				open
 				selectionLocked={false}
@@ -511,27 +586,72 @@ describe('view components', () => {
 			/>
 		);
 		expect(customPanel).toContain('Imported course');
+		expect(customPanel).toContain('Starts in Ålands Countryside.');
+		expect(customPanel).toContain('title="View the route map"');
+		expect(customPanel).toContain('target="_blank"');
+		expect(customPanel).toContain('© OpenStreetMap contributors');
+		expect(customPanel.indexOf('© OpenStreetMap contributors')).toBeGreaterThan(
+			customPanel.indexOf('point to point')
+		);
+		expect(customPanel).toContain('aria-label="Rename Imported course"');
+		expect(customPanel).toContain('title="Rename imported workout"');
 		expect(customPanel).toContain('Imported');
-		expect(customPanel).toContain('out &amp; back');
+		expect(customPanel).toContain('point to point');
+		expect(customPanel).not.toContain('?workout-map=');
+		expect(customPanel).not.toContain('View map');
 		expect(customPanel).toContain('Remove');
 		expect(customPanel.match(/Download GPX/g)).toHaveLength(7);
+		const renameDialog = render(
+			<RenameWorkoutDialog
+				course={importedCourse}
+				onClose={() => undefined}
+				onRename={() => undefined}
+			/>
+		);
+		expect(renameDialog).toContain('Rename workout');
+		expect(renameDialog).not.toContain('IMPORTED GPX');
+		expect(renameDialog).not.toContain(
+			'The route and its duplicate-detection identifier will stay the same.'
+		);
+		expect(renameDialog).toContain('value="Imported course"');
+		expect(renameDialog).toContain('Save name');
 		const lockedPanel = render(
 			<WorkoutPanel
 				activeCourse={course}
 				courses={WORKOUT_COURSES}
 				customCourseIds={noCustomWorkoutIds}
-				ended={false}
 				onClose={() => undefined}
 				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
 				onRemoveCourse={() => undefined}
+				onRenameCourse={() => course}
+				onReorderCourse={() => undefined}
 				onSelect={() => undefined}
 				open
 				selectionLocked
 				speedUnit="mph"
 			/>
 		);
-		expect(lockedPanel).toContain('End the current session before changing the workout.');
+		expect(lockedPanel).toContain('placeholder="Search by name or difficulty"');
 		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(6);
+		expect(lockedPanel).not.toContain('Clear selected workout');
+		const selectedPanel = render(
+			<WorkoutPanel
+				activeCourse={course}
+				courses={WORKOUT_COURSES}
+				customCourseIds={noCustomWorkoutIds}
+				onClose={() => undefined}
+				onImportFile={() => Promise.reject(new Error('Not used in this render test'))}
+				onRemoveCourse={() => undefined}
+				onRenameCourse={() => course}
+				onReorderCourse={() => undefined}
+				onSelect={() => undefined}
+				open
+				selectionLocked={false}
+				speedUnit="mph"
+			/>
+		);
+		expect(selectedPanel).toContain('Clear selected workout');
+		expect(selectedPanel).not.toContain('Ride without a workout');
 
 		const terrain = workoutTerrainAtDistance(course, course.distance * 2 + 2);
 		const shiftedWorkoutResistance = 42.4;
@@ -550,7 +670,7 @@ describe('view components', () => {
 		expect(progress).toContain('Laps completed');
 		expect(progress).toContain('aria-label="2 laps completed"');
 		expect(progress).toContain('Course map');
-		expect(progress).toContain('1.2 / 4 mi');
+		expect(progress).toContain('1.24 / 3.98 mi');
 		expect(progress).toContain('Elevation profile');
 		expect(progress).toContain('Course climb');
 		expect(progress).toContain('49 ft');
@@ -562,14 +682,18 @@ describe('view components', () => {
 		expect(progress).toContain(`${Math.round(terrain.progress * 100)}%`);
 		expect(progress).toContain('Grade');
 		expect(progress).toContain(formatGrade(terrain.grade));
+		expect(progress).toContain('style="color:#e879f9"');
 		expect(progress).toContain('Resistance');
 		expect(progress).toContain(`${Math.round(shiftedWorkoutResistance)}%`);
+		expect(progress).toContain('style="color:#2dd4bf"');
 		expect(progress).not.toContain(`${terrain.resistance}%`);
 		expect(progress.match(/sm:text-4xl/g)).toHaveLength(3);
 		expect(progress.match(/sm:text-2xl/g)).toHaveLength(3);
 		expect(progress).toContain('sm:text-lg');
+		expect(progress.match(/px-4 pt-4 pb-2 sm:px-5 sm:pt-5/g)).toHaveLength(2);
+		expect(progress.match(/mt-1 h-36/g)).toHaveLength(2);
 		expect(progress).toContain('Ridden this lap');
-		expect(progress.match(/animate-pulse/g)).toHaveLength(2);
+		expect(progress.match(/functional-status-pulse/g)).toHaveLength(2);
 		expect(progress).toContain('data-profile-marker="true"');
 		expect(progress).not.toContain('rgba(173, 245, 189, .2)');
 		expect(progress.match(/data-route-progress="true"/g)).toHaveLength(2);
@@ -587,8 +711,8 @@ describe('view components', () => {
 		expect(metricProgress).toContain('15 m');
 		expect(metricProgress).toContain('30 m');
 		expect(metricProgress).toContain('12 m');
-		expect(metricProgress).not.toContain('animate-pulse');
-		const outAndBackProgress = render(
+		expect(metricProgress).not.toContain('functional-status-pulse');
+		const pointToPointProgress = render(
 			<WorkoutProgress
 				elevationTotals={{ ascent: 30, descent: 12 }}
 				isRiding={false}
@@ -597,9 +721,9 @@ describe('view components', () => {
 				workout={{ course: importedCourse }}
 			/>
 		);
-		expect(outAndBackProgress).toContain('Trips completed');
-		expect(outAndBackProgress).toContain('Ridden this trip');
-		expect(outAndBackProgress).toContain('aria-label="2 trips completed"');
+		expect(pointToPointProgress).toContain('Route completed');
+		expect(pointToPointProgress).toContain('Ridden this route');
+		expect(pointToPointProgress).toContain('aria-label="2 routes completed"');
 	});
 
 	test('hides empty notifications and expands setup guidance', () => {
@@ -637,7 +761,7 @@ describe('view components', () => {
 		expect(html).toContain('Resistance control');
 		expect(html).not.toContain('Import GPX');
 		expect(html).toContain('Pair devices');
-		expect(html).toContain('History');
+		expect(html).toContain('Sessions');
 		expect(html).toContain('Show keyboard controls');
 		expect(html).toContain('Ride Control');
 		expect(html).toContain('Build:');
@@ -648,10 +772,14 @@ describe('view components', () => {
 		expect(html).toContain('href="https://github.com/lookfirst/RideControl"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
 		expect(html).toContain('Sponsor');
-		expect(html).toContain('WELCOME TO');
+		expect(html).not.toContain('WELCOME TO');
 		expect(html).toContain('show again');
 		expect(html).toContain('tracking-wide transition hover:text-slate-400');
 		expect(html).toContain('type="button">Ride Control</button>');
+		expect(html).toContain('mx-auto max-w-7xl px-5 py-5 sm:px-8');
+		expect(html).toContain('mb-4 flex flex-wrap items-center justify-between gap-3');
+		expect(html).toContain('mt-4 grid gap-4 xl:grid-cols-[1.45fr_.55fr]');
+		expect(html).toContain('rounded-2xl border border-line bg-panel p-4');
 		expect(html).toContain('xl:grid-cols-[1.45fr_.55fr]');
 		expect(html.indexOf('KM/H')).toBeLessThan(html.indexOf('Show keyboard controls'));
 		expect(html).toMatch(enabledEndSessionButton);
@@ -661,7 +789,7 @@ describe('view components', () => {
 		expect(render(<WelcomeDialog onClose={() => undefined} open={false} />)).toBe('');
 		const html = render(<WelcomeDialog onClose={() => undefined} open />);
 		expect(html).toContain('aria-modal="true"');
-		expect(html).toContain('WELCOME TO');
+		expect(html).not.toContain('WELCOME TO');
 		expect(html).toContain('RideControl.xyz');
 		expect(html).toContain('show again');
 		expect(html).toContain('Get started');
@@ -718,6 +846,7 @@ describe('view components', () => {
 		});
 		const html = render(
 			<SessionChart
+				controlMode="resistance"
 				history={[
 					{
 						cadence: 85,
@@ -734,16 +863,30 @@ describe('view components', () => {
 		);
 		expect(html).toContain('Resistance over time');
 		expect(html).toContain('Resistance</button>');
+		expect(html).not.toContain('Gear over time');
+		expect(html).not.toContain('Gear</button>');
 		expect(html).toContain('grid-cols-[3.75rem_minmax(0,1fr)]');
 		expect(html).toContain('absolute right-2 -translate-y-1/2 whitespace-nowrap');
 		expect(html).toContain('pointer-events-none relative h-full w-15 shrink-0');
 		expect(html).toContain('h-full min-w-0 flex-1 overflow-hidden');
 		expect(html).toContain('class="block h-full w-full"');
+		expect(html).toContain('flex w-full gap-1 overflow-x-auto');
+		expect(html).toContain('min-w-max flex-1');
+		expect(html).toContain('h-1.5 w-1.5 shrink-0 rounded-full');
+		expect(html).toContain('text-[13px] transition');
+		expect(html).toContain(
+			'mt-6 overflow-hidden rounded-xl border border-line bg-[#12171d] p-4'
+		);
 		expect(html).toMatch(solidChartBoundaries);
 		expect(html).toMatch(dashedChartGuides);
 		expect(html.match(/data-chart-separator="true"/g)).toHaveLength(4);
 		expect(html.match(/-my-3 ml-15 h-6 bg-white\/1\.5/g)).toHaveLength(4);
 		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
+		const gearModeWithoutSamples = render(
+			<SessionChart controlMode="gear" history={[]} route={[]} speedUnit="kmh" />
+		);
+		expect(gearModeWithoutSamples).toContain('Gear over time');
+		expect(gearModeWithoutSamples).toContain('Gear</button>');
 	});
 
 	test('graphs recorded workout elevation with a distinct color', () => {
@@ -758,6 +901,7 @@ describe('view components', () => {
 						cadence: 85,
 						elapsedSeconds: 1,
 						elevation: 24,
+						grade: 3.2,
 						heartRate: 140,
 						power: 180,
 						resistance: 42,
@@ -772,7 +916,11 @@ describe('view components', () => {
 		expect(html).toContain('Elevation</button>');
 		expect(html).toContain('28 m');
 		expect(html).toContain('stroke="#fb923c"');
-		expect(html.match(/data-chart-separator="true"/g)).toHaveLength(5);
+		expect(html).toContain('Grade over time');
+		expect(html).toContain('Grade</button>');
+		expect(html).toContain('stroke="#e879f9"');
+		expect(html).toContain('stroke="#2dd4bf"');
+		expect(html.match(/data-chart-separator="true"/g)).toHaveLength(6);
 		const imperialHtml = render(
 			<SessionChart
 				history={[
@@ -794,10 +942,10 @@ describe('view components', () => {
 		expect(imperialHtml).not.toContain('28 m');
 	});
 
-	test('graphs gear instead of resistance during virtual shifting', () => {
+	test('preserves gear and applied resistance graphs after returning to resistance control', () => {
 		const html = render(
 			<SessionChart
-				controlMode="gear"
+				controlMode="resistance"
 				history={[
 					{
 						cadence: 85,
@@ -805,6 +953,7 @@ describe('view components', () => {
 						gear: 14,
 						heartRate: 140,
 						power: 180,
+						resistance: 36,
 						speed: 30,
 					},
 				]}
@@ -814,7 +963,8 @@ describe('view components', () => {
 		);
 		expect(html).toContain('Gear over time');
 		expect(html).toContain('Gear</button>');
-		expect(html).not.toContain('Resistance</button>');
+		expect(html).toContain('Resistance over time');
+		expect(html).toContain('Resistance</button>');
 	});
 
 	test('renders the session save workflow', () => {
@@ -856,6 +1006,7 @@ describe('view components', () => {
 			/>
 		);
 		expect(html).toContain('Save this session?');
+		expect(html).not.toContain('SESSION ENDED');
 		expect(html).toContain('How did it feel?');
 		expect(html).toContain('Continue without saving');
 		expect(html).toContain('Save &amp; continue');
@@ -916,9 +1067,12 @@ describe('view components', () => {
 				speedUnit="kmh"
 			/>
 		);
-		expect(html).toContain('Session history');
+		expect(html).toContain('Sessions');
+		expect(html).toContain('0 sessions');
+		expect(html).not.toContain('Saved on this device');
 		expect(html).toContain('data-side-tray="true"');
 		expect(html).toContain('No saved sessions yet');
+		expect(html).toContain('data-testid="session-list"');
 		expect(html).toContain('Import TCX');
 		expect(html).toContain('Download all');
 		expect(html).toContain('.tcx,.zip');
@@ -936,6 +1090,7 @@ describe('view components', () => {
 				highlightedSessionIds={[importedSession.id]}
 				onLoadMore={() => undefined}
 				onSelect={() => undefined}
+				open
 				selectedId={importedSession.id}
 				speedUnit="kmh"
 				summaries={[sessionSummary(importedSession)]}
@@ -958,6 +1113,7 @@ describe('view components', () => {
 				highlightedSessionIds={[]}
 				onLoadMore={() => undefined}
 				onSelect={() => undefined}
+				open
 				speedUnit="kmh"
 				summaries={[sessionSummary(importedSession)]}
 				total={1}

@@ -44,6 +44,23 @@ export const ELEVATION_METRIC_PRESENTATION = {
 	label: 'Elevation',
 } as const;
 
+export const GEAR_METRIC_PRESENTATION = {
+	chartColor: '#adf5bd',
+	label: 'Gear',
+} as const;
+
+export const GRADE_METRIC_PRESENTATION = {
+	chartColor: '#e879f9',
+	label: 'Grade',
+	unit: '%',
+} as const;
+
+export const RESISTANCE_METRIC_PRESENTATION = {
+	chartColor: '#2dd4bf',
+	label: 'Resistance',
+	unit: '%',
+} as const;
+
 export function metricAccentClass(accent: string): string {
 	if (accent === 'sky') {
 		return 'bg-sky-400';

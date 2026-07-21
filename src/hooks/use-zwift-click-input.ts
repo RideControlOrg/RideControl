@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import {
 	CLICK_CONTROLLER_ROLES_STORAGE_KEY,
+	CLICK_SHIFT,
 	type ClickControllerRoles,
 	type ClickShift,
 	filterAcceptedClickShifts,
@@ -18,7 +19,7 @@ interface ClickRepeatTimer {
 const CLICK_HOLD_DELAY_MS = 600;
 const CLICK_HOLD_REPEAT_MS = 220;
 const CLICK_CONTROLLER_FLASH_MS = 350;
-const CLICK_SHIFTS: ClickShift[] = ['down', 'up'];
+const CLICK_SHIFTS: ClickShift[] = [CLICK_SHIFT.DOWN, CLICK_SHIFT.UP];
 
 function saveControllerRoles(roles: ClickControllerRoles) {
 	localStorage.setItem(CLICK_CONTROLLER_ROLES_STORAGE_KEY, JSON.stringify(roles));
@@ -111,7 +112,7 @@ export function useZwiftClickInput({
 			if (repeatTimers.current.has(shift)) {
 				continue;
 			}
-			const change = shift === 'down' ? -1 : 1;
+			const change = shift === CLICK_SHIFT.DOWN ? -1 : 1;
 			const timer: ClickRepeatTimer = { delay: 0 };
 			timer.delay = window.setTimeout(() => {
 				onShiftRef.current(change);
@@ -188,7 +189,7 @@ export function useZwiftClickInput({
 				registerControllerRole(deviceId, acceptedShifts);
 			}
 			for (const shift of acceptedShifts) {
-				onShiftRef.current(shift === 'down' ? -1 : 1);
+				onShiftRef.current(shift === CLICK_SHIFT.DOWN ? -1 : 1);
 			}
 		},
 		[flashController, onOperational, registerControllerRole, setDeviceHeldShifts]

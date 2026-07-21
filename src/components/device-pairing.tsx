@@ -23,6 +23,7 @@ interface ClickController extends DeviceConnectionView {
 
 interface ClickSlot extends DeviceSlot {
 	connectedCount: number;
+	connectionActive: boolean;
 	controllers: ClickController[];
 	onForgetController: (deviceId: string) => void | Promise<void>;
 	pairedCount: number;
@@ -90,6 +91,30 @@ function clickControllerOrder(controller: ClickController) {
 		return 1;
 	}
 	return 2;
+}
+
+function ClickConnectionStatus({ click, waiting }: { click: ClickSlot; waiting: boolean }) {
+	if (!click.connectionActive && click.pairedCount) {
+		return <>Connects during an active session</>;
+	}
+	if (waiting) {
+		return <ConnectingLabel />;
+	}
+	return <>{click.status}</>;
+}
+
+function pairControllerActionLabel(click: ClickSlot) {
+	if (click.pairing) {
+		return 'Selecting…';
+	}
+	if (click.pairedCount) {
+		return 'Pair other controller';
+	}
+	return 'Pair controller';
+}
+
+function chromeFlagsLabel(copied: boolean) {
+	return copied ? 'copied, now paste it into a new tab.' : CHROME_BLUETOOTH_FLAGS_URL;
 }
 
 function StatusDot({
@@ -323,15 +348,8 @@ export function DevicePairingPanel({
 	const orderedClickControllers = [...click.controllers].sort(
 		(left, right) => clickControllerOrder(left) - clickControllerOrder(right)
 	);
-	let pairControllerLabel = 'Pair controller';
-	if (click.pairing) {
-		pairControllerLabel = 'Selecting…';
-	} else if (click.pairedCount) {
-		pairControllerLabel = 'Pair other controller';
-	}
-	const chromeFlagsCopyLabel = flagsUrlCopied
-		? 'copied, now paste it into a new tab.'
-		: CHROME_BLUETOOTH_FLAGS_URL;
+	const pairControllerLabel = pairControllerActionLabel(click);
+	const chromeFlagsCopyLabel = chromeFlagsLabel(flagsUrlCopied);
 
 	return (
 		<SideTray
@@ -347,8 +365,8 @@ export function DevicePairingPanel({
 						Paired devices
 					</h2>
 					<p className="mt-1 max-w-sm text-slate-400 text-sm">
-						Pair each sensor once. Ride Control reconnects remembered devices when they
-						wake up.
+						Pair each sensor once. Ride Control reconnects remembered sensors
+						automatically; Click controllers connect only for an active ride.
 					</p>
 				</div>
 				<button
@@ -412,7 +430,10 @@ export function DevicePairingPanel({
 										: 'Pair each controller separately'}
 								</p>
 								<p className="mt-1 text-[11px] text-slate-500">
-									{waitingForControllers ? <ConnectingLabel /> : click.status}
+									<ClickConnectionStatus
+										click={click}
+										waiting={waitingForControllers}
+									/>
 								</p>
 							</div>
 						</div>
@@ -449,7 +470,9 @@ export function DevicePairingPanel({
 						) : null}
 
 						<div className="mt-4 flex flex-wrap justify-end gap-2">
-							{click.pairedCount > 0 ? <DeviceActions slot={clickSlot} /> : null}
+							{click.pairedCount > 0 && click.connectionActive ? (
+								<DeviceActions slot={clickSlot} />
+							) : null}
 							{click.pairedCount < MAX_CLICK_CONTROLLERS ? (
 								<button
 									className="h-9 rounded-lg bg-lime px-3 font-bold text-ink text-xs transition hover:bg-[#e4ff9c] disabled:opacity-50"
@@ -463,7 +486,8 @@ export function DevicePairingPanel({
 						</div>
 						<p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
 							Wake each controller before pairing. The + and − sides are identified
-							automatically and reconnect in the background.
+							automatically. Saved controllers connect for an active ride session and
+							disconnect when it ends.
 						</p>
 					</article>
 					<AutomaticReconnectStatus
