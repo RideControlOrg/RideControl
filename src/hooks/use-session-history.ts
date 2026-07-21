@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ACTIVITY_FILE_FORMAT, type ActivityFileFormat } from '../lib/activity-file';
+import { activityImportResultMessage, importActivityUpload } from '../lib/activity-import';
 import { errorMessage } from '../lib/errors';
+import { downloadSessionFitArchive } from '../lib/fit-archive';
 import {
 	countSavedSessions,
 	deleteSavedSession,
@@ -10,7 +13,6 @@ import {
 } from '../lib/saved-sessions';
 import { loadSelectedSessionId, saveSelectedSessionId } from '../lib/session-history-preferences';
 import { downloadSessionTcxArchive } from '../lib/tcx-archive';
-import { importTcxUpload, tcxImportResultMessage } from '../lib/tcx-import';
 import type { SavedSession, SavedSessionSummary } from '../types';
 
 const PAGE_SIZE = 30;
@@ -93,14 +95,14 @@ export function useSessionHistory(open: boolean) {
 		);
 	}, [loadHistory, open]);
 
-	const importTcxFile = useCallback(
+	const importActivityFile = useCallback(
 		async (file: File) => {
 			setImporting(true);
 			setHistoryStatus('');
 			setHighlightedSessionIds([]);
 			try {
-				const result = await importTcxUpload(file);
-				setHistoryStatus(tcxImportResultMessage(result));
+				const result = await importActivityUpload(file);
+				setHistoryStatus(activityImportResultMessage(result));
 				setHighlightedSessionIds(result.importedSessions.map((session) => session.id));
 				const newestImported = result.importedSessions.reduce<SavedSession | undefined>(
 					(newest, session) =>
@@ -120,14 +122,19 @@ export function useSessionHistory(open: boolean) {
 		[loadHistory]
 	);
 
-	const downloadAllTcx = useCallback(async () => {
+	const downloadAllActivityFiles = useCallback(async (format: ActivityFileFormat) => {
 		setExporting(true);
 		setHistoryStatus('');
 		try {
 			const sessions = await listAllSavedSessions();
-			await downloadSessionTcxArchive(sessions);
+			if (format === ACTIVITY_FILE_FORMAT.FIT) {
+				await downloadSessionFitArchive(sessions);
+			} else {
+				await downloadSessionTcxArchive(sessions);
+			}
+			const label = format.toUpperCase();
 			setHistoryStatus(
-				`Downloaded ${sessions.length} TCX ${sessions.length === 1 ? 'file' : 'files'} in one ZIP`
+				`Downloaded ${sessions.length} ${label} ${sessions.length === 1 ? 'file' : 'files'} in one ZIP`
 			);
 			setError('');
 		} catch (downloadError) {
@@ -183,13 +190,13 @@ export function useSessionHistory(open: boolean) {
 	return {
 		deleteSelectedSession,
 		deleting,
-		downloadAllTcx,
+		downloadAllActivityFiles,
 		error,
 		exporting,
 		highlightedSessionIds,
 		historyStatus,
+		importActivityFile,
 		importing,
-		importTcxFile,
 		loading,
 		loadMore,
 		selected,

@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { DOMParser } from '@xmldom/xmldom';
 import { strToU8, zipSync } from 'fflate';
+import { activityImportResultMessage, importActivityUpload } from '../src/lib/activity-import';
 import { CONTROL_MODE } from '../src/lib/control-mode';
+import { sessionToFit } from '../src/lib/fit';
 import { sessionToTcx } from '../src/lib/tcx';
-import { importTcxUpload, parseTcxSessions, tcxImportResultMessage } from '../src/lib/tcx-import';
+import { parseTcxSessions } from '../src/lib/tcx-import';
 import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
 import type { SavedSession } from '../src/types';
 import { savedSessionFixture } from './fixtures/saved-session';
@@ -113,19 +115,21 @@ describe('TCX import', () => {
 			'second/ride-copy.TCX': tcx,
 		});
 		const saved = new Map<string, SavedSession>();
-		const result = await importTcxUpload(new File([archive], 'rides.zip'), {
+		const result = await importActivityUpload(new File([archive], 'rides.zip'), {
 			listSessions: () => Promise.resolve([...saved.values()]),
 			saveSession: (imported) => {
 				saved.set(imported.id, imported);
 				return Promise.resolve();
 			},
 		});
-		expect(result.tcxFileCount).toBe(2);
+		expect(result.activityFileCount).toBe(2);
 		expect(result.importedSessions).toHaveLength(1);
 		expect(result.importedSessions[0]?.importedAt).toBeNumber();
 		expect(result.duplicateCount).toBe(1);
 		expect(result.failures).toHaveLength(0);
-		expect(tcxImportResultMessage(result)).toBe('Imported 1 session · 1 duplicate skipped');
+		expect(activityImportResultMessage(result)).toBe(
+			'Imported 1 session · 1 duplicate skipped'
+		);
 	});
 
 	test('reports invalid files without preventing valid ZIP entries from importing', async () => {
@@ -133,7 +137,7 @@ describe('TCX import', () => {
 			'broken.tcx': strToU8('<not-tcx />'),
 			'valid.tcx': strToU8(sessionToTcx(session)),
 		});
-		const result = await importTcxUpload(new File([archive], 'rides.zip'), {
+		const result = await importActivityUpload(new File([archive], 'rides.zip'), {
 			listSessions: () => Promise.resolve([]),
 			saveSession: () => Promise.resolve(),
 		});
@@ -146,10 +150,29 @@ describe('TCX import', () => {
 		]);
 	});
 
+	test('imports mixed FIT and TCX archives and detects cross-format duplicates', async () => {
+		const archive = zipSync({
+			'activities/ride.fit': await sessionToFit(session),
+			'activities/ride.tcx': strToU8(sessionToTcx(session)),
+		});
+		const saved: SavedSession[] = [];
+		const result = await importActivityUpload(new File([archive], 'mixed-rides.zip'), {
+			listSessions: () => Promise.resolve(saved),
+			saveSession: (imported) => {
+				saved.push(imported);
+				return Promise.resolve();
+			},
+		});
+		expect(result.activityFileCount).toBe(2);
+		expect(result.importedSessions).toHaveLength(1);
+		expect(result.duplicateCount).toBe(1);
+		expect(result.failures).toHaveLength(0);
+	});
+
 	test('skips a legacy Ride Control export without an embedded session id', async () => {
 		const legacyTcx = sessionToTcx(savedSessionFixture).replace(SESSION_ID_ELEMENT, '');
 		let saveCount = 0;
-		const result = await importTcxUpload(new File([legacyTcx], 'legacy-ride.tcx'), {
+		const result = await importActivityUpload(new File([legacyTcx], 'legacy-ride.tcx'), {
 			listSessions: () => Promise.resolve([savedSessionFixture]),
 			saveSession: () => {
 				saveCount += 1;
@@ -162,12 +185,12 @@ describe('TCX import', () => {
 	});
 
 	test('rejects unsupported uploads and ZIP files without TCX entries', async () => {
-		await expect(importTcxUpload(new File(['no'], 'ride.fit'))).rejects.toThrow(
-			'Choose a .tcx file or a .zip containing TCX files.'
+		await expect(importActivityUpload(new File(['no'], 'ride.gpx'))).rejects.toThrow(
+			'Choose a .fit or .tcx file, or a .zip containing activity files.'
 		);
 		const archive = zipSync({ 'readme.txt': strToU8('nothing here') });
-		await expect(importTcxUpload(new File([archive], 'rides.zip'))).rejects.toThrow(
-			'The ZIP contains no TCX files.'
+		await expect(importActivityUpload(new File([archive], 'rides.zip'))).rejects.toThrow(
+			'The ZIP contains no FIT or TCX activity files.'
 		);
 	});
 });

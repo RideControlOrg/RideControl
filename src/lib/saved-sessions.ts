@@ -6,6 +6,7 @@ import type {
 	SessionSnapshot,
 	SessionWorkout,
 } from '../types';
+import { IMPORTED_FIT_ID_PREFIX } from './activity-file';
 import { restoreElevationTotals } from './elevation';
 import { indexedDbRequestResult, indexedDbTransactionComplete } from './indexed-db';
 import {
@@ -199,7 +200,11 @@ export function normalizeSavedSessionSummary(session: SavedSessionSummary): Save
 export function isImportedSession(
 	session: Pick<SavedSessionSummary, 'id' | 'importedAt'>
 ): boolean {
-	return session.importedAt !== undefined || session.id.startsWith(IMPORTED_TCX_ID_PREFIX);
+	return (
+		session.importedAt !== undefined ||
+		session.id.startsWith(IMPORTED_FIT_ID_PREFIX) ||
+		session.id.startsWith(IMPORTED_TCX_ID_PREFIX)
+	);
 }
 
 type StoreGetter<T> = (name: string) => T;

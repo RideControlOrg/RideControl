@@ -1,4 +1,9 @@
 import type { MetricSample, SavedSession, SessionWorkout } from '../types';
+import {
+	ACTIVITY_FILE_FORMAT,
+	sessionActivityFilename,
+	sessionSampleDistances,
+} from './activity-file';
 import { CONTROL_MODE } from './control-mode';
 import { downloadBrowserFile } from './download';
 import { aggregateAverage, aggregateMaximum } from './format';
@@ -10,31 +15,6 @@ import {
 } from './tcx-schema';
 import { metersForKilometers, metersPerSecond, millisecondsForSeconds } from './units';
 import { xmlEscape } from './xml';
-
-function trackpointDistances(session: SavedSession): number[] {
-	let elapsed = 0;
-	let distance = 0;
-	const integrated = session.history.map((sample) => {
-		const nextElapsed = nonNegativeNumber(sample.elapsedSeconds);
-		const seconds = Math.max(0, nextElapsed - elapsed);
-		distance += metersPerSecond(nonNegativeNumber(sample.speed)) * seconds;
-		elapsed = nextElapsed;
-		return distance;
-	});
-	const totalMeters = metersForKilometers(nonNegativeNumber(session.distance));
-	if (distance > 0 && totalMeters > 0) {
-		return integrated.map((meters) => (meters / distance) * totalMeters);
-	}
-	if (totalMeters > 0 && session.elapsedSeconds > 0) {
-		return session.history.map(
-			(sample) =>
-				(Math.min(nonNegativeNumber(sample.elapsedSeconds), session.elapsedSeconds) /
-					session.elapsedSeconds) *
-				totalMeters
-		);
-	}
-	return integrated;
-}
 
 function trackpointXml(sample: MetricSample, timestamp: number, distanceMeters: number): string {
 	const heartRate = nonNegativeNumber(sample.heartRate);
@@ -116,7 +96,7 @@ function workoutSummaryXml(workout?: SessionWorkout): string {
 
 export function sessionToTcx(session: SavedSession): string {
 	const startedAt = new Date(session.startedAt).toISOString();
-	const distances = trackpointDistances(session);
+	const distances = sessionSampleDistances(session);
 	const trackpoints = session.history
 		.map((sample, index) =>
 			trackpointXml(
@@ -206,7 +186,7 @@ export function sessionToTcx(session: SavedSession): string {
 }
 
 export function sessionTcxFilename(session: Pick<SavedSession, 'startedAt'>): string {
-	return `ride-control-${new Date(session.startedAt).toISOString().replaceAll(':', '-')}.tcx`;
+	return sessionActivityFilename(session, ACTIVITY_FILE_FORMAT.TCX);
 }
 
 export function downloadSessionTcx(session: SavedSession): void {

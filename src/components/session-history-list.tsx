@@ -53,7 +53,7 @@ export function SessionHistoryList({
 				<div className="p-6 text-center">
 					<p className="font-semibold">No saved sessions yet</p>
 					<p className="mt-1 text-slate-500 text-sm">
-						End a session or import a TCX file to add it here.
+						End a session or import a FIT or TCX file to add it here.
 					</p>
 				</div>
 			) : null}
@@ -92,14 +92,14 @@ export function SessionHistoryList({
 									</p>
 									{imported ? (
 										<span
-											aria-label="Imported from TCX file"
+											aria-label="Imported from activity file"
 											className="absolute right-2.5 bottom-3 grid h-3 w-3 place-items-center text-cyan-300/70"
 											role="img"
 										>
 											<Icon
 												className="h-5 w-5"
 												name="imported"
-												title="Imported from TCX file"
+												title="Imported from activity file"
 											/>
 										</span>
 									) : null}

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { EMPTY_ROUTE } from '../constants';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { CONTROL_MODE } from '../lib/control-mode';
+import { downloadSessionFit } from '../lib/fit';
 import { aggregateMaximum, formatAggregateAverage, formatWholeNumber } from '../lib/format';
 import { resistanceForVirtualGear } from '../lib/gears';
 import { METRIC_PRESENTATION, STANDARD_METRIC_KEYS } from '../lib/metric-presentation';
@@ -170,6 +171,19 @@ export function SessionDetail({
 					<h3 className="mt-1 font-bold text-2xl">{formatSessionTimeRange(session)}</h3>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
+					<button
+						className="rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+						disabled={session.history.length === 0}
+						onClick={() => downloadSessionFit(session)}
+						title={
+							session.history.length === 0
+								? 'No recorded samples to export'
+								: 'Download a FIT activity for Strava and other bike services'
+						}
+						type="button"
+					>
+						Download FIT
+					</button>
 					<button
 						className="rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 						disabled={session.history.length === 0}

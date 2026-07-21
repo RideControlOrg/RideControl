@@ -2,6 +2,11 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionHistory } from '../hooks/use-session-history';
 import {
+	ACTIVITY_FILE_FORMAT,
+	type ActivityFileFormat,
+	isActivityFileFormat,
+} from '../lib/activity-file';
+import {
 	eventTargetsEditableControl,
 	eventTargetsInteractiveControl,
 	keyboardEventHasModifiers,
@@ -40,12 +45,12 @@ export function SessionHistory({
 	const {
 		deleteSelectedSession: deleteHistorySession,
 		deleting,
-		downloadAllTcx,
+		downloadAllActivityFiles,
 		error,
 		exporting,
 		historyStatus,
 		highlightedSessionIds,
-		importTcxFile,
+		importActivityFile,
 		importing,
 		loading,
 		loadMore,
@@ -57,6 +62,9 @@ export function SessionHistory({
 	} = useSessionHistory(open);
 	const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
 	const [historyHelpOpen, setHistoryHelpOpen] = useState(false);
+	const [downloadFormat, setDownloadFormat] = useState<ActivityFileFormat>(
+		ACTIVITY_FILE_FORMAT.FIT
+	);
 	const importInput = useRef<HTMLInputElement>(null);
 	const transferring = exporting || importing;
 
@@ -210,13 +218,13 @@ export function SessionHistory({
 					</div>
 					<div className="flex items-center gap-1">
 						<input
-							accept=".tcx,.zip,application/vnd.garmin.tcx+xml,application/zip"
+							accept=".fit,.tcx,.zip,application/vnd.ant.fit,application/vnd.garmin.tcx+xml,application/zip"
 							className="hidden"
 							onChange={(event) => {
 								const file = event.currentTarget.files?.[0];
 								event.currentTarget.value = '';
 								if (file) {
-									importTcxFile(file);
+									importActivityFile(file);
 								}
 							}}
 							ref={importInput}
@@ -228,12 +236,27 @@ export function SessionHistory({
 							onClick={() => importInput.current?.click()}
 							type="button"
 						>
-							{importing ? 'Importing…' : 'Import TCX'}
+							{importing ? 'Importing…' : 'Import FIT/TCX'}
 						</button>
+						<select
+							aria-label="Download all format"
+							className="rounded-lg border border-line bg-panel px-2 py-2 font-semibold text-slate-300 text-xs disabled:opacity-50"
+							disabled={transferring}
+							onChange={(event) => {
+								const format = event.currentTarget.value;
+								if (isActivityFileFormat(format)) {
+									setDownloadFormat(format);
+								}
+							}}
+							value={downloadFormat}
+						>
+							<option value={ACTIVITY_FILE_FORMAT.FIT}>FIT</option>
+							<option value={ACTIVITY_FILE_FORMAT.TCX}>TCX</option>
+						</select>
 						<button
 							className="rounded-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={transferring || total === 0}
-							onClick={downloadAllTcx}
+							onClick={() => downloadAllActivityFiles(downloadFormat)}
 							type="button"
 						>
 							{exporting ? 'Preparing…' : 'Download all'}

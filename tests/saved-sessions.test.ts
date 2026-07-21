@@ -85,6 +85,7 @@ describe('saved session utilities', () => {
 		expect('history' in summary).toBe(false);
 		expect(sessionSummary({ ...session, importedAt: 5678 }).importedAt).toBe(5678);
 		expect(isImportedSession({ id: 'tcx:legacy-import' })).toBe(true);
+		expect(isImportedSession({ id: 'fit:activity-import' })).toBe(true);
 		expect(isImportedSession({ id: session.id })).toBe(false);
 		const [workout] = WORKOUT_COURSES;
 		if (!workout) {
