@@ -476,11 +476,18 @@ describe('view components', () => {
 		const gear = render(
 			<TrainingControl
 				connected
-				control={{ gear: 12, mode: 'gear', onShift: () => undefined }}
+				control={{
+					clickPaired: false,
+					gear: 12,
+					mode: 'gear',
+					onShift: () => undefined,
+				}}
 			/>
 		);
 		expect(gear).toContain('Virtual shifting');
 		expect(gear).toContain('of 24');
+		expect(gear).toContain('Use the buttons or');
+		expect(gear).not.toContain('Zwift Click, the buttons');
 		expect(gear).not.toContain('Resistance control');
 
 		const resistance = render(
@@ -564,7 +571,7 @@ describe('view components', () => {
 		expect(panel).toContain('data-side-tray="true"');
 		const importedCourse = {
 			...course,
-			description: 'Starts in Ålands Countryside.',
+			description: 'Australia · Bright → Near Hotham Heights — 26 km',
 			descriptionAttribution: WORKOUT_DESCRIPTION_ATTRIBUTION.OPENSTREETMAP,
 			id: 'imported-course',
 			name: 'Imported course',
@@ -588,7 +595,8 @@ describe('view components', () => {
 			/>
 		);
 		expect(customPanel).toContain('Imported course');
-		expect(customPanel).toContain('Starts in Ålands Countryside.');
+		expect(customPanel).toContain('Australia · Bright → Near Hotham Heights');
+		expect(customPanel).not.toContain('Near Hotham Heights —');
 		expect(customPanel).toContain('title="View the route map"');
 		expect(customPanel).toContain('target="_blank"');
 		expect(customPanel).toContain('© OpenStreetMap contributors');
@@ -787,6 +795,25 @@ describe('view components', () => {
 		expect(html).toContain('xl:grid-cols-[1.45fr_.55fr]');
 		expect(html.indexOf('KM/H')).toBeLessThan(html.indexOf('Show keyboard controls'));
 		expect(html).toMatch(enabledEndSessionButton);
+	});
+
+	test('shows manual virtual shifting for a terrain workout without Click controllers', () => {
+		const [course] = WORKOUT_COURSES;
+		if (!course) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const html = render(
+			<App
+				initialSession={{
+					...emptySession,
+					workout: { course },
+				}}
+			/>
+		);
+		expect(html).toContain('Virtual shifting');
+		expect(html).toContain('Shift to an easier gear');
+		expect(html).toContain('Shift to a harder gear');
+		expect(html).not.toContain('Resistance control');
 	});
 
 	test('renders the first-time welcome message', () => {

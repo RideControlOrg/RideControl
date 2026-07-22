@@ -10,3 +10,7 @@ const CONTROL_MODES = new Set<unknown>(Object.values(CONTROL_MODE));
 export function isControlMode(value: unknown): value is ControlMode {
 	return CONTROL_MODES.has(value);
 }
+
+export function trainingControlMode(clickPaired: boolean, workoutSelected: boolean): ControlMode {
+	return clickPaired || workoutSelected ? CONTROL_MODE.GEAR : CONTROL_MODE.RESISTANCE;
+}

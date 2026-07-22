@@ -31,7 +31,7 @@ import {
 	loadOpenSideTray,
 	persistOpenSideTray,
 } from './lib/app-overlay';
-import { CONTROL_MODE, type ControlMode } from './lib/control-mode';
+import { CONTROL_MODE, trainingControlMode } from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
@@ -65,10 +65,6 @@ function shiftHandlerUnlessBlocked(handler: (change: number) => void, blocked: b
 	return blocked ? () => undefined : handler;
 }
 
-function controlModeForClick(paired: boolean): ControlMode {
-	return paired ? CONTROL_MODE.GEAR : CONTROL_MODE.RESISTANCE;
-}
-
 export function App({ initialSession = emptySession }: { initialSession?: StoredSession }) {
 	const rememberedDevices = useRememberedBluetoothDevices();
 	const trainer = useTrainer(rememberedDevices);
@@ -100,7 +96,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const speedUnit = useSelector(preferencesStore, (preferences) => preferences.speedUnit);
 	const workoutLibrary = useWorkoutLibrary();
 	const virtualShiftingReady =
-		trainer.connected && click.connectedCount === MAX_CLICK_CONTROLLERS;
+		trainer.connected && (!click.paired || click.connectedCount === MAX_CLICK_CONTROLLERS);
 	const gearResistanceRef = useRef<(fromGear: number, toGear: number) => void>(
 		trainer.shiftResistanceForGears
 	);
@@ -109,17 +105,17 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		[]
 	);
 	const gearControl = useGearControl({
-		active: click.paired,
+		active: true,
 		onGearChange: handleGearChange,
 		ready: virtualShiftingReady,
 		setNotice: trainer.setNotice,
 	});
-	const activeControlMode = controlModeForClick(click.paired);
+	const pairedControlMode = trainingControlMode(click.paired, false);
 	const session = useSession(
 		liveMetrics,
 		{
 			gear: gearControl.gear,
-			mode: activeControlMode,
+			mode: pairedControlMode,
 			resistance: trainer.resistance,
 		},
 		trainer.lastPedalingAt,
@@ -136,7 +132,9 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const workoutTerrain = dashboardWorkout.workout
 		? workoutTerrainAtDistance(dashboardWorkout.workout.course, dashboardWorkout.distance)
 		: undefined;
-	const virtualShiftingActive = click.paired;
+	const workoutSelected = Boolean(dashboardWorkout.workout);
+	const virtualShiftingActive = click.paired || workoutSelected;
+	const activeControlMode = trainingControlMode(click.paired, workoutSelected);
 	let workoutResistance = workoutTerrain?.resistance;
 	if (workoutTerrain && virtualShiftingActive) {
 		workoutResistance = resistanceForVirtualGear(workoutTerrain.resistance, gearControl.gear);
@@ -373,6 +371,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						control={
 							virtualShiftingActive
 								? {
+										clickPaired: click.paired,
 										gear: gearControl.gear,
 										mode: CONTROL_MODE.GEAR,
 										onShift: gearControl.shiftGear,

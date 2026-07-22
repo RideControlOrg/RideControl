@@ -6,6 +6,7 @@ import { ResistanceTrainingControl } from './resistance-training-control';
 
 type TrainingControlModel =
 	| {
+			clickPaired: boolean;
 			gear: number;
 			mode: typeof CONTROL_MODE.GEAR;
 			onShift: (change: number) => void;
@@ -30,6 +31,7 @@ export function TrainingControl({
 		case CONTROL_MODE.GEAR:
 			return (
 				<GearTrainingControl
+					clickPaired={control.clickPaired}
 					connected={connected}
 					gear={control.gear}
 					onShift={control.onShift}

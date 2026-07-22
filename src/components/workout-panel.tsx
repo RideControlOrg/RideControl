@@ -31,7 +31,7 @@ import {
 	persistBikeGpxBrowserOpen,
 } from '../lib/bikegpx-browser-preferences';
 import { errorMessage } from '../lib/errors';
-import { formatDescriptionDistance, formatDistance, formatElevation } from '../lib/units';
+import { descriptionWithoutDistance, formatDistance, formatElevation } from '../lib/units';
 import {
 	OPENSTREETMAP_ATTRIBUTION_URL,
 	WORKOUT_DESCRIPTION_ATTRIBUTION,
@@ -172,18 +172,10 @@ function WorkoutCourseCard({
 									title="View the route map"
 									type="button"
 								>
-									{formatDescriptionDistance(
-										course.description,
-										course.distance,
-										speedUnit
-									)}
+									{descriptionWithoutDistance(course.description)}
 								</button>
 							) : (
-								formatDescriptionDistance(
-									course.description,
-									course.distance,
-									speedUnit
-								)
+								descriptionWithoutDistance(course.description)
 							)}
 						</p>
 					</div>
