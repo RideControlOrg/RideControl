@@ -1080,6 +1080,8 @@ describe('view components', () => {
 		expect(html).toContain('No saved sessions yet');
 		expect(html).toContain('data-testid="session-list"');
 		expect(html).toContain('Import FIT/TCX');
+		expect(html).toContain('data-testid="download-all-sessions"');
+		expect(html).toContain('aria-label="Download all sessions as FIT"');
 		expect(html).toContain('aria-label="Download all format"');
 		expect(html).toContain('Download all');
 		expect(html).toContain('.tcx,.zip');

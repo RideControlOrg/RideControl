@@ -238,29 +238,36 @@ export function SessionHistory({
 						>
 							{importing ? 'Importing…' : 'Import FIT/TCX'}
 						</button>
-						<select
-							aria-label="Download all format"
-							className="rounded-lg border border-line bg-panel px-2 py-2 font-semibold text-slate-300 text-xs disabled:opacity-50"
-							disabled={transferring}
-							onChange={(event) => {
-								const format = event.currentTarget.value;
-								if (isActivityFileFormat(format)) {
-									setDownloadFormat(format);
-								}
-							}}
-							value={downloadFormat}
+						<fieldset
+							aria-label="Download all sessions"
+							className="isolate m-0 inline-flex min-w-0 border-0 p-0"
+							data-testid="download-all-sessions"
 						>
-							<option value={ACTIVITY_FILE_FORMAT.FIT}>FIT</option>
-							<option value={ACTIVITY_FILE_FORMAT.TCX}>TCX</option>
-						</select>
-						<button
-							className="rounded-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-							disabled={transferring || total === 0}
-							onClick={() => downloadAllActivityFiles(downloadFormat)}
-							type="button"
-						>
-							{exporting ? 'Preparing…' : 'Download all'}
-						</button>
+							<button
+								aria-label={`Download all sessions as ${downloadFormat.toUpperCase()}`}
+								className="rounded-l-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:z-10 hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+								disabled={transferring || total === 0}
+								onClick={() => downloadAllActivityFiles(downloadFormat)}
+								type="button"
+							>
+								{exporting ? 'Preparing…' : 'Download all'}
+							</button>
+							<select
+								aria-label="Download all format"
+								className="-ml-px rounded-r-lg border border-line bg-panel px-2 py-2 font-semibold text-slate-300 text-xs hover:z-10 hover:border-cyan-400/60 disabled:opacity-50"
+								disabled={transferring}
+								onChange={(event) => {
+									const format = event.currentTarget.value;
+									if (isActivityFileFormat(format)) {
+										setDownloadFormat(format);
+									}
+								}}
+								value={downloadFormat}
+							>
+								<option value={ACTIVITY_FILE_FORMAT.FIT}>FIT</option>
+								<option value={ACTIVITY_FILE_FORMAT.TCX}>TCX</option>
+							</select>
+						</fieldset>
 						<button
 							aria-label="Show history keyboard controls"
 							className="grid h-9 w-9 place-items-center rounded-lg font-bold text-slate-400 text-sm hover:bg-slate-700 hover:text-white"

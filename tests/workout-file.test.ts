@@ -107,7 +107,7 @@ describe('workout GPX files', () => {
 			startingLocation: 'Santa Cruz',
 		});
 		expect(parsed.points).toHaveLength(workout.points.length);
-		expect(parsed.points[1]?.latitude).toBeCloseTo(workout.points[1]?.latitude ?? 0, 7);
+		expect(parsed.points.at(1)?.latitude).toBeCloseTo(workout.points.at(1)?.latitude ?? 0, 7);
 		expect(await readWorkoutFile({ name: 'route.gpx', text: async () => contents })).toEqual(
 			parsed
 		);

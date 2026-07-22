@@ -276,8 +276,10 @@ export function App() {
 		},
 		[session.selectWorkout, setActiveOverlay]
 	);
-	const selectedWorkoutCourse = session.selectedWorkout?.course;
-	const selectedWorkoutId = selectedWorkoutCourse?.id;
+	const selectedWorkoutCourse = session.selectedWorkout
+		? session.selectedWorkout.course
+		: undefined;
+	const selectedWorkoutId = selectedWorkoutCourse ? selectedWorkoutCourse.id : undefined;
 	const workoutLocked = workoutSelectionLocked(session);
 	useEffect(() => {
 		if (!selectedWorkoutCourse) {
@@ -303,7 +305,7 @@ export function App() {
 	const connectedDeviceCount =
 		Number(trainer.connected) + Number(heartRate.connected) + click.connectedCount;
 	const pairedDeviceCount = Number(trainer.paired) + Number(heartRate.paired) + click.pairedCount;
-	const workoutName = selectedWorkoutCourse?.name;
+	const workoutName = selectedWorkoutCourse ? selectedWorkoutCourse.name : undefined;
 	const devicesConnecting = [
 		trainer.connectionBusy,
 		heartRate.busy,

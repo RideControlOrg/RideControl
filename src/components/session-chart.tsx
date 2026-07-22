@@ -240,7 +240,7 @@ export function SessionChart({
 		[series]
 	);
 	const historyPositions = history.map((sample) => sample.elapsedSeconds);
-	const historyStart = history[0]?.elapsedSeconds ?? 0;
+	const historyStart = history.at(0)?.elapsedSeconds ?? 0;
 	const historySeconds =
 		history.length > 1 ? (history.at(-1)?.elapsedSeconds ?? 0) - historyStart : 0;
 

@@ -619,8 +619,8 @@ export function BikeGpxBrowserDialog({
 	const { country, difficulty, maximumDistance, minimumDistance, query, selectedRouteId } =
 		search;
 	const deferredQuery = useDeferredValue(query);
-	const routes = catalog?.routes ?? [];
-	const analyses = catalog?.analyses ?? EMPTY_ROUTE_ANALYSES;
+	const routes = catalog ? catalog.routes : [];
+	const analyses = catalog ? catalog.analyses : EMPTY_ROUTE_ANALYSES;
 	const countries = useMemo(
 		() => [...new Set(routes.map((route) => route.country))].sort(),
 		[routes]

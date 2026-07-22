@@ -269,7 +269,7 @@ export function SessionDetail({
 				controlMode={session.controlMode}
 				history={session.history}
 				keyboardEnabled={chartKeyboardEnabled}
-				route={session.workout?.course.points ?? EMPTY_ROUTE}
+				route={session.workout ? session.workout.course.points : EMPTY_ROUTE}
 				speedUnit={speedUnit}
 			/>
 		</div>

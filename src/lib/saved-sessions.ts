@@ -185,7 +185,7 @@ export function normalizeSavedSessionRecord(
 	const { workoutSnapshotId: _workoutSnapshotId, ...session } = record;
 	return normalizeSavedSession({
 		...session,
-		workout: snapshot?.workout ?? restoreSessionWorkout(record.workout),
+		workout: snapshot ? snapshot.workout : restoreSessionWorkout(record.workout),
 	});
 }
 

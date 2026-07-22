@@ -80,9 +80,9 @@ function selectWorkoutForState(
 	if (!workoutSelectionLocked(current)) {
 		return selectActiveWorkout(current, course);
 	}
-	return current.workout?.course.id === course?.id
-		? selectActiveWorkout(current, course)
-		: current;
+	const currentWorkoutId = current.workout ? current.workout.course.id : undefined;
+	const nextWorkoutId = course ? course.id : undefined;
+	return currentWorkoutId === nextWorkoutId ? selectActiveWorkout(current, course) : current;
 }
 
 function elevationTotalsAfterTick(current: SessionStoreState, distance: number) {

@@ -37,7 +37,7 @@ export function SessionOverview({
 				controlMode={controlMode}
 				history={history}
 				keyboardEnabled={keyboardEnabled}
-				route={workout?.course.points ?? EMPTY_ROUTE}
+				route={workout ? workout.course.points : EMPTY_ROUTE}
 				speedUnit={speedUnit}
 			/>
 		</div>
