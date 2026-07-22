@@ -1,4 +1,5 @@
 import type { GeographicRoutePoint } from '../types';
+import { sortedIndexAtOrAfter } from './arrays';
 
 export interface WorkoutMapCoordinate {
 	latitude: number;
@@ -20,7 +21,7 @@ export function workoutRouteCoordinateAtProgress(
 	}
 	const normalizedProgress = Math.min(1, Math.max(0, progress));
 	const targetDistance = start.distance + routeDistance * normalizedProgress;
-	const nextIndex = points.findIndex((point) => point.distance >= targetDistance);
+	const nextIndex = sortedIndexAtOrAfter(points, targetDistance, (point) => point.distance);
 	if (nextIndex <= 0) {
 		return { latitude: start.latitude, longitude: start.longitude };
 	}

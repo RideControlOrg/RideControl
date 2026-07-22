@@ -1,8 +1,7 @@
 import type { RecordMesg, SessionMesg } from '@garmin/fitsdk';
-import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
+import { emptyMetrics, emptySession } from '../constants';
 import type { MetricAggregate, MetricSample, SavedSession, SessionAggregates } from '../types';
 import { IMPORTED_FIT_ID_PREFIX, sessionImportFingerprint } from './activity-file';
-import { evenlySample } from './arrays';
 import { CONTROL_MODE } from './control-mode';
 import { elevationTotalsForSamples } from './elevation';
 import { nonNegativeNumber } from './numbers';
@@ -136,7 +135,7 @@ function parseFitSession(session: SessionMesg | undefined, allRecords: RecordMes
 			descent: nonNegativeNumber(session?.totalDescent ?? sampledElevationTotals.descent),
 		},
 		endedAt,
-		history: evenlySample(samples, MAX_SESSION_HISTORY_SAMPLES),
+		history: samples,
 		maximums: {
 			...emptyMetrics,
 			cadence: Math.max(

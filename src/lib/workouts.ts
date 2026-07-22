@@ -14,7 +14,8 @@ import harborRingDefinition from '../workouts/harbor-ring.json';
 import highlandLoopDefinition from '../workouts/highland-loop.json';
 import prairieRollDefinition from '../workouts/prairie-roll.json';
 import ridgelineTimeTrialDefinition from '../workouts/ridgeline-time-trial.json';
-import { elevationTotalsForSamples } from './elevation';
+import { sortedIndexAtOrAfter, valueRange } from './arrays';
+import { addElevationChange, elevationTotalsForSamples } from './elevation';
 import { distanceBetween } from './gpx';
 import { clamp, nonNegativeNumber } from './numbers';
 import { clampResistance } from './resistance';
@@ -36,8 +37,6 @@ const DEFAULT_TERRAIN_RESISTANCE = 12;
 const RESISTANCE_PER_GRADE_PERCENT = 2.25;
 const MIN_TERRAIN_RESISTANCE = 4;
 const MAX_TERRAIN_RESISTANCE = 55;
-const MAX_SAVED_WORKOUT_POINTS = 200;
-const MAX_OUT_AND_BACK_OUTBOUND_POINTS = Math.floor((MAX_SAVED_WORKOUT_POINTS + 1) / 2);
 const MIN_ROUTE_POINTS = 3;
 const MAP_MINIMUM = 0;
 const MAP_MAXIMUM = 100;
@@ -61,6 +60,13 @@ export const WORKOUT_FLAT_START_DISTANCE = 1.5;
 interface CourseMapPoint extends RoutePoint {
 	x: number;
 	y: number;
+}
+
+interface CourseSegment {
+	left: WorkoutRoutePoint;
+	leftIndex: number;
+	position: number;
+	right?: WorkoutRoutePoint;
 }
 
 interface BuiltInWorkoutDefinition {
@@ -121,15 +127,14 @@ export function workoutFlatStartDistance(course: Pick<WorkoutCourse, 'elevationG
 
 function flatRouteStart(
 	points: GeographicRoutePoint[],
-	rolloutDistance: number,
-	maximumPoints = MAX_SAVED_WORKOUT_POINTS
+	rolloutDistance: number
 ): GeographicRoutePoint[] {
 	const [first] = points;
 	const last = points.at(-1);
 	if (!(first && last && rolloutDistance > 0 && rolloutDistance < last.distance)) {
 		return points;
 	}
-	const rightIndex = points.findIndex((point) => point.distance >= rolloutDistance);
+	const rightIndex = sortedIndexAtOrAfter(points, rolloutDistance, (point) => point.distance);
 	if (rightIndex <= 0) {
 		return points;
 	}
@@ -151,9 +156,6 @@ function flatRouteStart(
 		latitude: left.latitude + (right.latitude - left.latitude) * progress,
 		longitude: left.longitude + (right.longitude - left.longitude) * progress,
 	};
-	if (flattened.length >= maximumPoints) {
-		return [...flattened.slice(0, rightIndex), boundary, ...flattened.slice(rightIndex + 1)];
-	}
 	return [...flattened.slice(0, rightIndex), boundary, ...flattened.slice(rightIndex)];
 }
 
@@ -167,9 +169,7 @@ function withFlatCourseStart(
 		return flatRouteStart(points, rolloutDistance);
 	}
 	const outbound = points.filter((point) => point.distance <= distance / 2 + ROUTE_VALUE_EPSILON);
-	return outAndBackRoutePoints(
-		flatRouteStart(outbound, rolloutDistance, MAX_OUT_AND_BACK_OUTBOUND_POINTS)
-	);
+	return outAndBackRoutePoints(flatRouteStart(outbound, rolloutDistance));
 }
 
 export function workoutRouteCloses(points: GeographicRoutePoint[]): boolean {
@@ -210,12 +210,13 @@ function mapCoordinates(points: GeographicRoutePoint[]): WorkoutRoutePoint[] {
 		x: point.longitude * longitudeScale,
 		y: point.latitude,
 	}));
-	const xValues = projected.map(({ x }) => x);
-	const yValues = projected.map(({ y }) => y);
-	const minimumX = Math.min(...xValues);
-	const maximumX = Math.max(...xValues);
-	const minimumY = Math.min(...yValues);
-	const maximumY = Math.max(...yValues);
+	const xRange = valueRange(projected, ({ x }) => x);
+	const yRange = valueRange(projected, ({ y }) => y);
+	if (!(xRange && yRange)) {
+		return [];
+	}
+	const { maximum: maximumX, minimum: minimumX } = xRange;
+	const { maximum: maximumY, minimum: minimumY } = yRange;
 	const width = maximumX - minimumX;
 	const height = maximumY - minimumY;
 	const available = MAP_MAXIMUM - MAP_MINIMUM - MAP_PADDING * 2;
@@ -342,11 +343,12 @@ function coursePosition(course: WorkoutCourse, totalDistance: number): number {
 		: loopDistance(course.distance, totalDistance);
 }
 
-function segmentAtDistance(course: WorkoutCourse, distance: number) {
+function segmentAtDistance(course: WorkoutCourse, distance: number): CourseSegment {
 	const position = coursePosition(course, distance);
-	const nextIndex = course.points.findIndex((point) => point.distance >= position);
-	const rightIndex = Math.max(1, nextIndex < 0 ? course.points.length - 1 : nextIndex);
-	const left = course.points[rightIndex - 1] ?? course.points[0];
+	const nextIndex = sortedIndexAtOrAfter(course.points, position, (point) => point.distance);
+	const rightIndex = Math.max(1, Math.min(nextIndex, course.points.length - 1));
+	const leftIndex = rightIndex - 1;
+	const left = course.points[leftIndex] ?? course.points[0];
 	const right = course.points[rightIndex] ?? course.points.at(-1);
 	if (!(left && right)) {
 		return {
@@ -358,15 +360,16 @@ function segmentAtDistance(course: WorkoutCourse, distance: number) {
 				x: 50,
 				y: 50,
 			},
+			leftIndex: 0,
 			position: 0,
 			right: undefined,
 		};
 	}
-	return { left, position, right };
+	return { left, leftIndex, position, right };
 }
 
-function coursePointAtDistance(course: WorkoutCourse, distance: number): WorkoutRoutePoint {
-	const { left, position, right } = segmentAtDistance(course, distance);
+function coursePointForSegment(course: WorkoutCourse, segment: CourseSegment): WorkoutRoutePoint {
+	const { left, position, right } = segment;
 	if (!right || right.distance === left.distance) {
 		return left;
 	}
@@ -374,15 +377,16 @@ function coursePointAtDistance(course: WorkoutCourse, distance: number): Workout
 	const mapPosition = workoutMapPosition(course, position);
 	return {
 		distance: position,
-		elevation: curveValueAtX(
-			course.points.map((point) => ({ x: point.distance, y: point.elevation })),
-			position
-		),
+		elevation: curveValueAtX(courseElevationSegments(course), left.elevation, position),
 		latitude: left.latitude + (right.latitude - left.latitude) * segmentProgress,
 		longitude: left.longitude + (right.longitude - left.longitude) * segmentProgress,
 		x: mapPosition.x,
 		y: mapPosition.y,
 	};
+}
+
+function coursePointAtDistance(course: WorkoutCourse, distance: number): WorkoutRoutePoint {
+	return coursePointForSegment(course, segmentAtDistance(course, distance));
 }
 
 export function workoutProgress(course: WorkoutCourse, totalDistance: number): number {
@@ -422,16 +426,16 @@ export function workoutElevationTotalsAtDistance(
 	totalDistance: number
 ): ElevationTotals {
 	const position = coursePosition(course, totalDistance);
-	const current = coursePointAtDistance(course, position);
-	const partialLap = elevationTotalsForSamples([
-		...course.points.filter((point) => point.distance < position),
-		current,
-	]);
+	const segment = segmentAtDistance(course, position);
+	const current = coursePointForSegment(course, segment);
+	const totalsByPoint = courseElevationTotals(course);
+	const totalsAtLeft = totalsByPoint[segment.leftIndex] ?? emptyElevationTotals;
+	const partialLap = addElevationChange(totalsAtLeft, segment.left.elevation, current.elevation);
 	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
 		return partialLap;
 	}
 	const completedLaps = workoutCompletedLaps(course, totalDistance);
-	const fullLap = elevationTotalsForSamples(course.points);
+	const fullLap = totalsByPoint.at(-1) ?? emptyElevationTotals;
 	return {
 		ascent: fullLap.ascent * completedLaps + partialLap.ascent,
 		descent: fullLap.descent * completedLaps + partialLap.descent,
@@ -477,14 +481,20 @@ export function workoutTerrainAtDistance(
 }
 
 export function workoutMapPath(course: WorkoutCourse): string {
+	const cached = workoutMapPathCache.get(course);
+	if (cached !== undefined) {
+		return cached;
+	}
 	const [first] = course.points;
 	if (!first) {
 		return '';
 	}
-	return [
+	const path = [
 		`M ${pathCoordinate(first.x)} ${pathCoordinate(first.y)}`,
-		...workoutMapSegments(course).map(curvePathCommand),
+		...workoutMapPathCommands(course),
 	].join(' ');
+	workoutMapPathCache.set(course, path);
+	return path;
 }
 
 export function workoutMapProgressPath(course: WorkoutCourse, terrain: WorkoutTerrain): string {
@@ -497,9 +507,13 @@ export function workoutMapProgressPath(course: WorkoutCourse, terrain: WorkoutTe
 			? Math.min(terrain.distance, course.distance / 2)
 			: terrain.distance;
 	const curves: string[] = [];
-	for (const segment of workoutMapSegments(course)) {
+	const commands = workoutMapPathCommands(course);
+	for (const [index, segment] of workoutMapSegments(course).entries()) {
 		if (segment.endDistance <= progressDistance) {
-			curves.push(curvePathCommand(segment));
+			const command = commands[index];
+			if (command) {
+				curves.push(command);
+			}
 			continue;
 		}
 		if (segment.startDistance < progressDistance) {
@@ -529,6 +543,15 @@ interface MapCurveSegment extends CurveSegment {
 	endDistance: number;
 	startDistance: number;
 }
+
+const courseElevationSegmentsCache = new WeakMap<WorkoutCourse, CurveSegment[]>();
+const courseElevationTotalsCache = new WeakMap<WorkoutCourse, ElevationTotals[]>();
+const workoutMapPathCache = new WeakMap<WorkoutCourse, string>();
+const workoutMapPathCommandsCache = new WeakMap<WorkoutCourse, string[]>();
+const workoutMapSegmentsCache = new WeakMap<WorkoutCourse, MapCurveSegment[]>();
+const workoutProfilePathCache = new WeakMap<WorkoutCourse, string>();
+const workoutProfilePointsCache = new WeakMap<WorkoutCourse, CurvePoint[]>();
+const workoutProfileSegmentsCache = new WeakMap<WorkoutCourse, CurveSegment[]>();
 
 function pathCoordinate(value: number): number {
 	return Number(value.toFixed(3));
@@ -577,6 +600,16 @@ function partialCurveSegment(segment: CurveSegment, progress: number): CurveSegm
 
 function curvePathCommand(segment: CurveSegment): string {
 	return `C ${pathCoordinate(segment.control1.x)} ${pathCoordinate(segment.control1.y)} ${pathCoordinate(segment.control2.x)} ${pathCoordinate(segment.control2.y)} ${pathCoordinate(segment.to.x)} ${pathCoordinate(segment.to.y)}`;
+}
+
+function workoutMapPathCommands(course: WorkoutCourse): string[] {
+	const cached = workoutMapPathCommandsCache.get(course);
+	if (cached) {
+		return cached;
+	}
+	const commands = workoutMapSegments(course).map(curvePathCommand);
+	workoutMapPathCommandsCache.set(course, commands);
+	return commands;
 }
 
 function mapCoordinateTangents(
@@ -635,11 +668,15 @@ function workoutMapDistance(course: WorkoutCourse, distance: number): number {
 }
 
 function workoutMapSegments(course: WorkoutCourse): MapCurveSegment[] {
+	const cached = workoutMapSegmentsCache.get(course);
+	if (cached) {
+		return cached;
+	}
 	const mapCourse = workoutMapCourse(course);
 	const xTangents = mapCoordinateTangents(mapCourse, (point) => point.x);
 	const yTangents = mapCoordinateTangents(mapCourse, (point) => point.y);
 	const tension = 0.75;
-	return mapCourse.points.slice(0, -1).flatMap((from, index) => {
+	const segments = mapCourse.points.slice(0, -1).flatMap((from, index) => {
 		const to = mapCourse.points[index + 1];
 		if (!to) {
 			return [];
@@ -662,13 +699,19 @@ function workoutMapSegments(course: WorkoutCourse): MapCurveSegment[] {
 			},
 		];
 	});
+	workoutMapSegmentsCache.set(course, segments);
+	return segments;
 }
 
 function workoutMapPosition(course: WorkoutCourse, distance: number): CurvePoint {
 	const position = workoutMapDistance(course, distance);
 	const segments = workoutMapSegments(course);
-	const segment =
-		segments.find((candidate) => candidate.endDistance >= position) ?? segments.at(-1);
+	const segmentIndex = sortedIndexAtOrAfter(
+		segments,
+		position,
+		(candidate) => candidate.endDistance
+	);
+	const segment = segments[segmentIndex] ?? segments.at(-1);
 	if (!segment) {
 		const [first] = course.points;
 		return first ? { x: first.x, y: first.y } : { x: 50, y: 50 };
@@ -680,14 +723,22 @@ function workoutMapPosition(course: WorkoutCourse, distance: number): CurvePoint
 }
 
 function workoutProfilePoints(course: WorkoutCourse): CurvePoint[] {
-	const elevations = course.points.map((point) => point.elevation);
-	const minimum = Math.min(...elevations);
-	const maximum = Math.max(...elevations);
+	const cached = workoutProfilePointsCache.get(course);
+	if (cached) {
+		return cached;
+	}
+	const elevationRange = valueRange(course.points, (point) => point.elevation);
+	if (!elevationRange) {
+		return [];
+	}
+	const { maximum, minimum } = elevationRange;
 	const span = Math.max(maximum - minimum, PROFILE_REFERENCE_ELEVATION_SPAN_METERS);
-	return course.points.map((point) => ({
+	const points = course.points.map((point) => ({
 		x: (point.distance / course.distance) * 100,
 		y: 88 - ((point.elevation - minimum) / span) * 72,
 	}));
+	workoutProfilePointsCache.set(course, points);
+	return points;
 }
 
 function curveTangents(points: CurvePoint[]): number[] {
@@ -743,11 +794,11 @@ function cubicValue(start: number, control1: number, control2: number, end: numb
 	);
 }
 
-function curveValueAtX(points: CurvePoint[], x: number): number {
-	const segments = curveSegments(points);
-	const segment = segments.find((candidate) => candidate.to.x >= x) ?? segments.at(-1);
+function curveValueAtX(segments: CurveSegment[], fallback: number, x: number): number {
+	const segmentIndex = sortedIndexAtOrAfter(segments, x, (candidate) => candidate.to.x);
+	const segment = segments[segmentIndex] ?? segments.at(-1);
 	if (!segment) {
-		return points[0].y;
+		return fallback;
 	}
 	const segmentWidth = segment.to.x - segment.from.x;
 	const progress = segmentWidth > 0 ? clamp((x - segment.from.x) / segmentWidth, 0, 1) : 0;
@@ -760,26 +811,67 @@ function curveValueAtX(points: CurvePoint[], x: number): number {
 	);
 }
 
+function courseElevationSegments(course: WorkoutCourse): CurveSegment[] {
+	const cached = courseElevationSegmentsCache.get(course);
+	if (cached) {
+		return cached;
+	}
+	const segments = curveSegments(
+		course.points.map((point) => ({ x: point.distance, y: point.elevation }))
+	);
+	courseElevationSegmentsCache.set(course, segments);
+	return segments;
+}
+
+function courseElevationTotals(course: WorkoutCourse): ElevationTotals[] {
+	const cached = courseElevationTotalsCache.get(course);
+	if (cached) {
+		return cached;
+	}
+	let previousElevation: number | undefined;
+	let totals = emptyElevationTotals;
+	const totalsByPoint = course.points.map((point) => {
+		totals = addElevationChange(totals, previousElevation, point.elevation);
+		previousElevation = point.elevation;
+		return totals;
+	});
+	courseElevationTotalsCache.set(course, totalsByPoint);
+	return totalsByPoint;
+}
+
 function workoutProfileSegments(course: WorkoutCourse): CurveSegment[] {
-	return curveSegments(workoutProfilePoints(course));
+	const cached = workoutProfileSegmentsCache.get(course);
+	if (cached) {
+		return cached;
+	}
+	const segments = curveSegments(workoutProfilePoints(course));
+	workoutProfileSegmentsCache.set(course, segments);
+	return segments;
 }
 
 export function workoutProfilePath(course: WorkoutCourse): string {
+	const cached = workoutProfilePathCache.get(course);
+	if (cached !== undefined) {
+		return cached;
+	}
 	const [first] = workoutProfilePoints(course);
 	if (!first) {
 		return '';
 	}
 	const curves = workoutProfileSegments(course).map((segment) => curvePathCommand(segment));
-	return [`M ${pathCoordinate(first.x)} ${pathCoordinate(first.y)}`, ...curves].join(' ');
+	const path = [`M ${pathCoordinate(first.x)} ${pathCoordinate(first.y)}`, ...curves].join(' ');
+	workoutProfilePathCache.set(course, path);
+	return path;
 }
 export function workoutProfilePosition(
 	course: WorkoutCourse,
 	terrain: WorkoutTerrain
 ): { x: number; y: number } {
 	const x = terrain.progress * 100;
+	const [first] = workoutProfilePoints(course);
 	return {
 		x,
-		y: curveValueAtX(workoutProfilePoints(course), x),
+		y: curveValueAtX(workoutProfileSegments(course), first.y, x),
 	};
 }
 
@@ -963,9 +1055,6 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 			(startingLocation === undefined || startingLocation.trim().length > 0)
 		)
 	) {
-		return;
-	}
-	if (points.length > MAX_SAVED_WORKOUT_POINTS) {
 		return;
 	}
 	const restoredBaseResistance =

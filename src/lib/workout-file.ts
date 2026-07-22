@@ -1,5 +1,4 @@
 import type { GeographicRoutePoint, WorkoutCourse } from '../types';
-import { evenlySample } from './arrays';
 import { downloadBrowserFile } from './download';
 import { parseGpxDocument } from './gpx';
 import { reverseGeocodeStartingCity } from './reverse-geocode';
@@ -35,9 +34,6 @@ const WORKOUT_LIBRARY_FORMAT = 'ride-control-workout-library';
 const WORKOUT_LIBRARY_VERSION = 1;
 const WORKOUT_MIME_TYPE = 'application/gpx+xml';
 const MAX_CUSTOM_WORKOUTS = 50;
-const MAX_WORKOUT_FILE_POINTS = 200;
-const MAX_DIRECT_SOURCE_POINTS = MAX_WORKOUT_FILE_POINTS - 1;
-const MAX_OUT_AND_BACK_SOURCE_POINTS = Math.floor((MAX_WORKOUT_FILE_POINTS - 1) / 2);
 const NON_FILENAME_CHARACTERS = /[^a-z0-9]+/g;
 const EDGE_HYPHENS = /^-+|-+$/g;
 const GPX_FILE_EXTENSION = /(?:\.workout)?\.gpx$/i;
@@ -188,7 +184,7 @@ function outAndBackPoints(
 		);
 		outbound = points.slice(0, turnaroundIndex + 1);
 	}
-	return outAndBackRoutePoints(evenlySample(outbound, MAX_OUT_AND_BACK_SOURCE_POINTS));
+	return outAndBackRoutePoints(outbound);
 }
 
 export function workoutIsBuiltIn(id: string): boolean {
@@ -253,7 +249,7 @@ export function parseWorkoutFile(
 	if (routeType === WORKOUT_ROUTE_TYPE.OUT_AND_BACK) {
 		points = outAndBackPoints(sourcePoints, sourceCloses);
 	} else {
-		points = evenlySample(sourcePoints, MAX_DIRECT_SOURCE_POINTS);
+		points = sourcePoints;
 	}
 	const distance = points.at(-1)?.distance ?? 0;
 	const course = restoreWorkoutCourse({

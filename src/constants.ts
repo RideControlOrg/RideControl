@@ -22,7 +22,6 @@ export const BLUETOOTH_OPERATION_TIMEOUT_MS = 5000;
 export const OPTIONAL_BLUETOOTH_OPERATION_TIMEOUT_MS = 1000;
 export const RECORDING_PAUSE_DELAY_MS = 10_000;
 export const CONTROL_FLASH_MS = 180;
-export const MAX_SESSION_HISTORY_SAMPLES = 3600;
 export const EMPTY_ROUTE = [] as const;
 
 export const optionalServices: BluetoothServiceUUID[] = [

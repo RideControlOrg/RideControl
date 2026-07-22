@@ -1,4 +1,5 @@
 import type { GeographicRoutePoint } from '../types';
+import { valueRange } from './arrays';
 
 const OPENSTREETMAP_URL = 'https://www.openstreetmap.org/';
 const MINIMUM_ROUTE_PADDING_DEGREES = 0.001;
@@ -16,12 +17,13 @@ export function openStreetMapRouteUrl(
 	if (!start) {
 		return;
 	}
-	const latitudes = points.map((point) => point.latitude);
-	const longitudes = points.map((point) => point.longitude);
-	const minimumLatitude = Math.min(...latitudes);
-	const maximumLatitude = Math.max(...latitudes);
-	const minimumLongitude = Math.min(...longitudes);
-	const maximumLongitude = Math.max(...longitudes);
+	const latitudeRange = valueRange(points, (point) => point.latitude);
+	const longitudeRange = valueRange(points, (point) => point.longitude);
+	if (!(latitudeRange && longitudeRange)) {
+		return;
+	}
+	const { maximum: maximumLatitude, minimum: minimumLatitude } = latitudeRange;
+	const { maximum: maximumLongitude, minimum: minimumLongitude } = longitudeRange;
 	const latitudePadding = Math.max(
 		(maximumLatitude - minimumLatitude) * ROUTE_PADDING_RATIO,
 		MINIMUM_ROUTE_PADDING_DEGREES

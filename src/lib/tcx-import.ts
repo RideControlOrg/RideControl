@@ -1,4 +1,4 @@
-import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
+import { emptyMetrics, emptySession } from '../constants';
 import type {
 	MetricAggregate,
 	MetricSample,
@@ -8,7 +8,6 @@ import type {
 	SessionWorkout,
 } from '../types';
 import { sessionImportFingerprint } from './activity-file';
-import { evenlySample } from './arrays';
 import { CONTROL_MODE } from './control-mode';
 import { elevationTotalsForSamples } from './elevation';
 import { clampGear } from './gears';
@@ -240,9 +239,8 @@ function parseActivity(activity: Element): SavedSession {
 	const lapDistanceMeters = positiveSum(
 		laps.map((lap) => numberValue(child(lap, 'DistanceMeters')))
 	);
-	const trackpointDistanceMeters = Math.max(
-		0,
-		...trackpoints.map((trackpoint) => numberValue(child(trackpoint, 'DistanceMeters')) ?? 0)
+	const trackpointDistanceMeters = maximum(
+		trackpoints.map((trackpoint) => numberValue(child(trackpoint, 'DistanceMeters')) ?? 0)
 	);
 	const distanceMeters = lapDistanceMeters || trackpointDistanceMeters;
 	const calories = positiveSum(laps.map((lap) => numberValue(child(lap, 'Calories'))));
@@ -276,7 +274,7 @@ function parseActivity(activity: Element): SavedSession {
 			descent: nonNegativeNumber(recordedDescent ?? sampledElevationTotals.descent),
 		},
 		endedAt,
-		history: evenlySample(allSamples, MAX_SESSION_HISTORY_SAMPLES),
+		history: allSamples,
 		id:
 			text(exportedSessionId).slice(0, 256) ||
 			`${IMPORTED_TCX_ID_PREFIX}${fingerprintValues(

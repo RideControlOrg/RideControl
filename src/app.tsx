@@ -15,6 +15,7 @@ import { TrainingControl } from './components/training-control';
 import { WelcomeDialog } from './components/welcome-dialog';
 import { WorkoutPanel } from './components/workout-panel';
 import { WorkoutProgress } from './components/workout-progress';
+import { emptySession } from './constants';
 import { useGearControl } from './hooks/use-gear-control';
 import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useRememberedBluetoothDevices } from './hooks/use-remembered-bluetooth-devices';
@@ -34,11 +35,7 @@ import { CONTROL_MODE, type ControlMode } from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
-import {
-	loadStoredSession,
-	requestUnloadConfirmation,
-	sessionNeedsUnloadWarning,
-} from './lib/session';
+import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import {
 	workoutDashboardPreview,
@@ -47,7 +44,7 @@ import {
 } from './lib/workouts';
 import { MAX_CLICK_CONTROLLERS } from './lib/zwift-click';
 import { preferencesStore } from './stores/preferences-store';
-import type { Metrics, SavedSession, WorkoutCourse } from './types';
+import type { Metrics, SavedSession, StoredSession, WorkoutCourse } from './types';
 
 function shouldIgnoreShortcut(event: KeyboardEvent) {
 	return (
@@ -72,7 +69,7 @@ function controlModeForClick(paired: boolean): ControlMode {
 	return paired ? CONTROL_MODE.GEAR : CONTROL_MODE.RESISTANCE;
 }
 
-export function App() {
+export function App({ initialSession = emptySession }: { initialSession?: StoredSession }) {
 	const rememberedDevices = useRememberedBluetoothDevices();
 	const trainer = useTrainer(rememberedDevices);
 	const [activeOverlay, setActiveOverlayState] = useState<AppOverlay | undefined>(
@@ -83,7 +80,7 @@ export function App() {
 		setActiveOverlayState(overlay);
 	}, []);
 	const devicesOpen = activeOverlay === APP_OVERLAY.DEVICES;
-	const [initialClickConnectionActive] = useState(() => !loadStoredSession().ended);
+	const [initialClickConnectionActive] = useState(() => !initialSession.ended);
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
 	const heartRate = useHeartRateMonitor(rememberedDevices, trainer.setNotice);
@@ -126,7 +123,8 @@ export function App() {
 			resistance: trainer.resistance,
 		},
 		trainer.lastPedalingAt,
-		trainer.trainerReportsDistance
+		trainer.trainerReportsDistance,
+		initialSession
 	);
 	const dashboardWorkout = workoutDashboardPreview({
 		distance: session.rideDistance,

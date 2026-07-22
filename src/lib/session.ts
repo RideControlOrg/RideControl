@@ -1,4 +1,4 @@
-import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
+import { emptyMetrics, emptySession } from '../constants';
 import type {
 	MetricAggregate,
 	MetricSample,
@@ -12,7 +12,7 @@ import { restoreElevationTotals } from './elevation';
 import { clampGear, MAX_GEAR, MIN_GEAR } from './gears';
 import { clamp, nonNegativeNumber } from './numbers';
 import { clampResistance, DEFAULT_RESISTANCE, MAX_RESISTANCE, MIN_RESISTANCE } from './resistance';
-import { isFiniteNumber, isString } from './type-guards';
+import { isFiniteNumber, isRecord, isString } from './type-guards';
 import { restoreSessionWorkout } from './workouts';
 
 export const SESSION_STORAGE_KEY = 'trainer-session';
@@ -159,67 +159,67 @@ export function loadStoredSession(storage: ReadableStorage = localStorage): Stor
 		return emptySession;
 	}
 	try {
-		const parsed = JSON.parse(saved) as Partial<StoredSession>;
-		const maximums = parsed.maximums ?? emptyMetrics;
-		const history = Array.isArray(parsed.history)
-			? parsed.history.slice(-MAX_SESSION_HISTORY_SAMPLES).map((sample) => ({
-					cadence: nonNegativeNumber(sample.cadence),
-					elapsedSeconds: nonNegativeNumber(sample.elapsedSeconds),
-					elevation: optionalNonNegativeNumber(sample.elevation),
-					gear: optionalControlValue(sample.gear, MIN_GEAR, MAX_GEAR),
-					grade: optionalControlValue(sample.grade, -15, 15),
-					heartRate: nonNegativeNumber(sample.heartRate),
-					power: nonNegativeNumber(sample.power),
-					resistance: optionalControlValue(
-						sample.resistance,
-						MIN_RESISTANCE,
-						MAX_RESISTANCE
-					),
-					speed: nonNegativeNumber(sample.speed),
-					workoutDistance: optionalNonNegativeNumber(sample.workoutDistance),
-					workoutLap: optionalWorkoutLap(sample.workoutLap),
-				}))
-			: [];
-		const historyAggregates = history.reduce(addMetricAggregates, emptySession.aggregates);
-		return {
-			aggregates: {
-				cadence: restoreAggregate(parsed.aggregates?.cadence, historyAggregates.cadence),
-				gear: restoreAggregate(parsed.aggregates?.gear, historyAggregates.gear),
-				heartRate: restoreAggregate(
-					parsed.aggregates?.heartRate,
-					historyAggregates.heartRate
-				),
-				power: restoreAggregate(parsed.aggregates?.power, historyAggregates.power),
-				resistance: restoreAggregate(
-					parsed.aggregates?.resistance,
-					historyAggregates.resistance
-				),
-			},
-			calories: nonNegativeNumber(parsed.calories),
-			controlMode: controlModeForHistory(history, parsed.controlMode),
-			discarded: parsed.discarded === true,
-			distance: nonNegativeNumber(parsed.distance),
-			elapsedSeconds: nonNegativeNumber(parsed.elapsedSeconds),
-			elevationTotals: restoreElevationTotals(parsed.elevationTotals, history),
-			ended: parsed.ended === true,
-			endedAt: nonNegativeNumber(parsed.endedAt),
-			history,
-			maximums: {
-				cadence: nonNegativeNumber(maximums.cadence),
-				calories: 0,
-				distance: 0,
-				heartRate: nonNegativeNumber(maximums.heartRate),
-				power: nonNegativeNumber(maximums.power),
-				speed: nonNegativeNumber(maximums.speed),
-			},
-			plannedWorkout: restoreSessionWorkout(parsed.plannedWorkout),
-			savedSessionId: isString(parsed.savedSessionId) ? parsed.savedSessionId : undefined,
-			startedAt: nonNegativeNumber(parsed.startedAt),
-			workout: restoreSessionWorkout(parsed.workout),
-		};
+		return restoreStoredSession(JSON.parse(saved));
 	} catch {
 		return emptySession;
 	}
+}
+
+export function restoreStoredSession(value: unknown): StoredSession {
+	if (!isRecord(value)) {
+		return emptySession;
+	}
+	const parsed = value as Partial<StoredSession>;
+	const maximums = parsed.maximums ?? emptyMetrics;
+	const history = Array.isArray(parsed.history)
+		? parsed.history.filter(isRecord).map((sample) => ({
+				cadence: nonNegativeNumber(sample.cadence),
+				elapsedSeconds: nonNegativeNumber(sample.elapsedSeconds),
+				elevation: optionalNonNegativeNumber(sample.elevation),
+				gear: optionalControlValue(sample.gear, MIN_GEAR, MAX_GEAR),
+				grade: optionalControlValue(sample.grade, -15, 15),
+				heartRate: nonNegativeNumber(sample.heartRate),
+				power: nonNegativeNumber(sample.power),
+				resistance: optionalControlValue(sample.resistance, MIN_RESISTANCE, MAX_RESISTANCE),
+				speed: nonNegativeNumber(sample.speed),
+				workoutDistance: optionalNonNegativeNumber(sample.workoutDistance),
+				workoutLap: optionalWorkoutLap(sample.workoutLap),
+			}))
+		: [];
+	const historyAggregates = history.reduce(addMetricAggregates, emptySession.aggregates);
+	return {
+		aggregates: {
+			cadence: restoreAggregate(parsed.aggregates?.cadence, historyAggregates.cadence),
+			gear: restoreAggregate(parsed.aggregates?.gear, historyAggregates.gear),
+			heartRate: restoreAggregate(parsed.aggregates?.heartRate, historyAggregates.heartRate),
+			power: restoreAggregate(parsed.aggregates?.power, historyAggregates.power),
+			resistance: restoreAggregate(
+				parsed.aggregates?.resistance,
+				historyAggregates.resistance
+			),
+		},
+		calories: nonNegativeNumber(parsed.calories),
+		controlMode: controlModeForHistory(history, parsed.controlMode),
+		discarded: parsed.discarded === true,
+		distance: nonNegativeNumber(parsed.distance),
+		elapsedSeconds: nonNegativeNumber(parsed.elapsedSeconds),
+		elevationTotals: restoreElevationTotals(parsed.elevationTotals, history),
+		ended: parsed.ended === true,
+		endedAt: nonNegativeNumber(parsed.endedAt),
+		history,
+		maximums: {
+			cadence: nonNegativeNumber(maximums.cadence),
+			calories: 0,
+			distance: 0,
+			heartRate: nonNegativeNumber(maximums.heartRate),
+			power: nonNegativeNumber(maximums.power),
+			speed: nonNegativeNumber(maximums.speed),
+		},
+		plannedWorkout: restoreSessionWorkout(parsed.plannedWorkout),
+		savedSessionId: isString(parsed.savedSessionId) ? parsed.savedSessionId : undefined,
+		startedAt: nonNegativeNumber(parsed.startedAt),
+		workout: restoreSessionWorkout(parsed.workout),
+	};
 }
 
 export function storedResistance(storage: ReadableStorage = localStorage) {

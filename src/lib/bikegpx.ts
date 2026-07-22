@@ -11,6 +11,7 @@ import { isWorkoutDifficulty, type WorkoutDifficulty } from './workout-schema';
 export const BIKEGPX_ROUTES_URL = 'https://bikegpx.com/bike_routes/';
 const SEARCH_WHITESPACE = /\s+/u;
 const NUMERIC_ROUTE_ID = /^\d+$/;
+const PREPARED_ROUTE_VERSION = 2;
 const API_ROOT = (import.meta.env.VITE_RIDECONTROL_API_URL || '/api').replace(/\/$/u, '');
 
 export interface BikeGpxRouteSummary {
@@ -264,7 +265,7 @@ export async function fetchBikeGpxRoute(
 	route: BikeGpxRouteSummary,
 	signal?: AbortSignal
 ): Promise<BikeGpxRouteResult> {
-	const path = `/bikegpx/routes/${encodeURIComponent(route.id)}`;
+	const path = `/bikegpx/routes/${encodeURIComponent(route.id)}?prepared-route-version=${PREPARED_ROUTE_VERSION}`;
 	const result = restoreBikeGpxRouteResult(await apiJson(path, signal));
 	if (!result) {
 		throw new Error('The Ride Control backend returned an invalid BikeGPX route.');

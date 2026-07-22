@@ -52,6 +52,26 @@ describe('TCX import', () => {
 		expect(imported.aggregates.gear.maximum).toBe(10);
 	});
 
+	test('imports every TCX trackpoint from a ride longer than the former sample limit', () => {
+		const [sample] = session.history;
+		if (!sample) {
+			throw new Error('Expected a recorded sample fixture.');
+		}
+		const history = Array.from({ length: 3601 }, (_, index) => ({
+			...sample,
+			elapsedSeconds: index + 1,
+		}));
+		const [imported] = parseTcxSessions(
+			sessionToTcx({
+				...session,
+				elapsedSeconds: history.length,
+				endedAt: session.startedAt + history.length * 1000,
+				history,
+			})
+		);
+		expect(imported?.history).toHaveLength(history.length);
+	});
+
 	test('recognizes Ride Control exports created under a previous repository owner', () => {
 		const legacyExport = sessionToTcx(session).replace('RideControlOrg', 'previous-owner');
 		const [imported] = parseTcxSessions(legacyExport);

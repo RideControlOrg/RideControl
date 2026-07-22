@@ -1,8 +1,8 @@
 import { createStore } from '@tanstack/react-store';
-import { emptyMetrics, emptySession, MAX_SESSION_HISTORY_SAMPLES } from '../constants';
+import { emptyMetrics, emptySession } from '../constants';
 import { CONTROL_MODE, type ControlMode } from '../lib/control-mode';
 import { estimatedCyclingCalories } from '../lib/cycling-energy';
-import { addMetricAggregates, SESSION_STORAGE_KEY, sessionContinuation } from '../lib/session';
+import { addMetricAggregates, sessionContinuation } from '../lib/session';
 import { kilometersTraveled } from '../lib/units';
 import {
 	workoutElevationTotalsAtDistance,
@@ -32,8 +32,6 @@ export interface SessionStoreState extends StoredSession {
 	isRiding: boolean;
 	manuallyPaused: boolean;
 }
-
-type SessionStorage = Pick<Storage, 'setItem'>;
 
 function initialSessionState(restored: StoredSession, now: number): SessionStoreState {
 	return {
@@ -118,20 +116,13 @@ export function storedSessionFromState(state: SessionStoreState): StoredSession 
 		elevationTotals: state.elevationTotals,
 		ended: state.ended,
 		endedAt: state.endedAt,
-		history: state.history.slice(-MAX_SESSION_HISTORY_SAMPLES),
+		history: state.history,
 		maximums: state.maximums,
 		plannedWorkout: state.plannedWorkout,
 		savedSessionId: state.savedSessionId,
 		startedAt: state.startedAt,
 		workout: state.workout,
 	};
-}
-
-export function persistSessionState(
-	state: SessionStoreState,
-	storage: SessionStorage = localStorage
-) {
-	storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(storedSessionFromState(state)));
 }
 
 export function createSessionStore(restored: StoredSession, now = Date.now()) {

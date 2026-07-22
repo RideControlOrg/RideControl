@@ -77,6 +77,14 @@ function gpxWithoutDescription(): string {
 	return thirdPartyGpx().replace('\n\t\t<desc>A real GPX loop</desc>', '');
 }
 
+function largePointToPointGpx(pointCount: number): string {
+	const points = Array.from({ length: pointCount }, (_, index) => {
+		const latitude = 37 + index * 0.000_005;
+		return `<trkpt lat="${latitude.toFixed(6)}" lon="-122.000000"><ele>10</ele></trkpt>`;
+	}).join('');
+	return `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Detailed route</name><trkseg>${points}</trkseg></trk></gpx>`;
+}
+
 describe('workout GPX files', () => {
 	test('round trips geographic workout source data through standard GPX', async () => {
 		const workout = customWorkout();
@@ -227,6 +235,15 @@ describe('workout GPX files', () => {
 			expect(point.distance).toBeCloseTo(workout.points[index]?.distance ?? 0, 5);
 			expect(point.elevation).toBeCloseTo(workout.points[index]?.elevation ?? 0);
 		}
+	});
+
+	test('preserves every point in a large imported GPX route', () => {
+		const workout = parseWorkoutFile(
+			largePointToPointGpx(500),
+			new DOMParser() as unknown as globalThis.DOMParser
+		);
+		expect(workout.points).toHaveLength(500);
+		expect(workout.points.at(-1)?.latitude).toBeCloseTo(37.002_495, 6);
 	});
 
 	test('migrates previously generated GPX return legs to point-to-point routes', () => {

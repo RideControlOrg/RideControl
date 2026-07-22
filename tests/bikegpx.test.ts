@@ -116,7 +116,10 @@ describe('BikeGPX backend client', () => {
 		const fetchMock = mock(async () => Response.json(result));
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		expect(await fetchBikeGpxRoute(route)).toEqual(result);
-		expect(fetchMock).toHaveBeenCalledWith('/api/bikegpx/routes/2635', { signal: undefined });
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/bikegpx/routes/2635?prepared-route-version=2',
+			{ signal: undefined }
+		);
 	});
 
 	test('rejects an unprepared route response instead of polling it', async () => {

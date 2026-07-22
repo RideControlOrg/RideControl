@@ -352,6 +352,34 @@ describe('terrain workouts', () => {
 		expect(climb.y).toBeWithin(0, 100);
 	});
 
+	test('calculates live terrain from a detailed course without reducing its points', () => {
+		const pointCount = 10_001;
+		const distance = 10;
+		const detailedCourse = restoreWorkoutCourse({
+			baseResistance: 12,
+			description: 'A detailed course',
+			difficulty: 'moderate',
+			distance,
+			id: 'detailed-course',
+			name: 'Detailed course',
+			points: Array.from({ length: pointCount }, (_, index) => ({
+				distance: index / 1000,
+				elevation: 100 + Math.sin(index / 500) * 20,
+				latitude: 40 + index / 1_000_000,
+				longitude: -120,
+			})),
+			routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
+		});
+		if (!detailedCourse) {
+			throw new Error('Expected a valid detailed workout course');
+		}
+		expect(detailedCourse.points).toHaveLength(pointCount);
+		expect(workoutTerrainAtDistance(detailedCourse, 9.9995).progress).toBeCloseTo(0.999_95, 6);
+		expect(workoutElevationTotalsAtDistance(detailedCourse, distance).ascent).toBeGreaterThan(
+			0
+		);
+	});
+
 	test('creates reusable top-down and side-profile paths', () => {
 		if (!course) {
 			throw new Error('Expected a built-in workout course');
