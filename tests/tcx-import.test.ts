@@ -32,20 +32,44 @@ const session: SavedSession = {
 describe('TCX import', () => {
 	test('round trips Ride Control session data and its unique identifier', () => {
 		const [imported] = parseTcxSessions(sessionToTcx(session));
-		expect(imported?.id).toBe(session.id);
-		expect(imported?.controlMode).toBe(CONTROL_MODE.GEAR);
-		expect(imported?.history).toHaveLength(2);
-		expect(imported?.history[1]).toMatchObject({
+		expect(imported).toBeDefined();
+		if (!imported) {
+			return;
+		}
+		expect(imported.id).toBe(session.id);
+		expect(imported.controlMode).toBe(CONTROL_MODE.GEAR);
+		expect(imported.history).toHaveLength(2);
+		expect(imported.history[1]).toMatchObject({
 			cadence: 82,
 			gear: 10,
 			heartRate: 142,
 			power: 210,
 		});
-		expect(imported?.distance).toBe(1.5);
-		expect(imported?.calories).toBe(220);
-		expect(imported?.feeling).toBe('good');
-		expect(imported?.comments).toBe('Imported ride notes');
-		expect(imported?.aggregates.gear.maximum).toBe(10);
+		expect(imported.distance).toBe(1.5);
+		expect(imported.calories).toBe(220);
+		expect(imported.feeling).toBe('good');
+		expect(imported.comments).toBe('Imported ride notes');
+		expect(imported.aggregates.gear.maximum).toBe(10);
+	});
+
+	test('imports every TCX trackpoint from a ride longer than the former sample limit', () => {
+		const [sample] = session.history;
+		if (!sample) {
+			throw new Error('Expected a recorded sample fixture.');
+		}
+		const history = Array.from({ length: 3601 }, (_, index) => ({
+			...sample,
+			elapsedSeconds: index + 1,
+		}));
+		const [imported] = parseTcxSessions(
+			sessionToTcx({
+				...session,
+				elapsedSeconds: history.length,
+				endedAt: session.startedAt + history.length * 1000,
+				history,
+			})
+		);
+		expect(imported?.history).toHaveLength(history.length);
 	});
 
 	test('recognizes Ride Control exports created under a previous repository owner', () => {
@@ -84,7 +108,11 @@ describe('TCX import', () => {
 			workout: { course },
 		};
 		const [imported] = parseTcxSessions(sessionToTcx(workoutSession));
-		expect(imported?.workout?.course).toMatchObject({
+		expect(imported?.workout).toBeDefined();
+		if (!imported?.workout) {
+			return;
+		}
+		expect(imported.workout.course).toMatchObject({
 			baseResistance: course.baseResistance,
 			description: course.description,
 			difficulty: course.difficulty,
@@ -93,18 +121,17 @@ describe('TCX import', () => {
 			name: course.name,
 			routeType: course.routeType,
 		});
-		expect(imported?.workout?.course.points).toHaveLength(course.points.length);
-		expect(imported?.workout?.course.points[1]?.latitude).toBeCloseTo(
-			course.points[1]?.latitude ?? 0,
-			7
-		);
-		expect(imported?.history[0]).toMatchObject({
+		expect(imported.workout.course.points).toHaveLength(course.points.length);
+		const importedPoint = imported.workout.course.points.at(1);
+		const sourcePoint = course.points.at(1);
+		expect(importedPoint?.latitude).toBeCloseTo(sourcePoint?.latitude ?? 0, 7);
+		expect(imported.history[0]).toMatchObject({
 			workoutDistance: 1,
 			workoutLap: 1,
 		});
-		expect(imported?.history[0]?.elevation).toBeNumber();
-		expect(imported?.history[0]?.grade).toBeNumber();
-		expect(imported?.elevationTotals).toEqual({ ascent: 205.5, descent: 91.25 });
+		expect(imported.history[0]?.elevation).toBeNumber();
+		expect(imported.history[0]?.grade).toBeNumber();
+		expect(imported.elevationTotals).toEqual({ ascent: 205.5, descent: 91.25 });
 	});
 
 	test('imports TCX files in nested ZIP folders and skips duplicate sessions', async () => {

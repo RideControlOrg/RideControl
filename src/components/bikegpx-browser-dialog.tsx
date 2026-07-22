@@ -1,34 +1,39 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { useCloseOnEscape } from '../hooks/use-dialog-behavior';
+import { useCloseOnEscape, useDialogInitialFocus } from '../hooks/use-dialog-behavior';
+import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import {
 	BIKEGPX_ROUTES_URL,
 	type BikeGpxCatalog,
 	type BikeGpxRouteAnalysis,
 	type BikeGpxRouteResult,
 	type BikeGpxRouteSummary,
+	bikeGpxPreviewRoute,
+	bikeGpxRouteLocation,
 	bikeGpxRouteMatchesQuery,
 	bikeGpxRouteUrl,
 	fetchBikeGpxRoute,
+	formatBikeGpxRouteStats,
 } from '../lib/bikegpx';
-import { errorMessage } from '../lib/errors';
 import {
-	convertDistance,
-	distanceUnitLabel,
-	formatDescriptionDistance,
-	formatDistance,
-	formatElevation,
-} from '../lib/units';
+	BIKEGPX_ROUTE_LIST_SCROLL_POSITION_STORAGE_KEY,
+	loadBikeGpxBrowserSearch,
+	persistBikeGpxBrowserSearch,
+} from '../lib/bikegpx-browser-preferences';
+import { errorMessage } from '../lib/errors';
+import { convertDistance, distanceUnitLabel } from '../lib/units';
 import {
 	isWorkoutDifficulty,
 	WORKOUT_DIFFICULTY,
+	WORKOUT_VIEW,
 	type WorkoutDifficulty,
 } from '../lib/workout-schema';
 import { workoutDifficultyLabel } from '../lib/workouts';
 import type { SpeedUnit, WorkoutCourse } from '../types';
 import { WorkoutRouteMap } from './workout-route-map';
+import { WorkoutRouteVisualization } from './workout-route-visualization';
 
-const ESTIMATED_ROUTE_ROW_HEIGHT = 88;
+const ESTIMATED_ROUTE_ROW_HEIGHT = 104;
 const ROUTE_LIST_OVERSCAN = 6;
 const EMPTY_ROUTE_ANALYSES: Record<string, BikeGpxRouteAnalysis> = {};
 const routeResultCache = new Map<string, BikeGpxRouteResult>();
@@ -102,13 +107,14 @@ function RouteListItem({
 	selected,
 	speedUnit,
 }: {
-	analysis?: BikeGpxRouteAnalysis;
+	analysis: BikeGpxRouteAnalysis;
 	onSelect: () => void;
 	route: BikeGpxRouteSummary;
 	selected: boolean;
 	speedUnit: SpeedUnit;
 }) {
-	const difficulty = analysis ? workoutDifficultyLabel(analysis.difficulty) : 'Not analyzed';
+	const difficulty = workoutDifficultyLabel(analysis.difficulty);
+	const location = bikeGpxRouteLocation(route);
 	return (
 		<button
 			aria-pressed={selected}
@@ -125,20 +131,19 @@ function RouteListItem({
 				<span className="truncate text-slate-500">{route.country}</span>
 				<span
 					className="shrink-0 rounded-full border border-violet-400/25 bg-violet-400/5 px-1.5 py-0.5 font-semibold text-[9px] text-violet-300 uppercase tracking-wide"
-					title={
-						analysis
-							? 'Difficulty calculated from distance, climbing, and maximum grade'
-							: 'Select this route to calculate its terrain difficulty'
-					}
+					title="Difficulty calculated from distance, climbing, and maximum grade"
 				>
-					{difficulty} · {formatDistance(route.distanceKm, speedUnit, 0)}
+					{difficulty}
 				</span>
 			</span>
-			{route.summary ? (
+			{location ? (
 				<span className="mt-1 block text-[11px] text-slate-400 leading-relaxed">
-					{formatDescriptionDistance(route.summary, route.distanceKm, speedUnit)}
+					{location}
 				</span>
 			) : null}
+			<span className="mt-1 block text-[11px] text-slate-300 tabular-nums">
+				{formatBikeGpxRouteStats(route, analysis, speedUnit)}
+			</span>
 		</button>
 	);
 }
@@ -187,6 +192,18 @@ function RouteSidebar({
 	speedUnit: SpeedUnit;
 }) {
 	const routeListRef = useRef<HTMLDivElement>(null);
+	const routeListScroll = usePersistentScrollPosition<HTMLDivElement>(
+		BIKEGPX_ROUTE_LIST_SCROLL_POSITION_STORAGE_KEY,
+		true,
+		catalog?.fetchedAt
+	);
+	const setRouteListRef = useCallback(
+		(element: HTMLDivElement | null) => {
+			routeListRef.current = element;
+			routeListScroll.ref(element);
+		},
+		[routeListScroll.ref]
+	);
 	const routeKey = useCallback((index: number) => routes[index]?.id ?? index, [routes]);
 	const routeVirtualizer = useVirtualizer({
 		count: routes.length,
@@ -286,7 +303,7 @@ function RouteSidebar({
 					/>
 				</div>
 				<p className="text-[10px] text-slate-600">
-					Difficulty uses distance, climbing, and maximum grade as routes load.
+					Difficulty uses the route's prepared distance, climbing, and maximum grade.
 				</p>
 				{catalogError && catalog ? (
 					<p className="text-[11px] text-amber-300" role="status">
@@ -294,7 +311,12 @@ function RouteSidebar({
 					</p>
 				) : null}
 			</div>
-			<div className="min-h-0 flex-1 overflow-y-auto" ref={routeListRef}>
+			<div
+				className="min-h-0 flex-1 overflow-y-auto"
+				data-testid="bikegpx-route-list"
+				onScroll={routeListScroll.onScroll}
+				ref={setRouteListRef}
+			>
 				{routes.length > 0 ? (
 					<div
 						className="relative w-full"
@@ -302,7 +324,8 @@ function RouteSidebar({
 					>
 						{routeVirtualizer.getVirtualItems().map((virtualRoute) => {
 							const route = routes[virtualRoute.index];
-							return route ? (
+							const analysis = route ? analyses[route.id] : undefined;
+							return route && analysis ? (
 								<div
 									className="absolute top-0 left-0 w-full"
 									data-index={virtualRoute.index}
@@ -311,7 +334,7 @@ function RouteSidebar({
 									style={{ transform: `translateY(${virtualRoute.start}px)` }}
 								>
 									<RouteListItem
-										analysis={analyses[route.id]}
+										analysis={analysis}
 										onSelect={() => onSelectRoute(route)}
 										route={route}
 										selected={route.id === selectedRouteId}
@@ -348,53 +371,41 @@ function RouteSidebar({
 	);
 }
 
-function useRoutePreview(
-	route: BikeGpxRouteSummary | undefined,
-	onAnalyzeRoute: (routeId: string, analysis: BikeGpxRouteAnalysis) => void
-) {
+function useRoutePreview(route: BikeGpxRouteSummary | undefined) {
 	const activeRequest = useRef(0);
-	const [analysis, setAnalysis] = useState<BikeGpxRouteAnalysis>();
 	const [course, setCourse] = useState<WorkoutCourse>();
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
-	const load = useCallback(
-		(nextRoute: BikeGpxRouteSummary | undefined, useCache = true) => {
-			const requestId = activeRequest.current + 1;
-			activeRequest.current = requestId;
-			if (!nextRoute) {
-				setAnalysis(undefined);
-				setCourse(undefined);
-				return;
-			}
-			setAnalysis(undefined);
+	const load = useCallback((nextRoute: BikeGpxRouteSummary | undefined, useCache = true) => {
+		const requestId = activeRequest.current + 1;
+		activeRequest.current = requestId;
+		if (!nextRoute) {
 			setCourse(undefined);
-			setError('');
-			setLoading(true);
-			requestRouteCourse(nextRoute, useCache)
-				.then((result) => {
-					onAnalyzeRoute(nextRoute.id, result.analysis);
-					if (activeRequest.current === requestId) {
-						setAnalysis(result.analysis);
-						setCourse(result.course);
-					}
-				})
-				.catch((nextError) => {
-					if (activeRequest.current === requestId) {
-						setError(errorMessage(nextError));
-					}
-				})
-				.finally(() => {
-					if (activeRequest.current === requestId) {
-						setLoading(false);
-					}
-				});
-		},
-		[onAnalyzeRoute]
-	);
+			return;
+		}
+		setCourse(undefined);
+		setError('');
+		setLoading(true);
+		requestRouteCourse(nextRoute, useCache)
+			.then((result) => {
+				if (activeRequest.current === requestId) {
+					setCourse(result.course);
+				}
+			})
+			.catch((nextError) => {
+				if (activeRequest.current === requestId) {
+					setError(errorMessage(nextError));
+				}
+			})
+			.finally(() => {
+				if (activeRequest.current === requestId) {
+					setLoading(false);
+				}
+			});
+	}, []);
 
 	useEffect(() => {
 		activeRequest.current += 1;
-		setAnalysis(undefined);
 		setCourse(undefined);
 		setError('');
 		setLoading(Boolean(route));
@@ -405,7 +416,7 @@ function useRoutePreview(
 		};
 	}, [load, route]);
 
-	return { analysis, course, error, loading, retry: () => load(route, false) };
+	return { course, error, loading, retry: () => load(route, false) };
 }
 
 function importButtonLabel(alreadyImported: boolean, importing: boolean): string {
@@ -424,7 +435,6 @@ function RoutePreviewDetails({
 	onImport,
 	route,
 	speedUnit,
-	status,
 }: {
 	alreadyImported: boolean;
 	analysis?: BikeGpxRouteAnalysis;
@@ -434,8 +444,8 @@ function RoutePreviewDetails({
 	onImport: () => void;
 	route: BikeGpxRouteSummary;
 	speedUnit: SpeedUnit;
-	status: string;
 }) {
+	const location = bikeGpxRouteLocation(route);
 	return (
 		<div className="absolute bottom-3 left-3 z-500 w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-slate-600/50 bg-[#10151a]/88 p-3 shadow-black/30 shadow-lg backdrop-blur-sm">
 			<div className="flex items-start gap-3">
@@ -443,17 +453,11 @@ function RoutePreviewDetails({
 					<h3 className="truncate font-bold text-sm">{route.name}</h3>
 					<p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400 leading-relaxed">
 						{route.country}
-						{route.summary
-							? ` · ${formatDescriptionDistance(route.summary, route.distanceKm, speedUnit)}`
-							: ''}
+						{location ? ` · ${location}` : ''}
 					</p>
-					{course && analysis ? (
-						<p className="mt-1 text-[11px] text-slate-300 tabular-nums">
-							{formatDistance(course.distance, speedUnit, 1)} ·{' '}
-							{formatElevation(course.elevationGain, speedUnit)} climbing · Up to +
-							{analysis.maximumGrade.toFixed(1)}%
-						</p>
-					) : null}
+					<p className="mt-1 text-[11px] text-slate-300 tabular-nums">
+						{formatBikeGpxRouteStats(route, analysis, speedUnit)}
+					</p>
 					<div className="mt-1 text-[10px]">
 						<a
 							className="text-slate-400 underline decoration-slate-600 underline-offset-2 hover:text-slate-200"
@@ -463,13 +467,13 @@ function RoutePreviewDetails({
 						>
 							View source route
 						</a>
-						{importError || status ? (
+						{importError ? (
 							<span
-								aria-live={importError ? 'assertive' : 'polite'}
-								className={`mt-1 block leading-relaxed ${importError ? 'text-rose-300' : 'text-cyan-300'}`}
-								role={importError ? 'alert' : 'status'}
+								aria-live="assertive"
+								className="mt-1 block text-rose-300 leading-relaxed"
+								role="alert"
 							>
-								{importError || status}
+								{importError}
 							</span>
 						) : null}
 					</div>
@@ -483,25 +487,34 @@ function RoutePreviewDetails({
 					{importButtonLabel(alreadyImported, importing)}
 				</button>
 			</div>
+			{course ? (
+				<div className="mt-2 border-slate-600/40 border-t pt-2">
+					<WorkoutRouteVisualization
+						className="h-14"
+						course={course}
+						view={WORKOUT_VIEW.PROFILE}
+					/>
+				</div>
+			) : null}
 		</div>
 	);
 }
 
 function RoutePreview({
+	analysis,
 	customCourseIds,
-	onAnalyzeRoute,
 	onImportCourse,
 	route,
 	speedUnit,
 }: {
+	analysis?: BikeGpxRouteAnalysis;
 	customCourseIds: ReadonlySet<string>;
-	onAnalyzeRoute: (routeId: string, analysis: BikeGpxRouteAnalysis) => void;
 	onImportCourse: (course: WorkoutCourse) => Promise<WorkoutCourse>;
 	route?: BikeGpxRouteSummary;
 	speedUnit: SpeedUnit;
 }) {
-	const preview = useRoutePreview(route, onAnalyzeRoute);
-	const [feedback, setFeedback] = useState({ error: '', routeId: '', status: '' });
+	const preview = useRoutePreview(route);
+	const [feedback, setFeedback] = useState({ error: '', routeId: '' });
 	const [importing, setImporting] = useState(false);
 	const alreadyImported = preview.course ? customCourseIds.has(preview.course.id) : false;
 	const visibleFeedback = route?.id === feedback.routeId ? feedback : undefined;
@@ -510,17 +523,12 @@ function RoutePreview({
 		if (!(preview.course && route)) {
 			return;
 		}
-		setFeedback({ error: '', routeId: route.id, status: '' });
+		setFeedback({ error: '', routeId: route.id });
 		setImporting(true);
 		try {
-			const imported = await onImportCourse(preview.course);
-			setFeedback({
-				error: '',
-				routeId: route.id,
-				status: `${imported.name} imported and saved on this device.`,
-			});
+			await onImportCourse(preview.course);
 		} catch (error) {
-			setFeedback({ error: errorMessage(error), routeId: route.id, status: '' });
+			setFeedback({ error: errorMessage(error), routeId: route.id });
 		} finally {
 			setImporting(false);
 		}
@@ -534,7 +542,7 @@ function RoutePreview({
 					className="absolute inset-0 grid place-items-center text-slate-400 text-sm"
 					role="status"
 				>
-					Preparing route…
+					Loading route…
 				</div>
 			) : null}
 			{preview.error ? (
@@ -551,21 +559,20 @@ function RoutePreview({
 					</div>
 				</div>
 			) : null}
-			{route ? (
+			{route && analysis ? (
 				<RoutePreviewDetails
 					alreadyImported={alreadyImported}
-					analysis={preview.analysis}
+					analysis={analysis}
 					course={preview.course}
 					importError={visibleFeedback?.error ?? ''}
 					importing={importing}
 					onImport={importRoute}
 					route={route}
 					speedUnit={speedUnit}
-					status={visibleFeedback?.status ?? ''}
 				/>
 			) : (
 				<div className="absolute inset-0 grid place-items-center px-8 text-center text-slate-400 text-sm">
-					Select a route to prepare its map and terrain analysis.
+					No prepared route is available for these filters.
 				</div>
 			)}
 		</div>
@@ -577,7 +584,6 @@ export function BikeGpxBrowserDialog({
 	catalogError,
 	catalogLoading,
 	customCourseIds,
-	onAnalyzeRoute,
 	onClose,
 	onImportCourse,
 	onRefreshCatalog,
@@ -587,22 +593,26 @@ export function BikeGpxBrowserDialog({
 	catalogError: string;
 	catalogLoading: boolean;
 	customCourseIds: ReadonlySet<string>;
-	onAnalyzeRoute: (routeId: string, analysis: BikeGpxRouteAnalysis) => void;
 	onClose: () => void;
 	onImportCourse: (course: WorkoutCourse) => Promise<WorkoutCourse>;
 	onRefreshCatalog: () => Promise<void>;
 	speedUnit: SpeedUnit;
 }) {
 	useCloseOnEscape(true, onClose);
-	const [country, setCountry] = useState('');
-	const [difficulty, setDifficulty] = useState<WorkoutDifficulty>();
-	const [maximumDistance, setMaximumDistance] = useState('');
-	const [minimumDistance, setMinimumDistance] = useState('');
-	const [query, setQuery] = useState('');
-	const [selectedRouteId, setSelectedRouteId] = useState('');
+	const closeButtonRef = useDialogInitialFocus<HTMLButtonElement>();
+	const [search, setSearchState] = useState(loadBikeGpxBrowserSearch);
+	const setSearch = useCallback((update: (current: typeof search) => typeof search) => {
+		setSearchState((current) => {
+			const next = update(current);
+			persistBikeGpxBrowserSearch(next);
+			return next;
+		});
+	}, []);
+	const { country, difficulty, maximumDistance, minimumDistance, query, selectedRouteId } =
+		search;
 	const deferredQuery = useDeferredValue(query);
-	const routes = catalog?.routes ?? [];
-	const analyses = catalog?.analyses ?? EMPTY_ROUTE_ANALYSES;
+	const routes = catalog ? catalog.routes : [];
+	const analyses = catalog ? catalog.analyses : EMPTY_ROUTE_ANALYSES;
 	const countries = useMemo(
 		() => [...new Set(routes.map((route) => route.country))].sort(),
 		[routes]
@@ -630,10 +640,10 @@ export function BikeGpxBrowserDialog({
 			speedUnit,
 		]
 	);
-	const selectedRoute = filteredRoutes.find((route) => route.id === selectedRouteId);
+	const selectedRoute = bikeGpxPreviewRoute(filteredRoutes, selectedRouteId);
 
 	const selectRoute = (route: BikeGpxRouteSummary) => {
-		setSelectedRouteId(route.id);
+		setSearch((current) => ({ ...current, selectedRouteId: route.id }));
 	};
 
 	return (
@@ -677,9 +687,9 @@ export function BikeGpxBrowserDialog({
 					</div>
 					<button
 						aria-label="Close BikeGPX browser"
-						autoFocus
 						className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
 						onClick={onClose}
+						ref={closeButtonRef}
 						type="button"
 					>
 						×
@@ -697,35 +707,50 @@ export function BikeGpxBrowserDialog({
 						maximumDistance={maximumDistance}
 						minimumDistance={minimumDistance}
 						onCountryChange={(nextCountry) => {
-							setCountry(nextCountry);
-							setSelectedRouteId('');
+							setSearch((current) => ({
+								...current,
+								country: nextCountry,
+								selectedRouteId: '',
+							}));
 						}}
 						onDifficultyChange={(nextDifficulty) => {
-							setDifficulty(nextDifficulty);
-							setSelectedRouteId('');
+							setSearch((current) => ({
+								...current,
+								difficulty: nextDifficulty,
+								selectedRouteId: '',
+							}));
 						}}
 						onMaximumDistanceChange={(nextDistance) => {
-							setMaximumDistance(nextDistance);
-							setSelectedRouteId('');
+							setSearch((current) => ({
+								...current,
+								maximumDistance: nextDistance,
+								selectedRouteId: '',
+							}));
 						}}
 						onMinimumDistanceChange={(nextDistance) => {
-							setMinimumDistance(nextDistance);
-							setSelectedRouteId('');
+							setSearch((current) => ({
+								...current,
+								minimumDistance: nextDistance,
+								selectedRouteId: '',
+							}));
 						}}
 						onQueryChange={(nextQuery) => {
-							setQuery(nextQuery);
-							setSelectedRouteId('');
+							setSearch((current) => ({
+								...current,
+								query: nextQuery,
+								selectedRouteId: '',
+							}));
 						}}
 						onRefreshCatalog={onRefreshCatalog}
 						onSelectRoute={selectRoute}
 						query={query}
 						routes={filteredRoutes}
-						selectedRouteId={selectedRouteId}
+						selectedRouteId={selectedRoute ? selectedRoute.id : ''}
 						speedUnit={speedUnit}
 					/>
 					<RoutePreview
+						analysis={selectedRoute ? analyses[selectedRoute.id] : undefined}
 						customCourseIds={customCourseIds}
-						onAnalyzeRoute={onAnalyzeRoute}
 						onImportCourse={onImportCourse}
 						route={selectedRoute}
 						speedUnit={speedUnit}

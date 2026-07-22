@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-	type BikeGpxCatalog,
-	type BikeGpxRouteAnalysis,
-	fetchBikeGpxCatalog,
-} from '../lib/bikegpx';
+import { type BikeGpxCatalog, fetchBikeGpxCatalog } from '../lib/bikegpx';
 import { errorMessage } from '../lib/errors';
 
 let catalogRequest: Promise<BikeGpxCatalog> | undefined;
@@ -18,37 +14,35 @@ function requestCatalog(): Promise<BikeGpxCatalog> {
 export function useBikeGpxCatalog(active: boolean) {
 	const [catalog, setCatalog] = useState<BikeGpxCatalog>();
 	const [error, setError] = useState('');
-	const [initialized, setInitialized] = useState(false);
 	const [loading, setLoading] = useState(false);
 
 	useEffect(() => {
-		if (!(active && !initialized)) {
+		if (!active) {
 			return;
 		}
 		let cancelled = false;
 		setError('');
 		setLoading(true);
 		requestCatalog()
-			.then((initialCatalog) => {
+			.then((nextCatalog) => {
 				if (!cancelled) {
-					setCatalog(initialCatalog);
+					setCatalog(nextCatalog);
 				}
 			})
-			.catch((initialError) => {
+			.catch((nextError) => {
 				if (!cancelled) {
-					setError(errorMessage(initialError));
+					setError(errorMessage(nextError));
 				}
 			})
 			.finally(() => {
 				if (!cancelled) {
-					setInitialized(true);
 					setLoading(false);
 				}
 			});
 		return () => {
 			cancelled = true;
 		};
-	}, [active, initialized]);
+	}, [active]);
 
 	const refresh = useCallback(async () => {
 		setError('');
@@ -62,16 +56,5 @@ export function useBikeGpxCatalog(active: boolean) {
 		}
 	}, []);
 
-	const updateRouteAnalysis = useCallback((routeId: string, analysis: BikeGpxRouteAnalysis) => {
-		setCatalog((currentCatalog) =>
-			currentCatalog
-				? {
-						...currentCatalog,
-						analyses: { ...currentCatalog.analyses, [routeId]: analysis },
-					}
-				: currentCatalog
-		);
-	}, []);
-
-	return { catalog, error, loading, refresh, updateRouteAnalysis };
+	return { catalog, error, loading, refresh };
 }

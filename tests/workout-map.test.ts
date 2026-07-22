@@ -22,4 +22,16 @@ describe('workout route maps', () => {
 		});
 		expect(workoutRouteCoordinateAtProgress([], 0.5)).toBeUndefined();
 	});
+
+	test('interpolates near the end of a detailed route', () => {
+		const points = Array.from({ length: 10_001 }, (_, index) => ({
+			distance: index / 1000,
+			elevation: index / 100,
+			latitude: 40 + index / 10_000,
+			longitude: -120 + index / 20_000,
+		}));
+		const coordinate = workoutRouteCoordinateAtProgress(points, 0.999_95);
+		expect(coordinate?.latitude).toBeCloseTo(40.999_95, 8);
+		expect(coordinate?.longitude).toBeCloseTo(-119.500_025, 8);
+	});
 });

@@ -26,8 +26,12 @@ import {
 import { useBikeGpxCatalog } from '../hooks/use-bikegpx-catalog';
 import { useFileDrop } from '../hooks/use-file-drop';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
+import {
+	loadBikeGpxBrowserOpen,
+	persistBikeGpxBrowserOpen,
+} from '../lib/bikegpx-browser-preferences';
 import { errorMessage } from '../lib/errors';
-import { formatDescriptionDistance, formatDistance, formatElevation } from '../lib/units';
+import { descriptionWithoutDistance, formatDistance, formatElevation } from '../lib/units';
 import {
 	OPENSTREETMAP_ATTRIBUTION_URL,
 	WORKOUT_DESCRIPTION_ATTRIBUTION,
@@ -168,18 +172,10 @@ function WorkoutCourseCard({
 									title="View the route map"
 									type="button"
 								>
-									{formatDescriptionDistance(
-										course.description,
-										course.distance,
-										speedUnit
-									)}
+									{descriptionWithoutDistance(course.description)}
 								</button>
 							) : (
-								formatDescriptionDistance(
-									course.description,
-									course.distance,
-									speedUnit
-								)
+								descriptionWithoutDistance(course.description)
 							)}
 						</p>
 					</div>
@@ -324,14 +320,16 @@ export function WorkoutPanel({
 	speedUnit: SpeedUnit;
 }) {
 	const importInput = useRef<HTMLInputElement>(null);
-	const [bikeGpxBrowserOpen, setBikeGpxBrowserOpen] = useState(false);
+	const [bikeGpxBrowserOpen, setBikeGpxBrowserOpenState] = useState(
+		() => open && loadBikeGpxBrowserOpen()
+	);
 	const [importing, setImporting] = useState(false);
 	const [libraryStatus, setLibraryStatus] = useState('');
 	const [importError, setImportError] = useState('');
 	const [renamingCourse, setRenamingCourse] = useState<WorkoutCourse>();
 	const [mappedCourse, setMappedCourse] = useState<WorkoutCourse>();
 	const [searchQuery, setSearchQuery] = useState('');
-	const bikeGpxCatalog = useBikeGpxCatalog(open);
+	const bikeGpxCatalog = useBikeGpxCatalog(bikeGpxBrowserOpen);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: { distance: 6 },
@@ -349,6 +347,10 @@ export function WorkoutPanel({
 		WORKOUT_SCROLL_POSITION_STORAGE_KEY,
 		open
 	);
+	const setBikeGpxBrowserOpen = useCallback((nextOpen: boolean) => {
+		persistBikeGpxBrowserOpen(nextOpen);
+		setBikeGpxBrowserOpenState(nextOpen);
+	}, []);
 
 	const importWorkout = useCallback(
 		async (file: File) => {
@@ -635,7 +637,6 @@ export function WorkoutPanel({
 						catalogError={bikeGpxCatalog.error}
 						catalogLoading={bikeGpxCatalog.loading}
 						customCourseIds={customCourseIds}
-						onAnalyzeRoute={bikeGpxCatalog.updateRouteAnalysis}
 						onClose={() => setBikeGpxBrowserOpen(false)}
 						onImportCourse={async (course) => {
 							const imported = await onImportCourse(course);

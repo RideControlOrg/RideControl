@@ -1,12 +1,13 @@
 import { useSelector } from '@tanstack/react-store';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { RECORDING_PAUSE_DELAY_MS } from '../constants';
-import { loadStoredSession, SESSION_STORAGE_KEY } from '../lib/session';
+import { createActiveSessionWriter } from '../lib/active-session';
+import { CONTROL_MODE, trainingControlMode } from '../lib/control-mode';
 import { MILLISECONDS_PER_SECOND, secondsForMilliseconds } from '../lib/units';
 import {
 	createSessionStore,
-	persistSessionState,
 	sessionSnapshotFromState,
+	storedSessionFromState,
 } from '../stores/session-store';
 import type {
 	ControlMode,
@@ -16,8 +17,11 @@ import type {
 	SessionAggregates,
 	SessionSnapshot,
 	SessionWorkout,
+	StoredSession,
 	WorkoutCourse,
 } from '../types';
+
+const ACTIVE_SESSION_CHECKPOINT_INTERVAL_MS = 1000;
 
 interface ActivityRef {
 	current: number;
@@ -64,12 +68,21 @@ export function useSession(
 	metrics: Metrics,
 	control: SessionControlState,
 	lastPedalingAt: ActivityRef,
-	trainerReportsDistance: FlagRef
+	trainerReportsDistance: FlagRef,
+	initialSession: StoredSession
 ): SessionController {
-	const store = useMemo(() => createSessionStore(loadStoredSession()), []);
+	const store = useMemo(() => createSessionStore(initialSession), [initialSession]);
+	const persistActive = useMemo(() => createActiveSessionWriter(), []);
 	const state = useSelector(store);
+	const selectedWorkout = state.ended ? state.plannedWorkout : state.workout;
+	const activeControl = selectedWorkout
+		? {
+				...control,
+				mode: trainingControlMode(control.mode === CONTROL_MODE.GEAR, true),
+			}
+		: control;
 	const latestMetrics = useRef(metrics);
-	const latestControl = useRef(control);
+	const latestControl = useRef(activeControl);
 	const lastTrainerDistance = useRef<number | undefined>(undefined);
 
 	useEffect(() => {
@@ -78,15 +91,28 @@ export function useSession(
 	}, [metrics, store]);
 
 	useEffect(() => {
-		latestControl.current = control;
-		store.actions.observeControlMode(control.mode);
-	}, [control, store]);
+		latestControl.current = activeControl;
+		store.actions.observeControlMode(activeControl.mode);
+	}, [activeControl, store]);
 
 	useEffect(() => {
-		persistSessionState(store.get());
-		const subscription = store.subscribe((next) => persistSessionState(next));
-		return () => subscription.unsubscribe();
-	}, [store]);
+		const checkpoint = () => {
+			persistActive(storedSessionFromState(store.get())).catch(() => undefined);
+		};
+		checkpoint();
+		const interval = window.setInterval(checkpoint, ACTIVE_SESSION_CHECKPOINT_INTERVAL_MS);
+		const persistWhenHidden = () => {
+			if (document.visibilityState === 'hidden') {
+				checkpoint();
+			}
+		};
+		document.addEventListener('visibilitychange', persistWhenHidden);
+		return () => {
+			window.clearInterval(interval);
+			document.removeEventListener('visibilitychange', persistWhenHidden);
+			checkpoint();
+		};
+	}, [persistActive, store]);
 
 	useEffect(() => {
 		const interval = window.setInterval(() => {
@@ -153,7 +179,6 @@ export function useSession(
 	const startNew = useCallback(() => {
 		lastTrainerDistance.current = latestMetrics.current.distance;
 		lastPedalingAt.current = 0;
-		localStorage.removeItem(SESSION_STORAGE_KEY);
 		store.actions.reset(latestControl.current.mode, Date.now());
 	}, [lastPedalingAt, store]);
 
@@ -166,7 +191,6 @@ export function useSession(
 		(sourceSession: SessionSnapshot) => {
 			lastTrainerDistance.current = latestMetrics.current.distance;
 			lastPedalingAt.current = 0;
-			localStorage.removeItem(SESSION_STORAGE_KEY);
 			store.actions.continueFrom(sourceSession);
 		},
 		[lastPedalingAt, store]
@@ -192,7 +216,7 @@ export function useSession(
 		rideCalories: state.calories,
 		rideDistance: state.distance,
 		savedSessionId: state.savedSessionId,
-		selectedWorkout: state.ended ? state.plannedWorkout : state.workout,
+		selectedWorkout,
 		selectWorkout,
 		snapshot,
 		startedAt: state.startedAt,

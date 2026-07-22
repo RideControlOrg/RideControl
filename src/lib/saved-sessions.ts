@@ -5,6 +5,7 @@ import type {
 	SessionMetadata,
 	SessionSnapshot,
 	SessionWorkout,
+	StoredSession,
 } from '../types';
 import { IMPORTED_FIT_ID_PREFIX } from './activity-file';
 import { restoreElevationTotals } from './elevation';
@@ -14,6 +15,7 @@ import {
 	aggregateResistance,
 	controlModeForHistory,
 	restoreAggregate,
+	restoreStoredSession,
 } from './session';
 import {
 	createSessionWorkoutSnapshot,
@@ -26,7 +28,11 @@ import { isFiniteNumber, isRecord, isString } from './type-guards';
 import { restoreSessionWorkout } from './workouts';
 
 const DATABASE_NAME = 'ridecontrol-sessions';
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
+const ACTIVE_SESSION_ID = 'current';
+const ACTIVE_SESSION_STORE = 'active-session';
+const ACTIVE_SESSION_SAMPLE_STORE = 'active-session-samples';
+const ACTIVE_SESSION_SAMPLE_CHUNK_SIZE = 100;
 const SESSION_STORE = 'sessions';
 const SUMMARY_STORE = 'session-summaries';
 const WORKOUT_STORE = 'session-workouts';
@@ -53,6 +59,20 @@ export type SavedSessionRecord = Omit<SavedSession, 'workout'> & {
 	workout?: SessionWorkout;
 	workoutSnapshotId?: string;
 };
+
+interface ActiveSessionRecord {
+	generation: string;
+	id: typeof ACTIVE_SESSION_ID;
+	sampleCount: number;
+	session: Omit<StoredSession, 'history'>;
+}
+
+interface ActiveSessionSampleChunk {
+	generation: string;
+	id: string;
+	index: number;
+	samples: StoredSession['history'];
+}
 
 let databasePromise: Promise<IDBDatabase> | undefined;
 
@@ -89,6 +109,45 @@ function migrateLegacySessionWorkouts(sessions: IDBObjectStore, workouts: IDBObj
 	});
 }
 
+function sessionStoreForUpgrade(request: IDBOpenDBRequest): IDBObjectStore | undefined {
+	const database = request.result;
+	const sessions = database.objectStoreNames.contains(SESSION_STORE)
+		? request.transaction?.objectStore(SESSION_STORE)
+		: database.createObjectStore(SESSION_STORE, { keyPath: 'id' });
+	if (sessions && !sessions.indexNames.contains(WORKOUT_SNAPSHOT_INDEX)) {
+		sessions.createIndex(WORKOUT_SNAPSHOT_INDEX, WORKOUT_SNAPSHOT_INDEX);
+	}
+	return sessions;
+}
+
+function workoutStoreForUpgrade(request: IDBOpenDBRequest): IDBObjectStore | undefined {
+	return request.result.objectStoreNames.contains(WORKOUT_STORE)
+		? request.transaction?.objectStore(WORKOUT_STORE)
+		: request.result.createObjectStore(WORKOUT_STORE, { keyPath: 'id' });
+}
+
+function createMissingDatabaseStores(database: IDBDatabase): void {
+	if (!database.objectStoreNames.contains(SUMMARY_STORE)) {
+		const summaries = database.createObjectStore(SUMMARY_STORE, { keyPath: 'id' });
+		summaries.createIndex(ENDED_AT_INDEX, ENDED_AT_INDEX);
+	}
+	if (!database.objectStoreNames.contains(ACTIVE_SESSION_STORE)) {
+		database.createObjectStore(ACTIVE_SESSION_STORE, { keyPath: 'id' });
+	}
+	if (!database.objectStoreNames.contains(ACTIVE_SESSION_SAMPLE_STORE)) {
+		database.createObjectStore(ACTIVE_SESSION_SAMPLE_STORE, { keyPath: 'id' });
+	}
+}
+
+function upgradeDatabase(request: IDBOpenDBRequest, oldVersion: number): void {
+	const sessions = sessionStoreForUpgrade(request);
+	createMissingDatabaseStores(request.result);
+	const workouts = workoutStoreForUpgrade(request);
+	if (oldVersion < 2 && sessions && workouts) {
+		migrateLegacySessionWorkouts(sessions, workouts);
+	}
+}
+
 function openDatabase(): Promise<IDBDatabase> {
 	if (databasePromise) {
 		return databasePromise;
@@ -98,24 +157,7 @@ function openDatabase(): Promise<IDBDatabase> {
 		request.addEventListener(
 			'upgradeneeded',
 			(event) => {
-				const database = request.result;
-				const { oldVersion } = event as IDBVersionChangeEvent;
-				const sessions = database.objectStoreNames.contains(SESSION_STORE)
-					? request.transaction?.objectStore(SESSION_STORE)
-					: database.createObjectStore(SESSION_STORE, { keyPath: 'id' });
-				if (sessions && !sessions.indexNames.contains(WORKOUT_SNAPSHOT_INDEX)) {
-					sessions.createIndex(WORKOUT_SNAPSHOT_INDEX, WORKOUT_SNAPSHOT_INDEX);
-				}
-				if (!database.objectStoreNames.contains(SUMMARY_STORE)) {
-					const summaries = database.createObjectStore(SUMMARY_STORE, { keyPath: 'id' });
-					summaries.createIndex(ENDED_AT_INDEX, ENDED_AT_INDEX);
-				}
-				const workouts = database.objectStoreNames.contains(WORKOUT_STORE)
-					? request.transaction?.objectStore(WORKOUT_STORE)
-					: database.createObjectStore(WORKOUT_STORE, { keyPath: 'id' });
-				if (oldVersion < 2 && sessions && workouts) {
-					migrateLegacySessionWorkouts(sessions, workouts);
-				}
+				upgradeDatabase(request, (event as IDBVersionChangeEvent).oldVersion);
 			},
 			{ once: true }
 		);
@@ -123,6 +165,124 @@ function openDatabase(): Promise<IDBDatabase> {
 		request.addEventListener('error', () => reject(request.error), { once: true });
 	});
 	return databasePromise;
+}
+
+function activeSessionGeneration(session: StoredSession): string {
+	return session.startedAt.toString();
+}
+
+function activeSessionRecord(session: StoredSession): ActiveSessionRecord {
+	const { history: _history, ...sessionWithoutHistory } = session;
+	return {
+		generation: activeSessionGeneration(session),
+		id: ACTIVE_SESSION_ID,
+		sampleCount: session.history.length,
+		session: sessionWithoutHistory,
+	};
+}
+
+function activeSessionChunks(
+	session: StoredSession,
+	firstChunkIndex: number
+): ActiveSessionSampleChunk[] {
+	const generation = activeSessionGeneration(session);
+	const chunkCount = Math.ceil(session.history.length / ACTIVE_SESSION_SAMPLE_CHUNK_SIZE);
+	return Array.from({ length: Math.max(0, chunkCount - firstChunkIndex) }, (_, offset) => {
+		const index = firstChunkIndex + offset;
+		return {
+			generation,
+			id: `${generation}:${index.toString().padStart(10, '0')}`,
+			index,
+			samples: session.history.slice(
+				index * ACTIVE_SESSION_SAMPLE_CHUNK_SIZE,
+				(index + 1) * ACTIVE_SESSION_SAMPLE_CHUNK_SIZE
+			),
+		};
+	});
+}
+
+function restoredActiveSession(
+	recordValue: unknown,
+	chunkValues: unknown[]
+): StoredSession | undefined {
+	if (!(isRecord(recordValue) && isString(recordValue.generation))) {
+		return;
+	}
+	const chunks = chunkValues
+		.filter(
+			(value): value is ActiveSessionSampleChunk =>
+				isRecord(value) &&
+				value.generation === recordValue.generation &&
+				isFiniteNumber(value.index) &&
+				Array.isArray(value.samples)
+		)
+		.sort((left, right) => left.index - right.index);
+	const history = chunks.flatMap((chunk) => chunk.samples);
+	return restoreStoredSession({
+		...(isRecord(recordValue.session) ? recordValue.session : {}),
+		history: isFiniteNumber(recordValue.sampleCount)
+			? history.slice(0, recordValue.sampleCount)
+			: history,
+	});
+}
+
+export async function loadActiveSession(): Promise<StoredSession | undefined> {
+	const database = await openDatabase();
+	const transaction = database.transaction(
+		[ACTIVE_SESSION_STORE, ACTIVE_SESSION_SAMPLE_STORE],
+		'readonly'
+	);
+	const completed = indexedDbTransactionComplete(transaction);
+	const [record, chunks] = await Promise.all([
+		indexedDbRequestResult(
+			transaction.objectStore(ACTIVE_SESSION_STORE).get(ACTIVE_SESSION_ID)
+		),
+		indexedDbRequestResult(transaction.objectStore(ACTIVE_SESSION_SAMPLE_STORE).getAll()),
+	]);
+	await completed;
+	return restoredActiveSession(record, chunks as unknown[]);
+}
+
+export async function persistActiveSession(session: StoredSession): Promise<void> {
+	const database = await openDatabase();
+	const transaction = database.transaction(
+		[ACTIVE_SESSION_STORE, ACTIVE_SESSION_SAMPLE_STORE],
+		'readwrite'
+	);
+	const completed = indexedDbTransactionComplete(transaction);
+	const sessions = transaction.objectStore(ACTIVE_SESSION_STORE);
+	const samples = transaction.objectStore(ACTIVE_SESSION_SAMPLE_STORE);
+	const previous = await indexedDbRequestResult(
+		sessions.get(ACTIVE_SESSION_ID) as IDBRequest<ActiveSessionRecord | undefined>
+	);
+	const generation = activeSessionGeneration(session);
+	const resetSamples =
+		previous?.generation !== generation || previous.sampleCount > session.history.length;
+	if (resetSamples) {
+		samples.clear();
+	}
+	const firstChunkIndex = resetSamples
+		? 0
+		: Math.floor((previous?.sampleCount ?? 0) / ACTIVE_SESSION_SAMPLE_CHUNK_SIZE);
+	if (resetSamples || (previous?.sampleCount ?? 0) < session.history.length) {
+		for (const chunk of activeSessionChunks(session, firstChunkIndex)) {
+			samples.put(chunk);
+		}
+	}
+	sessions.put(activeSessionRecord(session));
+	await completed;
+}
+
+export async function clearActiveSession(): Promise<void> {
+	const database = await openDatabase();
+	const transaction = database.transaction(
+		[ACTIVE_SESSION_STORE, ACTIVE_SESSION_SAMPLE_STORE],
+		'readwrite'
+	);
+	const completed = indexedDbTransactionComplete(transaction);
+	transaction.objectStore(ACTIVE_SESSION_STORE).delete(ACTIVE_SESSION_ID);
+	transaction.objectStore(ACTIVE_SESSION_SAMPLE_STORE).clear();
+	await completed;
 }
 
 export function createSavedSession(
@@ -185,7 +345,7 @@ export function normalizeSavedSessionRecord(
 	const { workoutSnapshotId: _workoutSnapshotId, ...session } = record;
 	return normalizeSavedSession({
 		...session,
-		workout: snapshot?.workout ?? restoreSessionWorkout(record.workout),
+		workout: snapshot ? snapshot.workout : restoreSessionWorkout(record.workout),
 	});
 }
 

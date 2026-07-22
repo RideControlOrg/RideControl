@@ -4,7 +4,6 @@ import { CONTROL_MODE } from '../src/lib/control-mode';
 import { WORKOUT_COURSES } from '../src/lib/workouts';
 import {
 	createSessionStore,
-	persistSessionState,
 	sessionSnapshotFromState,
 	storedSessionFromState,
 } from '../src/stores/session-store';
@@ -306,6 +305,29 @@ describe('session store', () => {
 		expect(store.get().plannedWorkout).toBeUndefined();
 	});
 
+	test('keeps an ended workout selected for the next session', () => {
+		const [completedCourse] = WORKOUT_COURSES;
+		if (!completedCourse) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const store = createSessionStore(restoredSession(), 1000);
+		store.actions.selectWorkout(completedCourse);
+
+		store.actions.endSession(5000);
+		expect(store.get()).toMatchObject({
+			ended: true,
+			plannedWorkout: { course: completedCourse },
+			workout: { course: completedCourse },
+		});
+
+		store.actions.reset(CONTROL_MODE.GEAR, 6000);
+		expect(store.get()).toMatchObject({
+			ended: false,
+			plannedWorkout: undefined,
+			workout: { course: completedCourse },
+		});
+	});
+
 	test('records an intentional discard until the session is reset or saved', () => {
 		const store = createSessionStore(restoredSession(), 1000);
 		store.actions.endSession(5000);
@@ -345,7 +367,7 @@ describe('session store', () => {
 		subscription.unsubscribe();
 	});
 
-	test('persists only durable state and caps stored history', () => {
+	test('persists only durable state and preserves the complete history', () => {
 		const history = Array.from({ length: 3601 }, (_, index) => ({
 			cadence: 80,
 			elapsedSeconds: index,
@@ -357,21 +379,10 @@ describe('session store', () => {
 		const store = createSessionStore(restoredSession({ history }), 1000);
 		store.actions.syncRiding(true);
 		const saved = storedSessionFromState(store.get());
-		expect(saved.history).toHaveLength(3600);
-		expect(saved.history[0]?.elapsedSeconds).toBe(1);
+		expect(saved.history).toHaveLength(3601);
+		expect(saved.history[0]?.elapsedSeconds).toBe(0);
 		expect(saved).not.toHaveProperty('isRiding');
 		expect(saved).not.toHaveProperty('manuallyPaused');
 		expect(sessionSnapshotFromState(store.get())).not.toHaveProperty('ended');
-
-		let storedKey = '';
-		let storedValue = '';
-		persistSessionState(store.get(), {
-			setItem: (key, value) => {
-				storedKey = key;
-				storedValue = value;
-			},
-		});
-		expect(storedKey).toBe('trainer-session');
-		expect(JSON.parse(storedValue).history).toHaveLength(3600);
 	});
 });

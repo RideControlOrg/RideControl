@@ -15,6 +15,7 @@ import { TrainingControl } from './components/training-control';
 import { WelcomeDialog } from './components/welcome-dialog';
 import { WorkoutPanel } from './components/workout-panel';
 import { WorkoutProgress } from './components/workout-progress';
+import { emptySession } from './constants';
 import { useGearControl } from './hooks/use-gear-control';
 import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useRememberedBluetoothDevices } from './hooks/use-remembered-bluetooth-devices';
@@ -30,24 +31,24 @@ import {
 	loadOpenSideTray,
 	persistOpenSideTray,
 } from './lib/app-overlay';
-import { CONTROL_MODE, type ControlMode } from './lib/control-mode';
+import {
+	CONTROL_MODE,
+	trainingControlMode,
+	virtualShiftingConnectionReady,
+} from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
-import {
-	loadStoredSession,
-	requestUnloadConfirmation,
-	sessionNeedsUnloadWarning,
-} from './lib/session';
+import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import {
 	workoutDashboardPreview,
 	workoutSelectionLocked,
 	workoutTerrainAtDistance,
 } from './lib/workouts';
-import { MAX_CLICK_CONTROLLERS } from './lib/zwift-click';
+import { clickConnectionActiveForSession } from './lib/zwift-click';
 import { preferencesStore } from './stores/preferences-store';
-import type { Metrics, SavedSession, WorkoutCourse } from './types';
+import type { Metrics, SavedSession, StoredSession, WorkoutCourse } from './types';
 
 function shouldIgnoreShortcut(event: KeyboardEvent) {
 	return (
@@ -68,11 +69,7 @@ function shiftHandlerUnlessBlocked(handler: (change: number) => void, blocked: b
 	return blocked ? () => undefined : handler;
 }
 
-function controlModeForClick(paired: boolean): ControlMode {
-	return paired ? CONTROL_MODE.GEAR : CONTROL_MODE.RESISTANCE;
-}
-
-export function App() {
+export function App({ initialSession = emptySession }: { initialSession?: StoredSession }) {
 	const rememberedDevices = useRememberedBluetoothDevices();
 	const trainer = useTrainer(rememberedDevices);
 	const [activeOverlay, setActiveOverlayState] = useState<AppOverlay | undefined>(
@@ -83,7 +80,6 @@ export function App() {
 		setActiveOverlayState(overlay);
 	}, []);
 	const devicesOpen = activeOverlay === APP_OVERLAY.DEVICES;
-	const [initialClickConnectionActive] = useState(() => !loadStoredSession().ended);
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
 	const heartRate = useHeartRateMonitor(rememberedDevices, trainer.setNotice);
@@ -91,8 +87,7 @@ export function App() {
 		handleClickShift,
 		trainer.setNotice,
 		devicesOpen,
-		rememberedDevices,
-		initialClickConnectionActive
+		rememberedDevices
 	);
 	const liveMetrics = metricsWithHeartRate(
 		trainer.metrics,
@@ -102,8 +97,11 @@ export function App() {
 	const { connected } = trainer;
 	const speedUnit = useSelector(preferencesStore, (preferences) => preferences.speedUnit);
 	const workoutLibrary = useWorkoutLibrary();
-	const virtualShiftingReady =
-		trainer.connected && click.connectedCount === MAX_CLICK_CONTROLLERS;
+	const virtualShiftingReady = virtualShiftingConnectionReady({
+		clickConnectedCount: click.connectedCount,
+		clickPairedCount: click.pairedCount,
+		trainerConnected: trainer.connected,
+	});
 	const gearResistanceRef = useRef<(fromGear: number, toGear: number) => void>(
 		trainer.shiftResistanceForGears
 	);
@@ -112,21 +110,22 @@ export function App() {
 		[]
 	);
 	const gearControl = useGearControl({
-		active: click.paired,
+		active: true,
 		onGearChange: handleGearChange,
 		ready: virtualShiftingReady,
 		setNotice: trainer.setNotice,
 	});
-	const activeControlMode = controlModeForClick(click.paired);
+	const pairedControlMode = trainingControlMode(click.paired, false);
 	const session = useSession(
 		liveMetrics,
 		{
 			gear: gearControl.gear,
-			mode: activeControlMode,
+			mode: pairedControlMode,
 			resistance: trainer.resistance,
 		},
 		trainer.lastPedalingAt,
-		trainer.trainerReportsDistance
+		trainer.trainerReportsDistance,
+		initialSession
 	);
 	const dashboardWorkout = workoutDashboardPreview({
 		distance: session.rideDistance,
@@ -138,7 +137,9 @@ export function App() {
 	const workoutTerrain = dashboardWorkout.workout
 		? workoutTerrainAtDistance(dashboardWorkout.workout.course, dashboardWorkout.distance)
 		: undefined;
-	const virtualShiftingActive = click.paired;
+	const workoutSelected = Boolean(dashboardWorkout.workout);
+	const virtualShiftingActive = click.paired || workoutSelected;
+	const activeControlMode = trainingControlMode(click.paired, workoutSelected);
 	let workoutResistance = workoutTerrain?.resistance;
 	if (workoutTerrain && virtualShiftingActive) {
 		workoutResistance = resistanceForVirtualGear(workoutTerrain.resistance, gearControl.gear);
@@ -157,9 +158,11 @@ export function App() {
 		resistance: workoutResistance,
 	});
 	const workflow = useSessionWorkflow(session, trainer.setNotice, trainer.settleAfterRide);
+	const workoutLocked = workoutSelectionLocked(session);
+	const clickConnectionActive = clickConnectionActiveForSession(session);
 	useEffect(() => {
-		click.setConnectionActive(!session.ended);
-	}, [click.setConnectionActive, session.ended]);
+		click.setConnectionActive(clickConnectionActive);
+	}, [click.setConnectionActive, clickConnectionActive]);
 	const dashboardKeyboardEnabled = activeOverlay === undefined && !workflow.saveDialogOpen;
 	clickShiftRef.current = shiftHandlerUnlessBlocked(
 		gearControl.shiftGear,
@@ -276,9 +279,10 @@ export function App() {
 		},
 		[session.selectWorkout, setActiveOverlay]
 	);
-	const selectedWorkoutCourse = session.selectedWorkout?.course;
-	const selectedWorkoutId = selectedWorkoutCourse?.id;
-	const workoutLocked = workoutSelectionLocked(session);
+	const selectedWorkoutCourse = session.selectedWorkout
+		? session.selectedWorkout.course
+		: undefined;
+	const selectedWorkoutId = selectedWorkoutCourse ? selectedWorkoutCourse.id : undefined;
 	useEffect(() => {
 		if (!selectedWorkoutCourse) {
 			return;
@@ -303,12 +307,12 @@ export function App() {
 	const connectedDeviceCount =
 		Number(trainer.connected) + Number(heartRate.connected) + click.connectedCount;
 	const pairedDeviceCount = Number(trainer.paired) + Number(heartRate.paired) + click.pairedCount;
-	const workoutName = selectedWorkoutCourse?.name;
+	const workoutName = selectedWorkoutCourse ? selectedWorkoutCourse.name : undefined;
 	const devicesConnecting = [
 		trainer.connectionBusy,
 		heartRate.busy,
 		click.busy,
-		click.pairing,
+		click.pairingRole !== undefined,
 	].some(Boolean);
 
 	return (
@@ -432,7 +436,7 @@ export function App() {
 					onDisconnect: click.disconnect,
 					onForget: click.forget,
 					onForgetController: click.forgetDevice,
-					onPair: click.pair,
+					onPairController: click.pair,
 					onReconnect: click.reconnect,
 				}}
 				heartRate={{

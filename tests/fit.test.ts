@@ -78,6 +78,26 @@ describe('FIT activity files', () => {
 		expect(first?.history[1]?.speed).toBeCloseTo(30, 2);
 	});
 
+	test('imports every FIT record from a ride longer than the former sample limit', async () => {
+		const [sample] = session.history;
+		if (!sample) {
+			throw new Error('Expected a recorded sample fixture.');
+		}
+		const history = Array.from({ length: 3601 }, (_, index) => ({
+			...sample,
+			elapsedSeconds: index + 1,
+		}));
+		const [imported] = await parseFitSessions(
+			await sessionToFit({
+				...session,
+				elapsedSeconds: history.length,
+				endedAt: session.startedAt + history.length * 1000,
+				history,
+			})
+		);
+		expect(imported?.history).toHaveLength(history.length);
+	});
+
 	test('creates a filesystem-safe FIT filename', () => {
 		expect(sessionFitFilename(session)).toMatch(FIT_FILENAME);
 		expect(sessionFitFilename({ ...session, id: 'another-session' })).not.toBe(

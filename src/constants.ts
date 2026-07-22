@@ -6,6 +6,7 @@ export const CYCLING_POWER = 0x18_18;
 export const CYCLING_SPEED_AND_CADENCE = 0x18_16;
 export const HEART_RATE = 0x18_0d;
 export const BATTERY = 0x18_0f;
+export const DEVICE_INFORMATION = 0x18_0a;
 export const INDOOR_BIKE_DATA = 0x2a_d2;
 export const CONTROL_POINT = 0x2a_d9;
 export const FITNESS_MACHINE_STATUS = 0x2a_da;
@@ -22,7 +23,6 @@ export const BLUETOOTH_OPERATION_TIMEOUT_MS = 5000;
 export const OPTIONAL_BLUETOOTH_OPERATION_TIMEOUT_MS = 1000;
 export const RECORDING_PAUSE_DELAY_MS = 10_000;
 export const CONTROL_FLASH_MS = 180;
-export const MAX_SESSION_HISTORY_SAMPLES = 3600;
 export const EMPTY_ROUTE = [] as const;
 
 export const optionalServices: BluetoothServiceUUID[] = [
@@ -31,6 +31,7 @@ export const optionalServices: BluetoothServiceUUID[] = [
 	CYCLING_SPEED_AND_CADENCE,
 	HEART_RATE,
 	BATTERY,
+	DEVICE_INFORMATION,
 ];
 
 export const emptyMetrics: Metrics = {

@@ -1,13 +1,19 @@
-import type { WorkoutCourse, WorkoutRoutePoint } from '../types';
+import type { SpeedUnit, WorkoutCourse, WorkoutRoutePoint } from '../types';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
-import { KILOMETERS_PER_MILE } from './units';
+import {
+	descriptionWithoutDistance,
+	formatDistance,
+	formatElevation,
+	KILOMETERS_PER_MILE,
+} from './units';
 import { isWorkoutDifficulty, type WorkoutDifficulty } from './workout-schema';
 
 export const BIKEGPX_ROUTES_URL = 'https://bikegpx.com/bike_routes/';
 const SEARCH_WHITESPACE = /\s+/u;
 const NUMERIC_ROUTE_ID = /^\d+$/;
-const API_ROOT = (import.meta.env.VITE_RIDECONTROL_API_URL || '/api').replace(/\/$/u, '');
-const ROUTE_QUEUE_STATUS = 'queued';
+const PREPARED_ROUTE_VERSION = 4;
+const CONFIGURED_API_ROOT = import.meta.env.VITE_RIDECONTROL_API_URL || '/api';
+const API_ROOT = CONFIGURED_API_ROOT.replace(/\/$/u, '');
 
 export interface BikeGpxRouteSummary {
 	country: string;
@@ -25,6 +31,7 @@ export interface BikeGpxCatalog {
 
 export interface BikeGpxRouteAnalysis {
 	difficulty: WorkoutDifficulty;
+	distance: number;
 	elevationGain: number;
 	maximumGrade: number;
 }
@@ -32,12 +39,6 @@ export interface BikeGpxRouteAnalysis {
 export interface BikeGpxRouteResult {
 	analysis: BikeGpxRouteAnalysis;
 	course: WorkoutCourse;
-}
-
-interface BikeGpxRouteQueued {
-	position: number;
-	retryAfterSeconds: number;
-	status: typeof ROUTE_QUEUE_STATUS;
 }
 
 export function bikeGpxRouteMatchesQuery(
@@ -56,11 +57,41 @@ export function bikeGpxRouteMatchesQuery(
 	return terms.every((term) => searchable.includes(term));
 }
 
+export function bikeGpxPreviewRoute(
+	routes: BikeGpxRouteSummary[],
+	selectedRouteId: string
+): BikeGpxRouteSummary | undefined {
+	const selectedRoute = routes.find((route) => route.id === selectedRouteId);
+	return selectedRoute ?? routes[0];
+}
+
+export function bikeGpxRouteLocation(route: BikeGpxRouteSummary): string {
+	return descriptionWithoutDistance(route.summary);
+}
+
+export function formatBikeGpxRouteStats(
+	route: BikeGpxRouteSummary,
+	analysis: BikeGpxRouteAnalysis | undefined,
+	unit: SpeedUnit
+): string {
+	const distance = analysis ? analysis.distance : route.distanceKm;
+	const stats = [formatDistance(distance, unit, 1)];
+	if (analysis) {
+		stats.push(
+			`${formatElevation(analysis.elevationGain, unit)} climbing`,
+			`Up to +${analysis.maximumGrade.toFixed(1)}%`
+		);
+	}
+	return stats.join(' · ');
+}
+
 function routeAnalysis(value: unknown): BikeGpxRouteAnalysis | undefined {
 	if (
 		!(
 			isRecord(value) &&
 			isWorkoutDifficulty(value.difficulty) &&
+			isFiniteNumber(value.distance) &&
+			value.distance > 0 &&
 			isFiniteNumber(value.elevationGain) &&
 			value.elevationGain >= 0 &&
 			isFiniteNumber(value.maximumGrade) &&
@@ -71,6 +102,7 @@ function routeAnalysis(value: unknown): BikeGpxRouteAnalysis | undefined {
 	}
 	return {
 		difficulty: value.difficulty,
+		distance: value.distance,
 		elevationGain: value.elevationGain,
 		maximumGrade: value.maximumGrade,
 	};
@@ -163,22 +195,30 @@ function routeCourse(value: unknown): WorkoutCourse | undefined {
 }
 
 export function restoreBikeGpxCatalog(value: unknown): BikeGpxCatalog | undefined {
-	if (!(isRecord(value) && isFiniteNumber(value.fetchedAt) && Array.isArray(value.routes))) {
+	if (
+		!(
+			isRecord(value) &&
+			isRecord(value.analyses) &&
+			isFiniteNumber(value.fetchedAt) &&
+			Array.isArray(value.routes)
+		)
+	) {
 		return;
 	}
 	const routes = value.routes.flatMap((route) => routeSummary(route) ?? []);
-	if (routes.length !== value.routes.length || routes.length === 0) {
+	if (routes.length !== value.routes.length) {
 		return;
 	}
 	const routeIds = new Set(routes.map((route) => route.id));
-	const analyses = isRecord(value.analyses)
-		? Object.fromEntries(
-				Object.entries(value.analyses).flatMap(([routeId, analysis]) => {
-					const restored = routeIds.has(routeId) ? routeAnalysis(analysis) : undefined;
-					return restored ? [[routeId, restored]] : [];
-				})
-			)
-		: {};
+	const analyses = Object.fromEntries(
+		Object.entries(value.analyses).flatMap(([routeId, analysis]) => {
+			const restored = routeIds.has(routeId) ? routeAnalysis(analysis) : undefined;
+			return restored ? [[routeId, restored]] : [];
+		})
+	);
+	if (routes.some((route) => !analyses[route.id])) {
+		return;
+	}
 	return { analyses, fetchedAt: value.fetchedAt, routes };
 }
 
@@ -191,31 +231,12 @@ function restoreBikeGpxRouteResult(value: unknown): BikeGpxRouteResult | undefin
 	return analysis && course ? { analysis, course } : undefined;
 }
 
-function restoreQueuedRoute(value: unknown): BikeGpxRouteQueued | undefined {
-	if (
-		!(
-			isRecord(value) &&
-			value.status === ROUTE_QUEUE_STATUS &&
-			isFiniteNumber(value.position) &&
-			value.position >= 1 &&
-			isFiniteNumber(value.retryAfterSeconds) &&
-			value.retryAfterSeconds >= 0
-		)
-	) {
-		return;
-	}
-	return {
-		position: value.position,
-		retryAfterSeconds: value.retryAfterSeconds,
-		status: value.status,
-	};
-}
-
 async function apiResponse(
 	path: string,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	cache?: RequestCache
 ): Promise<{ response: Response; value: unknown }> {
-	const response = await fetch(`${API_ROOT}${path}`, { signal });
+	const response = await fetch(`${API_ROOT}${path}`, { cache, signal });
 	const value: unknown = await response.json();
 	return { response, value };
 }
@@ -226,33 +247,16 @@ function backendError(value: unknown): Error {
 	return new Error(message);
 }
 
-async function apiJson(path: string, signal?: AbortSignal): Promise<unknown> {
-	const { response, value } = await apiResponse(path, signal);
+async function apiJson(path: string, signal?: AbortSignal, cache?: RequestCache): Promise<unknown> {
+	const { response, value } = await apiResponse(path, signal, cache);
 	if (!response.ok) {
 		throw backendError(value);
 	}
 	return value;
 }
 
-function waitForRoute(retryAfterSeconds: number, signal?: AbortSignal): Promise<void> {
-	if (signal?.aborted) {
-		return Promise.reject(signal.reason);
-	}
-	return new Promise((resolve, reject) => {
-		const onAbort = () => {
-			clearTimeout(timeout);
-			reject(signal?.reason);
-		};
-		const timeout = setTimeout(() => {
-			signal?.removeEventListener('abort', onAbort);
-			resolve();
-		}, retryAfterSeconds * 1000);
-		signal?.addEventListener('abort', onAbort, { once: true });
-	});
-}
-
 export async function fetchBikeGpxCatalog(signal?: AbortSignal): Promise<BikeGpxCatalog> {
-	const catalog = restoreBikeGpxCatalog(await apiJson('/bikegpx/routes', signal));
+	const catalog = restoreBikeGpxCatalog(await apiJson('/bikegpx/routes', signal, 'no-cache'));
 	if (!catalog) {
 		throw new Error('The Ride Control backend returned an invalid BikeGPX catalog.');
 	}
@@ -263,22 +267,12 @@ export async function fetchBikeGpxRoute(
 	route: BikeGpxRouteSummary,
 	signal?: AbortSignal
 ): Promise<BikeGpxRouteResult> {
-	const path = `/bikegpx/routes/${encodeURIComponent(route.id)}`;
-	for (;;) {
-		const { response, value } = await apiResponse(path, signal);
-		if (!response.ok) {
-			throw backendError(value);
-		}
-		const result = restoreBikeGpxRouteResult(value);
-		if (result) {
-			return result;
-		}
-		const queued = restoreQueuedRoute(value);
-		if (!queued) {
-			throw new Error('The Ride Control backend returned an invalid BikeGPX route.');
-		}
-		await waitForRoute(queued.retryAfterSeconds, signal);
+	const path = `/bikegpx/routes/${encodeURIComponent(route.id)}?prepared-route-version=${PREPARED_ROUTE_VERSION}`;
+	const result = restoreBikeGpxRouteResult(await apiJson(path, signal));
+	if (!result) {
+		throw new Error('The Ride Control backend returned an invalid BikeGPX route.');
 	}
+	return result;
 }
 
 export function bikeGpxRouteUrl(routeId: string): string {

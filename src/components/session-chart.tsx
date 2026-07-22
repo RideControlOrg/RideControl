@@ -1,5 +1,6 @@
 import { useSelector } from '@tanstack/react-store';
 import { Fragment, useCallback, useEffect, useMemo } from 'react';
+import { evenlySample, valueRange } from '../lib/arrays';
 import { chartPath, roundedChartMaximum } from '../lib/chart';
 import { CHART_MODE } from '../lib/chart-mode';
 import { CONTROL_MODE } from '../lib/control-mode';
@@ -24,6 +25,12 @@ import {
 } from '../lib/units';
 import { preferencesStore } from '../stores/preferences-store';
 import type { ChartMode, ControlMode, MetricSample, RoutePoint, SpeedUnit } from '../types';
+
+const MAXIMUM_RENDERED_CHART_SAMPLES = 2000;
+
+function maximumValue<T>(values: readonly T[], numericValue: (value: T) => number): number {
+	return values.reduce((maximum, value) => Math.max(maximum, numericValue(value)), 0);
+}
 
 interface PlotProps {
 	color: string;
@@ -117,17 +124,22 @@ export function SessionChart({
 		(history.some((sample) => sample.gear !== undefined)
 			? CONTROL_MODE.GEAR
 			: CONTROL_MODE.RESISTANCE);
+	const chartHistory = useMemo(
+		() => evenlySample(history, MAXIMUM_RENDERED_CHART_SAMPLES),
+		[history]
+	);
 	const series = useMemo(() => {
-		const speedValues = history.map((sample) => convertSpeed(sample.speed, speedUnit));
+		const speedValues = chartHistory.map((sample) => convertSpeed(sample.speed, speedUnit));
 		const routeElevations = route.map((point) => convertElevation(point.elevation, speedUnit));
-		const gradeValues = history.map((sample) => sample.grade);
+		const routeElevationRange = valueRange(routeElevations, (elevation) => elevation);
+		const gradeValues = chartHistory.map((sample) => sample.grade);
 		const hasRecordedGear = history.some((sample) => sample.gear !== undefined);
 		const standardSeries = STANDARD_METRIC_KEYS.map((key) => {
 			const presentation = METRIC_PRESENTATION[key];
-			const values = history.map((sample) => sample[key]);
+			const values = chartHistory.map((sample) => sample[key]);
 			return {
 				chartMaximum: roundedChartMaximum(
-					Math.max(...values, 0),
+					maximumValue(values, (value) => value ?? 0),
 					presentation.chartMinimumMaximum,
 					presentation.chartStep
 				),
@@ -151,7 +163,7 @@ export function SessionChart({
 							label: GEAR_METRIC_PRESENTATION.label,
 							minimum: MIN_GEAR,
 							unit: '',
-							values: history.map((sample) => sample.gear),
+							values: chartHistory.map((sample) => sample.gear),
 						},
 					]
 				: []),
@@ -163,13 +175,10 @@ export function SessionChart({
 				label: RESISTANCE_METRIC_PRESENTATION.label,
 				minimum: MIN_RESISTANCE,
 				unit: RESISTANCE_METRIC_PRESENTATION.unit,
-				values: history.map((sample) => sample.resistance),
+				values: chartHistory.map((sample) => sample.resistance),
 			},
 		];
-		const maximumAbsoluteGrade = Math.max(
-			...gradeValues.map((grade) => Math.abs(grade ?? 0)),
-			0
-		);
+		const maximumAbsoluteGrade = maximumValue(gradeValues, (grade) => Math.abs(grade ?? 0));
 		const gradeMaximum = roundedChartMaximum(maximumAbsoluteGrade, 5, 5);
 		const gradeSeries = gradeValues.some((grade) => grade !== undefined)
 			? [
@@ -185,17 +194,17 @@ export function SessionChart({
 					},
 				]
 			: [];
-		const elevationSeries = route.length
+		const elevationSeries = routeElevationRange
 			? [
 					{
-						chartMaximum: Math.max(...routeElevations),
+						chartMaximum: routeElevationRange.maximum,
 						color: ELEVATION_METRIC_PRESENTATION.chartColor,
 						decimals: 0,
 						key: CHART_MODE.ELEVATION,
 						label: ELEVATION_METRIC_PRESENTATION.label,
-						minimum: Math.min(...routeElevations),
+						minimum: routeElevationRange.minimum,
 						unit: elevationUnitLabel(speedUnit),
-						values: history.map((sample) =>
+						values: chartHistory.map((sample) =>
 							sample.elevation === undefined
 								? undefined
 								: convertElevation(sample.elevation, speedUnit)
@@ -206,7 +215,7 @@ export function SessionChart({
 		return [
 			{
 				chartMaximum: roundedChartMaximum(
-					Math.max(...speedValues, 0),
+					maximumValue(speedValues, (speed) => speed),
 					minimumSpeedChartMaximum(speedUnit),
 					5
 				),
@@ -223,7 +232,7 @@ export function SessionChart({
 			...gradeSeries,
 			...elevationSeries,
 		];
-	}, [history, resolvedControlMode, route, speedUnit]);
+	}, [chartHistory, history, resolvedControlMode, route, speedUnit]);
 	const effectiveMode =
 		selectedMode === CHART_MODE.ALL || series.some((item) => item.key === selectedMode)
 			? selectedMode
@@ -239,10 +248,10 @@ export function SessionChart({
 		],
 		[series]
 	);
-	const historyPositions = history.map((sample) => sample.elapsedSeconds);
-	const historyStart = history[0]?.elapsedSeconds ?? 0;
+	const historyPositions = chartHistory.map((sample) => sample.elapsedSeconds);
+	const historyStart = chartHistory.at(0)?.elapsedSeconds ?? 0;
 	const historySeconds =
-		history.length > 1 ? (history.at(-1)?.elapsedSeconds ?? 0) - historyStart : 0;
+		chartHistory.length > 1 ? (chartHistory.at(-1)?.elapsedSeconds ?? 0) - historyStart : 0;
 
 	const selectMode = useCallback(
 		(mode: ChartMode) => preferencesStore.actions.selectChartMode(mode),
