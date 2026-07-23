@@ -10,18 +10,7 @@ const buildPrUrl =
 
 export default defineConfig({
 	build: {
-		rolldownOptions: {
-			output: {
-				codeSplitting: {
-					groups: [
-						{
-							name: 'tanstack-router',
-							test: /node_modules[/]@tanstack[/](?:history|react-router|router-core)/,
-						},
-					],
-				},
-			},
-		},
+		chunkSizeWarningLimit: 550,
 	},
 	define: {
 		'import.meta.env.RIDE_CONTROL_BUILD_PR_URL': JSON.stringify(buildPrUrl),
