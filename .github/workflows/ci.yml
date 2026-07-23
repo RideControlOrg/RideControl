@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   ci:
@@ -26,3 +27,45 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Run checks, tests, and build
         run: bun run ci
+
+  deploy:
+    name: Deploy Worker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: ci
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production-worker
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://ridecontrol.xyz
+    steps:
+      - name: Check out verified revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Resolve build metadata
+        env:
+          BUILD_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "VITE_BUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+          build_pr_url="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BUILD_SHA}/pulls" --jq '.[0].html_url // empty')"
+          if [ -z "$build_pr_url" ]; then
+            build_pr_url="https://github.com/${GITHUB_REPOSITORY}/pulls?q=is%3Apr+is%3Aclosed"
+          fi
+          echo "VITE_BUILD_PR_URL=${build_pr_url}" >> "$GITHUB_ENV"
+      - name: Build Worker
+        run: bun run build
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          accountId: c1e6e1378d9461aa07039950b1bf8b89
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy
