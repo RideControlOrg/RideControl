@@ -18,8 +18,6 @@ export function trainingControlMode(clickPaired: boolean, workoutSelected: boole
 export function virtualShiftingConnectionReady({
 	trainerConnected,
 }: {
-	clickConnectedCount: number;
-	clickPairedCount: number;
 	trainerConnected: boolean;
 }): boolean {
 	return trainerConnected;

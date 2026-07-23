@@ -19,8 +19,7 @@ export const MIN_GEAR = 1;
 export const MAX_GEAR = VIRTUAL_GEAR_COMBINATIONS.length;
 export const DEFAULT_GEAR = 12;
 export const GEAR_STORAGE_KEY = 'trainer-virtual-gear';
-export const SHIFTING_CONNECTION_MESSAGE =
-	'Connect the trainer and controllers before shifting gears.';
+export const SHIFTING_CONNECTION_MESSAGE = 'Connect the trainer before shifting gears.';
 export const MINIMUM_VIRTUAL_DRIVE_RATIO = Math.min(
 	...VIRTUAL_GEAR_COMBINATIONS.map(({ ratio }) => ratio)
 );

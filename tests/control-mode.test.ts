@@ -4,6 +4,7 @@ import {
 	trainingControlMode,
 	virtualShiftingConnectionReady,
 } from '../src/lib/control-mode';
+import { SHIFTING_CONNECTION_MESSAGE } from '../src/lib/gears';
 
 describe('training control mode', () => {
 	test('uses virtual gears for Click or terrain workouts', () => {
@@ -13,28 +14,13 @@ describe('training control mode', () => {
 		expect(trainingControlMode(false, false)).toBe(CONTROL_MODE.RESISTANCE);
 	});
 
-	test('enables virtual shifting without waiting for every Click controller', () => {
-		for (const [clickPairedCount, clickConnectedCount] of [
-			[0, 0],
-			[1, 0],
-			[2, 0],
-			[2, 1],
-			[2, 2],
-		]) {
-			expect(
-				virtualShiftingConnectionReady({
-					clickConnectedCount,
-					clickPairedCount,
-					trainerConnected: true,
-				})
-			).toBeTrue();
-		}
+	test('requires only the trainer for virtual shifting', () => {
+		expect(virtualShiftingConnectionReady({ trainerConnected: true })).toBeTrue();
 		expect(
 			virtualShiftingConnectionReady({
-				clickConnectedCount: 2,
-				clickPairedCount: 2,
 				trainerConnected: false,
 			})
 		).toBeFalse();
+		expect(SHIFTING_CONNECTION_MESSAGE).toBe('Connect the trainer before shifting gears.');
 	});
 });
