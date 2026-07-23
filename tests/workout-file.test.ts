@@ -92,10 +92,10 @@ describe('workout GPX files', () => {
 		expect(contents).toStartWith('<?xml version="1.0" encoding="UTF-8"?>');
 		expect(contents).toContain('<gpx version="1.1"');
 		expect(contents).toContain(`xmlns:rc="${WORKOUT_GPX_EXTENSION_NAMESPACE}"`);
-		expect(contents).toContain('<rc:FormatVersion>2</rc:FormatVersion>');
+		expect(contents).toContain('<rc:FormatVersion>3</rc:FormatVersion>');
 		expect(contents).toContain('<trkpt lat=');
 		expect(contents).toContain('<ele>');
-		expect(contents).toContain('<rc:BaseResistance>12.0</rc:BaseResistance>');
+		expect(contents).not.toContain('<rc:BaseResistance>');
 		expect(contents).toContain('<rc:CourseType>loop</rc:CourseType>');
 		expect(contents).toContain('<rc:StartingLocation>Santa Cruz</rc:StartingLocation>');
 		expect(contents).not.toContain('elevationGain');
@@ -105,7 +105,6 @@ describe('workout GPX files', () => {
 			new DOMParser() as unknown as globalThis.DOMParser
 		);
 		expect(parsed).toMatchObject({
-			baseResistance: workout.baseResistance,
 			description: workout.description,
 			difficulty: workout.difficulty,
 			distance: workout.distance,
@@ -130,7 +129,6 @@ describe('workout GPX files', () => {
 		const first = parseWorkoutFile(thirdPartyGpx(), parser);
 		const second = parseWorkoutFile(thirdPartyGpx('Renamed metadata'), parser);
 		expect(first).toMatchObject({
-			baseResistance: 12,
 			description: 'A real GPX loop',
 			difficulty: 'moderate',
 			name: 'Neighborhood loop',

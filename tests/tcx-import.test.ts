@@ -113,7 +113,6 @@ describe('TCX import', () => {
 			return;
 		}
 		expect(imported.workout.course).toMatchObject({
-			baseResistance: course.baseResistance,
 			description: course.description,
 			difficulty: course.difficulty,
 			distance: course.distance,

@@ -30,7 +30,6 @@ export interface WorkoutRoutePoint extends GeographicRoutePoint {
 }
 
 export interface WorkoutCourse {
-	baseResistance: number;
 	description: string;
 	descriptionAttribution?: WorkoutDescriptionAttribution;
 	difficulty: WorkoutDifficulty;

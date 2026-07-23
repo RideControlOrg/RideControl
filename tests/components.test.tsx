@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { App } from '../src/app';
 import { ConnectionControl } from '../src/components/connection-control';
 import { DevicePairingButton, DevicePairingPanel } from '../src/components/device-pairing';
 import { GearControl } from '../src/components/gear-control';
@@ -34,9 +34,19 @@ import { SESSION_WORKFLOW_INTENT } from '../src/lib/session-workflow';
 import { WORKOUT_DESCRIPTION_ATTRIBUTION } from '../src/lib/workout-description';
 import { WORKOUT_ROUTE_TYPE } from '../src/lib/workout-schema';
 import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
+import { createAppRouter } from '../src/router';
+import type { StoredSession } from '../src/types';
 import { savedSessionFixture } from './fixtures/saved-session';
 
 const render = (element: React.ReactNode) => renderToStaticMarkup(element);
+const renderApp = async (initialSession?: StoredSession) => {
+	const router = createAppRouter({
+		history: createMemoryHistory({ initialEntries: ['/'] }),
+		initialSession,
+	});
+	await router.load();
+	return render(<RouterProvider router={router} />);
+};
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
 const solidChartBoundaries =
 	/d="M0 14H100 M0 90H100"[^>]*stroke="#3a4654"(?![^>]*stroke-dasharray)/;
@@ -272,6 +282,7 @@ describe('view components', () => {
 		const common = {
 			busy: false,
 			connected: false,
+			onCancel: () => undefined,
 			onDisconnect: () => undefined,
 			onForget: () => undefined,
 			onPair: () => undefined,
@@ -331,9 +342,10 @@ describe('view components', () => {
 		expect(panel).not.toContain('Waiting for controllers…');
 		expect(panel).not.toContain('Retry');
 		expect(panel).toContain('Connecting...');
+		expect(panel).toContain('>Stop connecting</button>');
 		expect(panel).not.toContain('>Reconnect</button>');
-		expect(panel.match(/<span class="sr-only">Connecting\.\.\.<\/span>/g)).toHaveLength(2);
-		expect(panel.match(/connecting-dot/g)).toHaveLength(6);
+		expect(panel.match(/<span class="sr-only">Connecting\.\.\.<\/span>/g)).toHaveLength(1);
+		expect(panel.match(/connecting-dot/g)).toHaveLength(3);
 		expect(panel.match(/connection-status-pulse/g)).toHaveLength(2);
 		expect(panel).toContain('shadow-[0_0_16px_rgba(56,189,248,.95)]');
 		expect(panel).toContain('Automatic reconnect in Chrome');
@@ -357,6 +369,32 @@ describe('view components', () => {
 		expect(panel).toContain('bg-mint/10');
 		expect(panel).not.toContain('shadow-[inset_0_0_18px');
 		expect(panel).not.toContain('divide-y');
+		const pairingPanel = render(
+			<DevicePairingPanel
+				browserNotice=""
+				click={{
+					...common,
+					connectedCount: 0,
+					connectionActive: true,
+					controllers: [],
+					onForgetController: () => undefined,
+					onPairController: () => undefined,
+					pairedCount: 0,
+					reconnecting: false,
+				}}
+				heartRate={common}
+				onClose={() => undefined}
+				open
+				trainer={{
+					...common,
+					busy: true,
+					phase: 'pairing',
+					status: 'Pairing…',
+				}}
+			/>
+		);
+		expect(pairingPanel).toContain('>Cancel pairing</button>');
+		expect(pairingPanel).not.toContain('disabled=""');
 		const inactiveClickPanel = render(
 			<DevicePairingPanel
 				browserNotice=""
@@ -473,11 +511,9 @@ describe('view components', () => {
 		expect(html).toContain('HARDER');
 		expect(html).toContain('grid h-9 w-9 shrink-0 place-items-center rounded-lg');
 		expect(html).toContain('scale-105 border-mint bg-mint/15 text-mint');
-		expect(html).not.toContain('Connect the trainer and controllers before shifting gears.');
+		expect(html).not.toContain('Connect the trainer before shifting gears.');
 		const disabled = render(<GearControl disabled gear={12} onChange={() => undefined} />);
-		expect(disabled).not.toContain(
-			'Connect the trainer and controllers before shifting gears.'
-		);
+		expect(disabled).not.toContain('Connect the trainer before shifting gears.');
 		expect(disabled.match(/disabled=""/g)).toHaveLength(2);
 	});
 
@@ -560,7 +596,7 @@ describe('view components', () => {
 		expect(panel.match(/Download GPX/g)).toHaveLength(6);
 		expect(panel).toContain('10.0 mi out &amp; back');
 		expect(panel).toContain('15.0 mi loop');
-		expect(panel).toContain('15–25% resistance');
+		expect(panel).toContain('repeated gradual climbs and descents');
 		expect(panel).toContain('49 ft climbing');
 		expect(panel).not.toContain('15 m climbing');
 		expect(panel).toContain('stroke="#64748b"');
@@ -770,7 +806,7 @@ describe('view components', () => {
 		expect(html).toContain('chrome://flags/');
 	});
 
-	test('composes the application dashboard', () => {
+	test('composes the application dashboard', async () => {
 		Object.defineProperty(globalThis, 'localStorage', {
 			configurable: true,
 			value: {
@@ -779,7 +815,7 @@ describe('view components', () => {
 				setItem: () => undefined,
 			},
 		});
-		const html = render(<App />);
+		const html = await renderApp();
 		expect(html).toContain('Resistance control');
 		expect(html).not.toContain('Import GPX');
 		expect(html).toContain('Pair devices');
@@ -807,19 +843,15 @@ describe('view components', () => {
 		expect(html).toMatch(enabledEndSessionButton);
 	});
 
-	test('shows manual virtual shifting for a terrain workout without Click controllers', () => {
+	test('shows manual virtual shifting for a terrain workout without Click controllers', async () => {
 		const [course] = WORKOUT_COURSES;
 		if (!course) {
 			throw new Error('Expected a built-in workout course');
 		}
-		const html = render(
-			<App
-				initialSession={{
-					...emptySession,
-					workout: { course },
-				}}
-			/>
-		);
+		const html = await renderApp({
+			...emptySession,
+			workout: { course },
+		});
 		expect(html).toContain('Virtual shifting');
 		expect(html).toContain('Shift to an easier gear');
 		expect(html).toContain('Shift to a harder gear');

@@ -23,7 +23,6 @@ function hashSource(source: string, seed: number): string {
 
 function workoutSnapshotSource(course: WorkoutCourse): string {
 	return JSON.stringify({
-		baseResistance: course.baseResistance,
 		description: course.description,
 		descriptionAttribution: course.descriptionAttribution ?? null,
 		difficulty: course.difficulty,

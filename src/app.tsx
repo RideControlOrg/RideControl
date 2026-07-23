@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useSelector } from '@tanstack/react-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppFooter } from './components/app-footer';
@@ -28,14 +29,15 @@ import { useZwiftClick } from './hooks/use-zwift-click';
 import {
 	APP_OVERLAY,
 	type AppOverlay,
+	isSideTrayOverlay,
 	loadOpenSideTray,
 	persistOpenSideTray,
 } from './lib/app-overlay';
 import {
 	APP_ROUTE_KIND,
+	APP_ROUTE_PATH,
 	type AppRoute,
-	appRouteFromPathname,
-	appRoutePath,
+	appRouteFromRouterMatch,
 	appRouteSideTray,
 	HOME_APP_ROUTE,
 } from './lib/app-route';
@@ -50,6 +52,7 @@ import {
 	virtualShiftingConnectionReady,
 } from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
+import { unreachable } from './lib/errors';
 import { resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
 import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
@@ -106,12 +109,13 @@ function restoredRoute(overlay: AppOverlay | undefined): AppRoute {
 	return HOME_APP_ROUTE;
 }
 
-function initialNavigation(): InitialNavigation {
-	const pathname = globalThis.location?.pathname ?? '/';
-	const linkedRoute = appRouteFromPathname(pathname);
+function initialNavigation(linkedRoute: AppRoute, pathname: string): InitialNavigation {
 	const linkedOverlay = appRouteSideTray(linkedRoute);
 	if (linkedOverlay) {
 		return { overlay: linkedOverlay, route: linkedRoute };
+	}
+	if (pathname !== APP_ROUTE_PATH.HOME) {
+		return { route: HOME_APP_ROUTE };
 	}
 	const restoredOverlay = loadOpenSideTray();
 	return {
@@ -120,42 +124,77 @@ function initialNavigation(): InitialNavigation {
 	};
 }
 
-function updateBrowserRoute(route: AppRoute, replace: boolean) {
-	if (!globalThis.history) {
-		return;
-	}
-	const path = appRoutePath(route);
-	if (globalThis.location.pathname === path) {
-		return;
-	}
-	if (replace) {
-		globalThis.history.replaceState(null, '', path);
-	} else {
-		globalThis.history.pushState(null, '', path);
-	}
-}
-
 export function App({ initialSession = emptySession }: { initialSession?: StoredSession }) {
-	const [initialAppNavigation] = useState(initialNavigation);
+	const routerNavigation = useRouterState({
+		select: (state) => ({
+			pathname: state.location.pathname,
+			route: appRouteFromRouterMatch(state.matches.at(-1)),
+		}),
+	});
+	const { pathname, route: matchedAppRoute } = routerNavigation;
+	const navigate = useNavigate();
+	const [initialAppNavigation] = useState(() => initialNavigation(matchedAppRoute, pathname));
+	const restoringRoute = useRef(
+		pathname === APP_ROUTE_PATH.HOME &&
+			initialAppNavigation.route.kind !== APP_ROUTE_KIND.HOME &&
+			matchedAppRoute.kind === APP_ROUTE_KIND.HOME
+	);
+	const appRoute = restoringRoute.current ? initialAppNavigation.route : matchedAppRoute;
 	const rememberedDevices = useRememberedBluetoothDevices();
 	const trainer = useTrainer(rememberedDevices);
-	const [appRoute, setAppRoute] = useState<AppRoute>(initialAppNavigation.route);
 	const [activeOverlay, setActiveOverlayState] = useState<AppOverlay | undefined>(
 		initialAppNavigation.overlay
 	);
-	const showAppRoute = useCallback((route: AppRoute) => {
-		const overlay = appRouteSideTray(route);
-		persistBikeGpxBrowserOpen(route.kind === APP_ROUTE_KIND.BIKEGPX);
-		persistOpenSideTray(overlay);
-		setAppRoute(route);
-		setActiveOverlayState(overlay);
-	}, []);
 	const navigateToAppRoute = useCallback(
 		(route: AppRoute, replace = false) => {
-			showAppRoute(route);
-			updateBrowserRoute(route, replace);
+			const overlay = appRouteSideTray(route);
+			persistBikeGpxBrowserOpen(route.kind === APP_ROUTE_KIND.BIKEGPX);
+			persistOpenSideTray(overlay);
+			switch (route.kind) {
+				case APP_ROUTE_KIND.BIKEGPX:
+					if (route.routeId) {
+						navigate({
+							params: { routeId: route.routeId },
+							replace,
+							to: APP_ROUTE_PATH.BIKEGPX_ROUTE,
+						}).catch(() => undefined);
+					} else {
+						navigate({ replace, to: APP_ROUTE_PATH.BIKEGPX }).catch(() => undefined);
+					}
+					return;
+				case APP_ROUTE_KIND.DEVICES:
+					navigate({ replace, to: APP_ROUTE_PATH.DEVICES }).catch(() => undefined);
+					return;
+				case APP_ROUTE_KIND.HOME:
+					navigate({ replace, to: APP_ROUTE_PATH.HOME }).catch(() => undefined);
+					return;
+				case APP_ROUTE_KIND.SESSION:
+					if (route.sessionId) {
+						navigate({
+							params: { sessionId: route.sessionId },
+							replace,
+							to: APP_ROUTE_PATH.SESSION,
+						}).catch(() => undefined);
+					} else {
+						navigate({ replace, to: APP_ROUTE_PATH.SESSIONS }).catch(() => undefined);
+					}
+					return;
+				case APP_ROUTE_KIND.WORKOUT:
+					if (route.workoutId) {
+						navigate({
+							params: { workoutId: route.workoutId },
+							replace,
+							to: APP_ROUTE_PATH.WORKOUT,
+						}).catch(() => undefined);
+					} else {
+						navigate({ replace, to: APP_ROUTE_PATH.WORKOUTS }).catch(() => undefined);
+					}
+					return;
+				default:
+					return unreachable(route);
+			}
 		},
-		[showAppRoute]
+		[navigate]
 	);
 	const setActiveOverlay = useCallback(
 		(overlay: AppOverlay | undefined) => {
@@ -173,21 +212,27 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 			}
 			persistBikeGpxBrowserOpen(false);
 			persistOpenSideTray(overlay);
-			setAppRoute(HOME_APP_ROUTE);
 			setActiveOverlayState(overlay);
-			updateBrowserRoute(HOME_APP_ROUTE, true);
+			navigate({ replace: true, to: APP_ROUTE_PATH.HOME }).catch(() => undefined);
 		},
-		[navigateToAppRoute]
+		[navigate, navigateToAppRoute]
 	);
 	useEffect(() => {
-		updateBrowserRoute(initialAppNavigation.route, true);
-		persistBikeGpxBrowserOpen(initialAppNavigation.route.kind === APP_ROUTE_KIND.BIKEGPX);
-		const handlePopState = () => {
-			showAppRoute(appRouteFromPathname(globalThis.location.pathname));
-		};
-		window.addEventListener('popstate', handlePopState);
-		return () => window.removeEventListener('popstate', handlePopState);
-	}, [initialAppNavigation.route, showAppRoute]);
+		if (restoringRoute.current) {
+			restoringRoute.current = false;
+			navigateToAppRoute(initialAppNavigation.route, true);
+			return;
+		}
+		const routeOverlay = appRouteSideTray(matchedAppRoute);
+		persistBikeGpxBrowserOpen(matchedAppRoute.kind === APP_ROUTE_KIND.BIKEGPX);
+		persistOpenSideTray(routeOverlay);
+		setActiveOverlayState((currentOverlay) => {
+			if (routeOverlay) {
+				return routeOverlay;
+			}
+			return isSideTrayOverlay(currentOverlay) ? undefined : currentOverlay;
+		});
+	}, [initialAppNavigation.route, matchedAppRoute, navigateToAppRoute]);
 	const devicesOpen = activeOverlay === APP_OVERLAY.DEVICES;
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
@@ -207,8 +252,6 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const speedUnit = useSelector(preferencesStore, (preferences) => preferences.speedUnit);
 	const workoutLibrary = useWorkoutLibrary();
 	const virtualShiftingReady = virtualShiftingConnectionReady({
-		clickConnectedCount: click.connectedCount,
-		clickPairedCount: click.pairedCount,
 		trainerConnected: trainer.connected,
 	});
 	const gearResistanceRef = useRef<(fromGear: number, toGear: number) => void>(
@@ -581,6 +624,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 			<DevicePairingPanel
 				click={{
 					...click,
+					onCancel: click.disconnect,
 					onDisconnect: click.disconnect,
 					onForget: click.forget,
 					onForgetController: click.forgetDevice,
@@ -589,6 +633,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				}}
 				heartRate={{
 					...heartRate,
+					onCancel: heartRate.cancelConnection,
 					onDisconnect: heartRate.disconnect,
 					onForget: heartRate.forget,
 					onPair: heartRate.pair,
@@ -600,6 +645,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					busy: trainer.connectionBusy,
 					connected: trainer.connected,
 					name: trainer.pairedDeviceName,
+					onCancel: trainer.cancelConnection,
 					onDisconnect: trainer.disconnect,
 					onForget: trainer.forget,
 					onPair: trainer.connect,

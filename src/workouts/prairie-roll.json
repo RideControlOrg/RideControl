@@ -1,11 +1,10 @@
 {
 	"id": "prairie-roll",
 	"name": "Prairie Roll",
-	"description": "Fifteen miles of long, gentle rollers moving from 15–25% resistance around a steady 20%.",
+	"description": "Fifteen miles of long, gentle rollers with repeated gradual climbs and descents.",
 	"difficulty": "gentle",
 	"routeType": "loop",
 	"distance": 24.14016,
-	"baseResistance": 20,
 	"points": [
 		{ "distance": 0, "elevation": 30, "x": 12, "y": 52 },
 		{ "distance": 1.5, "elevation": 30, "x": 18, "y": 27 },

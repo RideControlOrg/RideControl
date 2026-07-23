@@ -5,7 +5,6 @@
 	"difficulty": "gentle",
 	"routeType": "loop",
 	"distance": 6.4,
-	"baseResistance": 12,
 	"points": [
 		{ "distance": 0, "elevation": 18, "x": 18, "y": 40 },
 		{ "distance": 0.8, "elevation": 21, "x": 33, "y": 18 },

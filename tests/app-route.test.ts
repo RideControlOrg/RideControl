@@ -1,58 +1,109 @@
 import { describe, expect, test } from 'bun:test';
+import { createMemoryHistory } from '@tanstack/react-router';
 import { APP_OVERLAY } from '../src/lib/app-overlay';
 import {
 	APP_ROUTE_KIND,
-	appRouteFromPathname,
-	appRoutePath,
+	APP_ROUTE_PATH,
+	appRouteFromRouterMatch,
 	appRouteSideTray,
 } from '../src/lib/app-route';
+import { createAppRouter } from '../src/router';
+
+async function loadedRoute(pathname: string) {
+	const router = createAppRouter({
+		history: createMemoryHistory({ initialEntries: [pathname] }),
+	});
+	await router.load();
+	return {
+		match: router.state.matches.at(-1),
+		redirectHref: router.state.redirect?.options.href,
+	};
+}
 
 describe('application deep links', () => {
-	test('parses direct BikeGPX, workout, session, and devices links', () => {
-		expect(appRouteFromPathname('/bikegpx/2635')).toEqual({
+	test('matches direct BikeGPX, workout, session, and devices links', async () => {
+		const bikeGpx = await loadedRoute('/bikegpx/2635');
+		expect(bikeGpx.match?.routeId).toBe(APP_ROUTE_PATH.BIKEGPX_ROUTE);
+		expect(bikeGpx.match?.params).toEqual({ routeId: '2635' });
+		expect(appRouteFromRouterMatch(bikeGpx.match)).toEqual({
 			kind: APP_ROUTE_KIND.BIKEGPX,
 			routeId: '2635',
 		});
-		expect(appRouteFromPathname('/workouts/prairie%20roll')).toEqual({
+
+		const workout = await loadedRoute('/workouts/prairie%20roll');
+		expect(workout.match?.routeId).toBe(APP_ROUTE_PATH.WORKOUT);
+		expect(workout.match?.params).toEqual({ workoutId: 'prairie roll' });
+		expect(appRouteFromRouterMatch(workout.match)).toEqual({
 			kind: APP_ROUTE_KIND.WORKOUT,
 			workoutId: 'prairie roll',
 		});
-		expect(appRouteFromPathname('/sessions/ride%2Fmorning')).toEqual({
+
+		const session = await loadedRoute('/sessions/ride%2Fmorning');
+		expect(session.match?.routeId).toBe(APP_ROUTE_PATH.SESSION);
+		expect(session.match?.params).toEqual({ sessionId: 'ride/morning' });
+		expect(appRouteFromRouterMatch(session.match)).toEqual({
 			kind: APP_ROUTE_KIND.SESSION,
 			sessionId: 'ride/morning',
 		});
-		expect(appRouteFromPathname('/devices')).toEqual({ kind: APP_ROUTE_KIND.DEVICES });
-	});
 
-	test('supports collection links and rejects malformed paths', () => {
-		expect(appRouteFromPathname('/bikegpx/')).toEqual({
-			kind: APP_ROUTE_KIND.BIKEGPX,
-		});
-		expect(appRouteFromPathname('/workouts')).toEqual({
-			kind: APP_ROUTE_KIND.WORKOUT,
-		});
-		expect(appRouteFromPathname('/sessions')).toEqual({
-			kind: APP_ROUTE_KIND.SESSION,
-		});
-		expect(appRouteFromPathname('/unknown/path')).toEqual({ kind: APP_ROUTE_KIND.HOME });
-		expect(appRouteFromPathname('/devices/trainer')).toEqual({ kind: APP_ROUTE_KIND.HOME });
-		expect(appRouteFromPathname('/sessions/%E0%A4%A')).toEqual({
-			kind: APP_ROUTE_KIND.SESSION,
+		const devices = await loadedRoute('/devices');
+		expect(devices.match?.routeId).toBe(APP_ROUTE_PATH.DEVICES);
+		expect(appRouteFromRouterMatch(devices.match)).toEqual({
+			kind: APP_ROUTE_KIND.DEVICES,
 		});
 	});
 
-	test('serializes encoded direct links and selects their parent tray', () => {
-		const bikeGpx = { kind: APP_ROUTE_KIND.BIKEGPX, routeId: '26/35' } as const;
-		const workout = { kind: APP_ROUTE_KIND.WORKOUT, workoutId: 'hill climb' } as const;
-		const session = { kind: APP_ROUTE_KIND.SESSION, sessionId: 'ride#1' } as const;
-		const devices = { kind: APP_ROUTE_KIND.DEVICES } as const;
-		expect(appRoutePath(bikeGpx)).toBe('/bikegpx/26%2F35');
-		expect(appRoutePath(workout)).toBe('/workouts/hill%20climb');
-		expect(appRoutePath(session)).toBe('/sessions/ride%231');
-		expect(appRoutePath(devices)).toBe('/devices');
-		expect(appRouteSideTray(bikeGpx)).toBe(APP_OVERLAY.WORKOUTS);
-		expect(appRouteSideTray(workout)).toBe(APP_OVERLAY.WORKOUTS);
-		expect(appRouteSideTray(session)).toBe(APP_OVERLAY.HISTORY);
-		expect(appRouteSideTray(devices)).toBe(APP_OVERLAY.DEVICES);
+	test('matches collection links and redirects unknown paths home', async () => {
+		expect((await loadedRoute('/bikegpx')).match?.routeId).toBe(APP_ROUTE_PATH.BIKEGPX);
+		expect((await loadedRoute('/workouts')).match?.routeId).toBe(APP_ROUTE_PATH.WORKOUTS);
+		expect((await loadedRoute('/sessions')).match?.routeId).toBe(APP_ROUTE_PATH.SESSIONS);
+		expect((await loadedRoute('/unknown/path')).redirectHref).toBe(APP_ROUTE_PATH.HOME);
+		expect((await loadedRoute('/devices/trainer')).redirectHref).toBe(APP_ROUTE_PATH.HOME);
+	});
+
+	test('builds encoded direct links and selects their parent trays', async () => {
+		const router = createAppRouter({
+			history: createMemoryHistory({ initialEntries: [APP_ROUTE_PATH.HOME] }),
+		});
+		await router.load();
+		expect(
+			router.buildLocation({
+				params: { routeId: '26/35' },
+				to: APP_ROUTE_PATH.BIKEGPX_ROUTE,
+			}).href
+		).toBe('/bikegpx/26%2F35');
+		expect(
+			router.buildLocation({
+				params: { workoutId: 'hill climb' },
+				to: APP_ROUTE_PATH.WORKOUT,
+			}).href
+		).toBe('/workouts/hill%20climb');
+		expect(
+			router.buildLocation({
+				params: { sessionId: 'ride#1' },
+				to: APP_ROUTE_PATH.SESSION,
+			}).href
+		).toBe('/sessions/ride%231');
+
+		expect(appRouteSideTray({ kind: APP_ROUTE_KIND.BIKEGPX })).toBe(APP_OVERLAY.WORKOUTS);
+		expect(appRouteSideTray({ kind: APP_ROUTE_KIND.WORKOUT })).toBe(APP_OVERLAY.WORKOUTS);
+		expect(appRouteSideTray({ kind: APP_ROUTE_KIND.SESSION })).toBe(APP_OVERLAY.HISTORY);
+		expect(appRouteSideTray({ kind: APP_ROUTE_KIND.DEVICES })).toBe(APP_OVERLAY.DEVICES);
+	});
+
+	test('moves through application history without reloading the dashboard', async () => {
+		const history = createMemoryHistory({ initialEntries: [APP_ROUTE_PATH.HOME] });
+		const router = createAppRouter({ history });
+		await router.load();
+		await router.navigate({ to: APP_ROUTE_PATH.DEVICES });
+		expect(router.state.location.pathname).toBe(APP_ROUTE_PATH.DEVICES);
+
+		router.history.back();
+		await router.load();
+		expect(router.state.location.pathname).toBe(APP_ROUTE_PATH.HOME);
+
+		router.history.forward();
+		await router.load();
+		expect(router.state.location.pathname).toBe(APP_ROUTE_PATH.DEVICES);
 	});
 });

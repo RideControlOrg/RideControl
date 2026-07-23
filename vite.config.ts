@@ -9,6 +9,20 @@ const buildPrUrl =
 	'https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed';
 
 export default defineConfig({
+	build: {
+		rolldownOptions: {
+			output: {
+				codeSplitting: {
+					groups: [
+						{
+							name: 'tanstack-router',
+							test: /node_modules[/]@tanstack[/](?:history|react-router|router-core)/,
+						},
+					],
+				},
+			},
+		},
+	},
 	define: {
 		'import.meta.env.RIDE_CONTROL_BUILD_PR_URL': JSON.stringify(buildPrUrl),
 		'import.meta.env.RIDE_CONTROL_BUILD_TIMESTAMP_UTC': JSON.stringify(buildTimestampUtc),

@@ -1,7 +1,7 @@
 import { useSelector } from '@tanstack/react-store';
 import { Fragment, useCallback, useEffect, useMemo } from 'react';
 import { evenlySample, valueRange } from '../lib/arrays';
-import { chartPath, roundedChartMaximum } from '../lib/chart';
+import { chartPath, resistanceChartMaximum, roundedChartMaximum } from '../lib/chart';
 import { CHART_MODE } from '../lib/chart-mode';
 import { CONTROL_MODE } from '../lib/control-mode';
 import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
@@ -15,7 +15,7 @@ import {
 	RESISTANCE_METRIC_PRESENTATION,
 	STANDARD_METRIC_KEYS,
 } from '../lib/metric-presentation';
-import { MAX_RESISTANCE, MIN_RESISTANCE } from '../lib/resistance';
+import { MIN_RESISTANCE } from '../lib/resistance';
 import {
 	convertElevation,
 	convertSpeed,
@@ -176,7 +176,12 @@ export function SessionChart({
 					]
 				: []),
 			{
-				chartMaximum: MAX_RESISTANCE,
+				chartMaximum: resistanceChartMaximum(
+					maximumValue(
+						chartHistory.map((sample) => sample.resistance),
+						(resistance) => resistance ?? 0
+					)
+				),
 				color: RESISTANCE_METRIC_PRESENTATION.chartColor,
 				decimals: 0,
 				key: CONTROL_MODE.RESISTANCE,

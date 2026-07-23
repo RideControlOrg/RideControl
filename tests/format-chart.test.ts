@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { chartPath, roundedChartMaximum, storedChartMode } from '../src/lib/chart';
+import {
+	chartPath,
+	resistanceChartMaximum,
+	roundedChartMaximum,
+	storedChartMode,
+} from '../src/lib/chart';
 import {
 	aggregateMaximum,
 	formatAggregateAverage,
@@ -53,6 +58,14 @@ describe('chart utilities', () => {
 	test('rounds maxima up by chart step', () => {
 		expect(roundedChartMaximum(121, 100, 50)).toBe(150);
 		expect(roundedChartMaximum(20, 100, 50)).toBe(100);
+	});
+
+	test('starts resistance charts at 50 percent and expands with headroom', () => {
+		expect(resistanceChartMaximum(0)).toBe(50);
+		expect(resistanceChartMaximum(44)).toBe(50);
+		expect(resistanceChartMaximum(45)).toBe(60);
+		expect(resistanceChartMaximum(52)).toBe(70);
+		expect(resistanceChartMaximum(95)).toBe(100);
 	});
 
 	test('restores only supported chart modes', () => {

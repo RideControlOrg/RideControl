@@ -29,6 +29,7 @@ export function useHeartRateMonitor(
 	const [battery, setBattery] = useState<number>();
 	const autoReconnect = useRef(true);
 	const connecting = useRef(false);
+	const connectionGeneration = useRef(0);
 	const forgotten = useRef(false);
 	const connectionCleanup = useRef<() => void>(() => undefined);
 	const connectDeviceRef = useRef<
@@ -73,16 +74,39 @@ export function useHeartRateMonitor(
 			if (forgotten.current || connecting.current) {
 				return false;
 			}
+			const generation = connectionGeneration.current + 1;
+			connectionGeneration.current = generation;
 			connecting.current = true;
 			setPhase(reconnecting ? 'reconnecting' : 'connecting');
 			connectionCleanup.current();
 			setBattery(undefined);
 			try {
 				const connection = await connectHeartRateDevice(selected, reconnecting, {
-					onBattery: setBattery,
-					onDisconnect: () => handleDisconnect(selected),
-					onHeartRate: setHeartRate,
+					onBattery: (nextBattery) => {
+						if (generation === connectionGeneration.current) {
+							setBattery(nextBattery);
+						}
+					},
+					onDisconnect: () => {
+						if (generation === connectionGeneration.current) {
+							handleDisconnect(selected);
+						}
+					},
+					onHeartRate: (nextHeartRate) => {
+						if (generation === connectionGeneration.current) {
+							setHeartRate(nextHeartRate);
+						}
+					},
 				});
+				if (
+					generation !== connectionGeneration.current ||
+					forgotten.current ||
+					!autoReconnect.current
+				) {
+					connection.cleanup();
+					selected.gatt?.disconnect();
+					return false;
+				}
 				connectionCleanup.current = connection.cleanup;
 				setDevice(selected);
 				setPhase('connected');
@@ -90,7 +114,9 @@ export function useHeartRateMonitor(
 				localStorage.setItem(STORAGE_KEY, selected.id);
 				return true;
 			} catch (error) {
-				handleConnectionFailure(selected, error, reconnecting);
+				if (generation === connectionGeneration.current) {
+					handleConnectionFailure(selected, error, reconnecting);
+				}
 				return false;
 			} finally {
 				connecting.current = false;
@@ -108,18 +134,27 @@ export function useHeartRateMonitor(
 			setNotice(WEB_BLUETOOTH_UNAVAILABLE_MESSAGE);
 			return;
 		}
+		const generation = connectionGeneration.current + 1;
+		connectionGeneration.current = generation;
 		setPhase('pairing');
 		try {
 			const selected = await navigator.bluetooth.requestDevice({
 				filters: [{ services: [HEART_RATE] }],
 				optionalServices: [BATTERY],
 			});
+			if (generation !== connectionGeneration.current) {
+				selected.gatt?.disconnect();
+				return;
+			}
 			autoReconnect.current = true;
 			forgotten.current = false;
 			setDevice(selected);
 			localStorage.setItem(STORAGE_KEY, selected.id);
 			await connectDevice(selected);
 		} catch (error) {
+			if (generation !== connectionGeneration.current) {
+				return;
+			}
 			setPhase(device ? 'offline' : 'unpaired');
 			if (!isBluetoothChooserCancellation(error)) {
 				setNotice(errorMessage(error));
@@ -138,6 +173,7 @@ export function useHeartRateMonitor(
 	}, [device]);
 
 	const disconnect = useCallback(() => {
+		connectionGeneration.current += 1;
 		autoReconnect.current = false;
 		if (device) {
 			reconnectController.current.cancel(device.id, true);
@@ -148,22 +184,39 @@ export function useHeartRateMonitor(
 		setPhase(device ? 'offline' : 'unpaired');
 	}, [device]);
 
-	const forget = useCallback(async () => {
+	const cancelConnection = useCallback(() => {
+		connectionGeneration.current += 1;
 		autoReconnect.current = false;
-		forgotten.current = true;
 		if (device) {
 			reconnectController.current.cancel(device.id, true);
 		}
 		connectionCleanup.current();
 		device?.gatt?.disconnect();
+		setHeartRate(0);
+		setBattery(undefined);
+		setPhase(device ? 'offline' : 'unpaired');
+	}, [device]);
+
+	const forget = useCallback(async () => {
+		const selected = device;
+		connectionGeneration.current += 1;
+		autoReconnect.current = false;
+		forgotten.current = true;
+		if (selected) {
+			reconnectController.current.cancel(selected.id, true);
+		}
+		connectionCleanup.current();
+		selected?.gatt?.disconnect();
+		localStorage.removeItem(STORAGE_KEY);
+		setDevice(undefined);
+		setHeartRate(0);
+		setBattery(undefined);
+		setPhase('unpaired');
 		try {
-			await device?.forget();
-		} finally {
-			localStorage.removeItem(STORAGE_KEY);
-			setDevice(undefined);
-			setHeartRate(0);
-			setBattery(undefined);
-			setPhase('unpaired');
+			await selected?.forget();
+		} catch {
+			// The app state is already cleared even when Chrome cannot revoke its
+			// remembered permission.
 		}
 	}, [device]);
 
@@ -217,6 +270,7 @@ export function useHeartRateMonitor(
 	return {
 		battery,
 		...deviceConnectionView(phase),
+		cancelConnection,
 		disconnect,
 		forget,
 		heartRate,

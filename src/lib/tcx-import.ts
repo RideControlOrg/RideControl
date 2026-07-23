@@ -146,7 +146,6 @@ function activityWorkout(activity: Element): SessionWorkout | undefined {
 		}));
 	return restoreSessionWorkout({
 		course: {
-			baseResistance: numberValue(child(workout, 'BaseResistance')),
 			description: text(child(workout, 'Description')),
 			difficulty: text(child(workout, 'Difficulty')),
 			distance: numberValue(child(workout, 'Distance')),

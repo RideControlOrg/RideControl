@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
+	BLUETOOTH_OPERATION_TIMEOUT_MS,
+	BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS,
 	CONTROL_POINT,
 	CYCLING_POWER,
 	CYCLING_POWER_MEASUREMENT,
@@ -52,6 +54,11 @@ function notificationCharacteristic() {
 }
 
 describe('trainer device connection', () => {
+	test('allows slow trainer setup without weakening runtime command recovery', () => {
+		expect(BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS).toBe(30_000);
+		expect(BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS).toBeGreaterThan(BLUETOOTH_OPERATION_TIMEOUT_MS);
+	});
+
 	test('discovers trainers by FTMS service instead of vendor name', () => {
 		const options = trainerRequestOptions();
 		if (!('filters' in options)) {
@@ -148,6 +155,9 @@ describe('trainer device connection', () => {
 		);
 
 		connection.cleanup();
+		await expect(
+			connection.sendControlCommand([FTMS_CONTROL_OPCODE.REQUEST_CONTROL])
+		).rejects.toThrow('Trainer connection closed during a control command.');
 		releasePowerService?.(power);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(optionalPower.listeners.size).toBe(0);

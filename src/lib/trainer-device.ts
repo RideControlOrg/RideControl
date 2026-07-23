@@ -1,4 +1,5 @@
 import {
+	BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS,
 	CONTROL_POINT,
 	CSC_MEASUREMENT,
 	CYCLING_POWER,
@@ -84,6 +85,7 @@ function createControlPointProcedure(controlPoint: BluetoothRemoteGATTCharacteri
 	send: (bytes: readonly number[]) => Promise<void>;
 } {
 	let pending: PendingControlProcedure | undefined;
+	let closed = false;
 	const handleIndication = (event: Event) => {
 		const value = characteristicValue(event);
 		if (
@@ -104,6 +106,7 @@ function createControlPointProcedure(controlPoint: BluetoothRemoteGATTCharacteri
 		}
 	};
 	const cancel = () => {
+		closed = true;
 		const procedure = pending;
 		pending = undefined;
 		procedure?.reject(new Error('Trainer connection closed during a control command.'));
@@ -116,6 +119,10 @@ function createControlPointProcedure(controlPoint: BluetoothRemoteGATTCharacteri
 		if (pending) {
 			throw new Error('Another trainer control command is still in progress.');
 		}
+		if (closed) {
+			throw new Error('Trainer connection closed during a control command.');
+		}
+		const commandName = FTMS_COMMAND_NAME[opcode] ?? `command 0x${opcode.toString(16)}`;
 		let procedure: PendingControlProcedure | undefined;
 		const response = new Promise<void>((resolve, reject) => {
 			procedure = { opcode, reject, resolve };
@@ -123,13 +130,13 @@ function createControlPointProcedure(controlPoint: BluetoothRemoteGATTCharacteri
 		});
 		const acknowledged = withBluetoothOperationTimeout(
 			response,
-			'Fitness machine control response'
+			`Fitness machine ${commandName} response`
 		);
 		try {
 			await Promise.all([
 				withBluetoothOperationTimeout(
 					controlPoint.writeValueWithResponse(Uint8Array.from(bytes)),
-					'Fitness machine control write'
+					`Fitness machine ${commandName} write`
 				),
 				acknowledged,
 			]);
@@ -222,17 +229,20 @@ export async function connectTrainerDevice(
 	const server = await connectGatt(device, rediscover);
 	const service = await withBluetoothOperationTimeout(
 		server.getPrimaryService(FITNESS_MACHINE),
-		'Fitness machine service discovery'
+		'Fitness machine service discovery',
+		BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS
 	);
 	// ATT requests share one channel on a device. Keep this setup sequential even
 	// while connections to other physical devices proceed in parallel.
 	const bikeData = await withBluetoothOperationTimeout(
 		service.getCharacteristic(INDOOR_BIKE_DATA),
-		'Indoor bike data discovery'
+		'Indoor bike data discovery',
+		BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS
 	);
 	const controlPoint = await withBluetoothOperationTimeout(
 		service.getCharacteristic(CONTROL_POINT),
-		'Fitness machine control discovery'
+		'Fitness machine control discovery',
+		BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS
 	);
 	const bikeDataNotifications = createBluetoothNotificationSubscription(bikeData, (event) => {
 		const value = characteristicValue(event);
@@ -250,11 +260,13 @@ export async function connectTrainerDevice(
 	try {
 		await withBluetoothOperationTimeout(
 			bikeDataNotifications.start(),
-			'Indoor bike data notification setup'
+			'Indoor bike data notification setup',
+			BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS
 		);
 		await withBluetoothOperationTimeout(
 			controlPointNotifications.start(),
-			'Fitness machine control notification setup'
+			'Fitness machine control notification setup',
+			BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS
 		);
 		let resistanceRange = fallbackRange;
 		try {

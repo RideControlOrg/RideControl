@@ -33,7 +33,7 @@ import {
 	type WorkoutRouteType,
 } from './workout-schema';
 
-const DEFAULT_TERRAIN_RESISTANCE = 12;
+const FLAT_TERRAIN_RESISTANCE = 12;
 const RESISTANCE_PER_GRADE_PERCENT = 2.25;
 const MIN_TERRAIN_RESISTANCE = 4;
 const MAX_TERRAIN_RESISTANCE = 55;
@@ -70,7 +70,6 @@ interface CourseSegment {
 }
 
 interface BuiltInWorkoutDefinition {
-	baseResistance: number;
 	description: string;
 	difficulty: string;
 	distance: number;
@@ -260,7 +259,6 @@ function createGeographicCourse(
 	difficulty: WorkoutDifficulty,
 	distance: number,
 	points: GeographicRoutePoint[],
-	baseResistance = DEFAULT_TERRAIN_RESISTANCE,
 	routeType: WorkoutRouteType = WORKOUT_ROUTE_TYPE.LOOP,
 	descriptionAttribution?: WorkoutDescriptionAttribution,
 	startingLocation?: string
@@ -284,7 +282,6 @@ function createGeographicCourse(
 		withFlatCourseStart(sourcePoints, distance, routeType, rolloutDistance)
 	);
 	return {
-		baseResistance,
 		description,
 		descriptionAttribution,
 		difficulty,
@@ -309,7 +306,6 @@ function createBuiltInCourse(definition: BuiltInWorkoutDefinition): WorkoutCours
 		definition.difficulty,
 		definition.distance,
 		geographicPointsForMap(definition.distance, definition.points),
-		definition.baseResistance,
 		definition.routeType
 	);
 }
@@ -461,7 +457,7 @@ export function workoutTerrainAtDistance(
 	const resistance = clampResistance(
 		Math.round(
 			clamp(
-				course.baseResistance + grade * RESISTANCE_PER_GRADE_PERCENT,
+				FLAT_TERRAIN_RESISTANCE + grade * RESISTANCE_PER_GRADE_PERCENT,
 				MIN_TERRAIN_RESISTANCE,
 				MAX_TERRAIN_RESISTANCE
 			)
@@ -1021,7 +1017,6 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		return;
 	}
 	const {
-		baseResistance,
 		description,
 		descriptionAttribution,
 		difficulty,
@@ -1057,15 +1052,6 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 	) {
 		return;
 	}
-	const restoredBaseResistance =
-		baseResistance === undefined ? DEFAULT_TERRAIN_RESISTANCE : baseResistance;
-	if (
-		!isFiniteNumber(restoredBaseResistance) ||
-		restoredBaseResistance < MIN_TERRAIN_RESISTANCE ||
-		restoredBaseResistance > MAX_TERRAIN_RESISTANCE
-	) {
-		return;
-	}
 	const restoredSources = points
 		.map(restoredPoint)
 		.filter((point): point is RestoredRoutePoint => point !== undefined);
@@ -1086,7 +1072,6 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		difficulty,
 		distance,
 		restoredPoints,
-		restoredBaseResistance,
 		restoredRouteType,
 		descriptionAttribution,
 		startingLocation?.trim()

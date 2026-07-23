@@ -9,7 +9,6 @@ export interface ReconnectControllerOptions<T> {
 
 interface RetryEntry<T> {
 	attempt: number;
-	expediteDelay?: number;
 	inFlight: boolean;
 	target: T;
 	timer?: ReturnType<typeof setTimeout>;
@@ -69,9 +68,7 @@ export function createReconnectController<T>({
 				return;
 			}
 			entry.attempt += 1;
-			const nextDelay = entry.expediteDelay ?? delayForAttempt(entry.attempt);
-			entry.expediteDelay = undefined;
-			schedule(key, entry, nextDelay);
+			schedule(key, entry, delayForAttempt(entry.attempt));
 		}, delay);
 	};
 
@@ -85,7 +82,9 @@ export function createReconnectController<T>({
 		expedite: (key, target, delay = 0) => {
 			const current = entries.get(key);
 			if (current?.inFlight) {
-				current.expediteDelay = delay;
+				// An advertisement can arrive while service discovery is already using
+				// the device. It cannot help that attempt, and carrying it forward would
+				// turn a failed handshake into an immediate disconnect/reconnect loop.
 				current.target = target;
 				return;
 			}
