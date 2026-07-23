@@ -2,10 +2,12 @@ import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useSelector } from '@tanstack/react-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppFooter } from './components/app-footer';
+import { BuildDetailsDialog } from './components/build-details-dialog';
 import { Dashboard, DashboardToolbar, DashboardWorkspace } from './components/dashboard-layout';
 import { DashboardTools } from './components/dashboard-tools';
 import { DevicePairingPanel } from './components/device-pairing';
 import { KeyboardShortcutsDialog } from './components/keyboard-shortcuts-dialog';
+import { PrivacyPolicyDialog, TermsOfServiceDialog } from './components/legal-dialog';
 import { Notification } from './components/notification';
 import { RideMetrics } from './components/ride-metrics';
 import { SessionControls } from './components/session-controls';
@@ -575,7 +577,12 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					/>
 				</DashboardWorkspace>
 			</Dashboard>
-			<AppFooter onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)} />
+			<AppFooter
+				onOpenPrivacy={() => setActiveOverlay(APP_OVERLAY.PRIVACY)}
+				onOpenTerms={() => setActiveOverlay(APP_OVERLAY.TERMS)}
+				onOpenVersion={() => setActiveOverlay(APP_OVERLAY.BUILD)}
+				onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)}
+			/>
 			<Notification
 				connected={connected}
 				notice={trainer.notice}
@@ -660,6 +667,18 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				onClose={() => setActiveOverlay(undefined)}
 				open={activeOverlay === APP_OVERLAY.SHORTCUTS}
 				shortcuts={virtualShiftingActive ? gearingKeyboardShortcuts : undefined}
+			/>
+			<BuildDetailsDialog
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === APP_OVERLAY.BUILD}
+			/>
+			<PrivacyPolicyDialog
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === APP_OVERLAY.PRIVACY}
+			/>
+			<TermsOfServiceDialog
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === APP_OVERLAY.TERMS}
 			/>
 			<WelcomeDialog onClose={closeWelcome} open={activeOverlay === APP_OVERLAY.WELCOME} />
 		</main>

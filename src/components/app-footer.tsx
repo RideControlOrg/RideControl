@@ -1,10 +1,23 @@
-import { BUILD_PR_URL, BUILD_TIMESTAMP_UTC, formatBuildTimestamp } from '../lib/build-info';
+import { BUILD_TIMESTAMP_UTC, formatBuildTimestamp } from '../lib/build-info';
 
-export function AppFooter({ onOpenWelcome }: { onOpenWelcome: () => void }) {
+const linkClass =
+	'rounded-sm transition hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-mint focus-visible:outline-offset-2';
+
+export function AppFooter({
+	onOpenPrivacy,
+	onOpenTerms,
+	onOpenVersion,
+	onOpenWelcome,
+}: {
+	onOpenPrivacy: () => void;
+	onOpenTerms: () => void;
+	onOpenVersion: () => void;
+	onOpenWelcome: () => void;
+}) {
 	return (
-		<footer className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-1.5 gap-y-0.5 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[11px] text-slate-600 sm:px-8">
+		<footer className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-1 border-slate-700/70 border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-slate-500 text-xs sm:px-8">
 			<button
-				className="font-semibold tracking-wide transition hover:text-slate-400"
+				className={`${linkClass} font-semibold tracking-wide`}
 				onClick={onOpenWelcome}
 				type="button"
 			>
@@ -12,16 +25,7 @@ export function AppFooter({ onOpenWelcome }: { onOpenWelcome: () => void }) {
 			</button>
 			<span aria-hidden="true">·</span>
 			<a
-				className="transition hover:text-slate-400"
-				href="https://github.com/RideControlOrg/RideControl"
-				rel="noreferrer"
-				target="_blank"
-			>
-				GitHub
-			</a>
-			<span aria-hidden="true">·</span>
-			<a
-				className="transition hover:text-slate-400"
+				className={linkClass}
 				href="https://github.com/sponsors/lookfirst"
 				rel="noreferrer"
 				target="_blank"
@@ -29,17 +33,35 @@ export function AppFooter({ onOpenWelcome }: { onOpenWelcome: () => void }) {
 				Sponsor
 			</a>
 			<span aria-hidden="true">·</span>
+			<a className={linkClass} href="mailto:hello@ridecontrol.xyz">
+				Contact
+			</a>
+			<span aria-hidden="true">·</span>
+			<button className={linkClass} onClick={onOpenPrivacy} type="button">
+				Privacy
+			</button>
+			<span aria-hidden="true">·</span>
+			<button className={linkClass} onClick={onOpenTerms} type="button">
+				Terms
+			</button>
+			<span aria-hidden="true">·</span>
 			<a
-				className="transition hover:text-slate-400"
-				href={BUILD_PR_URL}
+				className={linkClass}
+				href="https://github.com/RideControlOrg/RideControl"
 				rel="noreferrer"
 				target="_blank"
-				title={`Built from UTC timestamp ${BUILD_TIMESTAMP_UTC}`}
 			>
-				<time dateTime={BUILD_TIMESTAMP_UTC}>
-					{formatBuildTimestamp(BUILD_TIMESTAMP_UTC)}
-				</time>
+				GitHub
 			</a>
+			<span aria-hidden="true">·</span>
+			<button
+				className={linkClass}
+				onClick={onOpenVersion}
+				title={formatBuildTimestamp(BUILD_TIMESTAMP_UTC).replace('Build: ', '')}
+				type="button"
+			>
+				Version
+			</button>
 		</footer>
 	);
 }
