@@ -2,11 +2,14 @@ import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useSelector } from '@tanstack/react-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppFooter } from './components/app-footer';
+import { BuildDetailsDialog } from './components/build-details-dialog';
 import { Dashboard, DashboardToolbar, DashboardWorkspace } from './components/dashboard-layout';
 import { DashboardTools } from './components/dashboard-tools';
 import { DevicePairingPanel } from './components/device-pairing';
 import { KeyboardShortcutsDialog } from './components/keyboard-shortcuts-dialog';
+import { PrivacyPolicyDialog, TermsOfServiceDialog } from './components/legal-dialog';
 import { Notification } from './components/notification';
+import { ProfileDialog } from './components/profile-dialog';
 import { RideMetrics } from './components/ride-metrics';
 import { SessionControls } from './components/session-controls';
 import { SessionHistory } from './components/session-history';
@@ -19,6 +22,7 @@ import { WorkoutProgress } from './components/workout-progress';
 import { emptySession } from './constants';
 import { useGearControl } from './hooks/use-gear-control';
 import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
+import { useProfile } from './hooks/use-profile';
 import { useRememberedBluetoothDevices } from './hooks/use-remembered-bluetooth-devices';
 import { useSession } from './hooks/use-session';
 import { useSessionWorkflow } from './hooks/use-session-workflow';
@@ -53,8 +57,9 @@ import {
 } from './lib/control-mode';
 import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib/dom';
 import { unreachable } from './lib/errors';
-import { resistanceForVirtualGear } from './lib/gears';
+import { maximumGear, resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
+import { profileTotalMassKg, type RiderProfile } from './lib/profile';
 import { requestUnloadConfirmation, sessionNeedsUnloadWarning } from './lib/session';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import {
@@ -83,6 +88,27 @@ function metricsWithHeartRate(metrics: Metrics, connected: boolean, heartRate: n
 
 function shiftHandlerUnlessBlocked(handler: (change: number) => void, blocked: boolean) {
 	return blocked ? () => undefined : handler;
+}
+
+function personalizedWorkoutResistance({
+	gear,
+	profile,
+	profileReady,
+	terrainResistance,
+	virtualShiftingActive,
+}: {
+	gear: number;
+	profile: RiderProfile;
+	profileReady: boolean;
+	terrainResistance?: number;
+	virtualShiftingActive: boolean;
+}): number | undefined {
+	if (!(profileReady && terrainResistance !== undefined)) {
+		return;
+	}
+	return virtualShiftingActive
+		? resistanceForVirtualGear(terrainResistance, gear, profile, profileTotalMassKg(profile))
+		: terrainResistance;
 }
 
 interface InitialNavigation {
@@ -141,7 +167,8 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	);
 	const appRoute = restoringRoute.current ? initialAppNavigation.route : matchedAppRoute;
 	const rememberedDevices = useRememberedBluetoothDevices();
-	const trainer = useTrainer(rememberedDevices);
+	const riderProfile = useProfile();
+	const trainer = useTrainer(rememberedDevices, riderProfile.profile);
 	const [activeOverlay, setActiveOverlayState] = useState<AppOverlay | undefined>(
 		initialAppNavigation.overlay
 	);
@@ -254,6 +281,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const virtualShiftingReady = virtualShiftingConnectionReady({
 		trainerConnected: trainer.connected,
 	});
+	const profileMaximumGear = maximumGear(riderProfile.profile);
 	const gearResistanceRef = useRef<(fromGear: number, toGear: number) => void>(
 		trainer.shiftResistanceForGears
 	);
@@ -263,6 +291,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	);
 	const gearControl = useGearControl({
 		active: true,
+		maximumGear: profileMaximumGear,
 		onGearChange: handleGearChange,
 		ready: virtualShiftingReady,
 		setNotice: trainer.setNotice,
@@ -292,18 +321,26 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const workoutSelected = Boolean(dashboardWorkout.workout);
 	const virtualShiftingActive = click.paired || workoutSelected;
 	const activeControlMode = trainingControlMode(click.paired, workoutSelected);
-	let workoutResistance = workoutTerrain?.resistance;
-	if (workoutTerrain && virtualShiftingActive) {
-		workoutResistance = resistanceForVirtualGear(workoutTerrain.resistance, gearControl.gear);
-	}
+	const workoutResistance = personalizedWorkoutResistance({
+		gear: gearControl.gear,
+		profile: riderProfile.profile,
+		profileReady: riderProfile.ready,
+		terrainResistance: workoutTerrain?.resistance,
+		virtualShiftingActive,
+	});
 	gearResistanceRef.current = workoutTerrain
 		? (_fromGear, toGear) =>
 				trainer.updateProgramShiftResistance(
-					resistanceForVirtualGear(workoutTerrain.resistance, toGear)
+					resistanceForVirtualGear(
+						workoutTerrain.resistance,
+						toGear,
+						riderProfile.profile,
+						profileTotalMassKg(riderProfile.profile)
+					)
 				)
 		: trainer.shiftResistanceForGears;
 	useWorkoutResistance({
-		active: !session.ended,
+		active: !session.ended && riderProfile.ready,
 		connected: trainer.connected,
 		onResistanceChange: trainer.updateProgramResistance,
 		onRestoreResistance: trainer.restoreManualResistance,
@@ -560,6 +597,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 							virtualShiftingActive
 								? {
 										gear: gearControl.gear,
+										maximumGear: profileMaximumGear,
 										mode: CONTROL_MODE.GEAR,
 										onShift: gearControl.shiftGear,
 										shiftFlash: gearControl.shiftFlash,
@@ -575,7 +613,13 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					/>
 				</DashboardWorkspace>
 			</Dashboard>
-			<AppFooter onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)} />
+			<AppFooter
+				onOpenPrivacy={() => setActiveOverlay(APP_OVERLAY.PRIVACY)}
+				onOpenProfile={() => setActiveOverlay(APP_OVERLAY.PROFILE)}
+				onOpenTerms={() => setActiveOverlay(APP_OVERLAY.TERMS)}
+				onOpenVersion={() => setActiveOverlay(APP_OVERLAY.BUILD)}
+				onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)}
+			/>
 			<Notification
 				connected={connected}
 				notice={trainer.notice}
@@ -660,6 +704,26 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				onClose={() => setActiveOverlay(undefined)}
 				open={activeOverlay === APP_OVERLAY.SHORTCUTS}
 				shortcuts={virtualShiftingActive ? gearingKeyboardShortcuts : undefined}
+			/>
+			<BuildDetailsDialog
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === APP_OVERLAY.BUILD}
+			/>
+			<PrivacyPolicyDialog
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === APP_OVERLAY.PRIVACY}
+			/>
+			<TermsOfServiceDialog
+				onClose={() => setActiveOverlay(undefined)}
+				open={activeOverlay === APP_OVERLAY.TERMS}
+			/>
+			<ProfileDialog
+				onClose={() => setActiveOverlay(undefined)}
+				onSave={riderProfile.save}
+				open={activeOverlay === APP_OVERLAY.PROFILE}
+				profile={riderProfile.profile}
+				speedUnit={speedUnit}
+				storageError={riderProfile.storageError}
 			/>
 			<WelcomeDialog onClose={closeWelcome} open={activeOverlay === APP_OVERLAY.WELCOME} />
 		</main>

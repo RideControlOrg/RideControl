@@ -1,9 +1,13 @@
 import { isString } from './type-guards';
 
 export const APP_OVERLAY = {
+	BUILD: 'build',
 	DEVICES: 'devices',
 	HISTORY: 'history',
+	PRIVACY: 'privacy',
+	PROFILE: 'profile',
 	SHORTCUTS: 'shortcuts',
+	TERMS: 'terms',
 	WELCOME: 'welcome',
 	WORKOUTS: 'workouts',
 } as const;

@@ -1,13 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { BuildDetailsDialog } from '../src/components/build-details-dialog';
 import { ConnectionControl } from '../src/components/connection-control';
 import { DevicePairingButton, DevicePairingPanel } from '../src/components/device-pairing';
 import { GearControl } from '../src/components/gear-control';
 import { Icon } from '../src/components/icon';
 import { KeyboardShortcutsDialog } from '../src/components/keyboard-shortcuts-dialog';
+import { PrivacyPolicyDialog, TermsOfServiceDialog } from '../src/components/legal-dialog';
 import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
 import { Notification } from '../src/components/notification';
+import { ProfileDialog } from '../src/components/profile-dialog';
 import { RenameWorkoutDialog } from '../src/components/rename-workout-dialog';
 import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionChart } from '../src/components/session-chart';
@@ -501,6 +504,7 @@ describe('view components', () => {
 			<GearControl
 				disabled={false}
 				gear={12}
+				maximumGear={24}
 				onChange={() => undefined}
 				shiftFlash="increase"
 			/>
@@ -513,7 +517,9 @@ describe('view components', () => {
 		expect(html).toContain('grid h-9 w-9 shrink-0 place-items-center rounded-lg');
 		expect(html).toContain('scale-105 border-mint bg-mint/15 text-mint');
 		expect(html).not.toContain('Connect the trainer before shifting gears.');
-		const disabled = render(<GearControl disabled gear={12} onChange={() => undefined} />);
+		const disabled = render(
+			<GearControl disabled gear={12} maximumGear={24} onChange={() => undefined} />
+		);
 		expect(disabled).not.toContain('Connect the trainer before shifting gears.');
 		expect(disabled.match(/disabled=""/g)).toHaveLength(2);
 	});
@@ -524,6 +530,7 @@ describe('view components', () => {
 				connected
 				control={{
 					gear: 12,
+					maximumGear: 24,
 					mode: 'gear',
 					onShift: () => undefined,
 				}}
@@ -823,18 +830,23 @@ describe('view components', () => {
 		expect(html).toContain('Sessions');
 		expect(html).toContain('Show keyboard controls');
 		expect(html).toContain('Ride Control');
-		expect(html).toContain('Build:');
-		expect(html).toContain(
-			'href="https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
-		);
-		expect(html).toContain('<time dateTime=');
 		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
 		expect(html).toContain('href="https://github.com/sponsors/lookfirst"');
+		expect(html).toContain('href="mailto:hello@ridecontrol.xyz"');
+		expect(html).toContain('>Contact</a>');
+		expect(html).toContain('>Privacy</button>');
+		expect(html).toContain('>Terms</button>');
+		expect(html).toContain('>Version</button>');
 		expect(html).toContain('Sponsor');
+		expect(html.indexOf('href="https://github.com/sponsors/lookfirst"')).toBeLessThan(
+			html.indexOf('href="mailto:hello@ridecontrol.xyz"')
+		);
 		expect(html).not.toContain('WELCOME TO');
 		expect(html).toContain('show again');
-		expect(html).toContain('tracking-wide transition hover:text-slate-400');
+		expect(html).toContain('border-slate-700/70 border-t');
+		expect(html).toContain('text-slate-500 text-xs');
 		expect(html).toContain('type="button">Ride Control</button>');
+		expect(html).toContain('type="button">Profile</button>');
 		expect(html).toContain('mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 py-3');
 		expect(html).toContain('mb-4 flex flex-wrap items-center justify-between gap-3');
 		expect(html).toContain('mt-4 grid min-w-0 gap-4 *:min-w-0');
@@ -844,6 +856,119 @@ describe('view components', () => {
 		expect(html).toContain('xl:grid-cols-[1.45fr_.55fr]');
 		expect(html.indexOf('KM/H')).toBeLessThan(html.indexOf('Show keyboard controls'));
 		expect(html).toMatch(enabledEndSessionButton);
+	});
+
+	test('renders version details in an accessible dialog', () => {
+		expect(render(<BuildDetailsDialog onClose={() => undefined} open={false} />)).toBe('');
+		const html = render(
+			<BuildDetailsDialog
+				onClose={() => undefined}
+				open
+				pullRequests={[
+					{
+						mergedAt: '2026-07-22T19:30:00Z',
+						number: 42,
+						title: 'Improve production build details',
+						url: 'https://github.com/RideControlOrg/RideControl/pull/42',
+					},
+				]}
+			/>
+		);
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('Version details');
+		expect(html).not.toContain('Current build');
+		expect(html).not.toContain(
+			'These details identify the frontend bundle currently running in your browser.'
+		);
+		expect(html).toContain('Build ID');
+		expect(html).toContain('UTC timestamp');
+		expect(html).toContain('View source build on GitHub');
+		expect(html).toContain('Recent changes');
+		expect(html).toContain('Latest merged PR');
+		expect(html).toContain('Improve production build details');
+		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl/pull/42"');
+		expect(html).toContain('<time dateTime="2026-07-22T19:30:00Z">');
+		expect(html).toContain(
+			'href="https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed"'
+		);
+		expect(html).toContain('aria-label="Close version details"');
+		expect(
+			render(<BuildDetailsDialog onClose={() => undefined} open pullRequests={[]} />)
+		).toContain('Recent pull requests are included in production builds.');
+	});
+
+	test('renders the privacy policy in an accessible dialog', () => {
+		expect(render(<PrivacyPolicyDialog onClose={() => undefined} open={false} />)).toBe('');
+		const html = render(<PrivacyPolicyDialog onClose={() => undefined} open />);
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('Privacy Policy');
+		expect(html).toContain('Effective July 23, 2026');
+		expect(html).toContain('Ride Control does not create an account');
+		expect(html).toContain('does not use advertising or behavioral analytics cookies');
+		expect(html).toContain('href="mailto:hello@ridecontrol.xyz"');
+		expect(html).toContain('aria-label="Close privacy policy"');
+	});
+
+	test('renders the terms of service in an accessible dialog', () => {
+		expect(render(<TermsOfServiceDialog onClose={() => undefined} open={false} />)).toBe('');
+		const html = render(<TermsOfServiceDialog onClose={() => undefined} open />);
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('Terms of Service');
+		expect(html).toContain('Effective July 23, 2026');
+		expect(html).toContain('Ride Control does not provide medical advice');
+		expect(html).toContain('Bluetooth devices, trainers, sensors, and browsers vary');
+		expect(html).toContain('href="mailto:hello@ridecontrol.xyz"');
+		expect(html).toContain('frontend source code is available on GitHub');
+		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
+		expect(html).toContain('The backend component is closed source');
+		expect(html).toContain('optional paid additions');
+		expect(html).toContain('aria-label="Close terms of service"');
+	});
+
+	test('renders an inclusive local profile editor', () => {
+		const profile = {
+			bikeWeightKg: 9,
+			frontChainringTeeth: [53, 39],
+			identity: '',
+			name: 'Riley',
+			rearCassetteTeeth: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24],
+			riderWeightKg: 75,
+		};
+		expect(
+			render(
+				<ProfileDialog
+					onClose={() => undefined}
+					onSave={async () => undefined}
+					open={false}
+					profile={profile}
+					speedUnit="mph"
+					storageError=""
+				/>
+			)
+		).toBe('');
+		const html = render(
+			<ProfileDialog
+				onClose={() => undefined}
+				onSave={async () => undefined}
+				open
+				profile={profile}
+				speedUnit="mph"
+				storageError=""
+			/>
+		);
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('id="profile-title">Profile</h2>');
+		expect(html).toContain('Choose profile image');
+		expect(html).toContain('Sex or gender identity');
+		expect(html).toContain('value="Non-binary"');
+		expect(html).toContain('value="Two-Spirit"');
+		expect(html).toContain('never used in workout calculations');
+		expect(html).toContain('Your weight (lb)');
+		expect(html).toContain('Bike weight (lb)');
+		expect(html).toContain('value="53/39"');
+		expect(html).toContain('This setup creates 24 virtual gears');
+		expect(html).toContain('IndexedDB');
+		expect(html).toContain('aria-label="Close profile"');
 	});
 
 	test('shows manual virtual shifting for a terrain workout without Click controllers', async () => {

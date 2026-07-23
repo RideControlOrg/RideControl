@@ -61,6 +61,13 @@ jobs:
             build_pr_url="https://github.com/${GITHUB_REPOSITORY}/pulls?q=is%3Apr+is%3Aclosed"
           fi
           echo "VITE_BUILD_PR_URL=${build_pr_url}" >> "$GITHUB_ENV"
+          {
+            echo "VITE_BUILD_RECENT_PRS<<EOF"
+            gh pr list --state merged --base main --limit 10 \
+              --json mergedAt,number,title,url \
+              --jq 'sort_by(.mergedAt) | reverse'
+            echo "EOF"
+          } >> "$GITHUB_ENV"
       - name: Build Worker
         run: bun run build
       - name: Deploy Worker
