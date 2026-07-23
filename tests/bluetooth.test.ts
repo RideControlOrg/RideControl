@@ -10,6 +10,10 @@ import {
 	resistanceCommand,
 } from '../src/lib/bluetooth';
 import {
+	BluetoothOperationTimeoutError,
+	recoverableBluetoothOperationError,
+} from '../src/lib/bluetooth-operation';
+import {
 	loadRememberedBluetoothDevices,
 	rememberedBluetoothDevice,
 	rememberedBluetoothDevices,
@@ -80,6 +84,24 @@ describe('Bluetooth data utilities', () => {
 
 	test('encodes resistance using the trainer range', () => {
 		expect(resistanceCommand(50, { max: 30, min: -10 })).toEqual([4, 100, 0]);
+	});
+
+	test('identifies trainer transport failures that require a clean reconnect', () => {
+		expect(
+			recoverableBluetoothOperationError(
+				new BluetoothOperationTimeoutError('Fitness machine Request Control response')
+			)
+		).toBeTrue();
+		expect(
+			recoverableBluetoothOperationError(
+				new DOMException('GATT Server is disconnected.', 'NetworkError')
+			)
+		).toBeTrue();
+		expect(
+			recoverableBluetoothOperationError(
+				new Error('Trainer rejected Set Target Resistance: invalid parameter.')
+			)
+		).toBeFalse();
 	});
 
 	test('prefers a saved trainer and preserves the legacy KICKR fallback', async () => {

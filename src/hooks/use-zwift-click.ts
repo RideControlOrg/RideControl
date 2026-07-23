@@ -467,20 +467,24 @@ export function useZwiftClick(
 			forgottenIds.current.add(deviceId);
 			operationalRoles.current.delete(role);
 			reconnectController.current.cancel(deviceId, true);
+			connectionAttempts.current.set(role, (connectionAttempts.current.get(role) ?? 0) + 1);
+			connectingRoles.current.delete(role);
 			clickInput.clearDeviceHeldShifts(deviceId);
 			cleanupConnection(role);
 			selected.gatt?.disconnect();
+			const nextControllerDetails = { ...store.get().controllerDetails };
+			delete nextControllerDetails[role];
+			devicesRef.current.delete(role);
+			store.actions.removeController(role);
+			const nextControllerIds = { ...store.get().controllerIds };
+			delete nextControllerIds[role];
+			saveControllerIds(nextControllerIds);
+			saveControllerDetails(nextControllerDetails);
 			try {
 				await selected.forget();
-			} finally {
-				const nextControllerDetails = { ...store.get().controllerDetails };
-				delete nextControllerDetails[role];
-				devicesRef.current.delete(role);
-				store.actions.removeController(role);
-				const nextControllerIds = { ...store.get().controllerIds };
-				delete nextControllerIds[role];
-				saveControllerIds(nextControllerIds);
-				saveControllerDetails(nextControllerDetails);
+			} catch {
+				// Keep the controller removed locally even if Chrome cannot revoke
+				// its remembered permission.
 			}
 		},
 		[cleanupConnection, clickInput.clearDeviceHeldShifts, store]

@@ -282,6 +282,7 @@ describe('view components', () => {
 		const common = {
 			busy: false,
 			connected: false,
+			onCancel: () => undefined,
 			onDisconnect: () => undefined,
 			onForget: () => undefined,
 			onPair: () => undefined,
@@ -341,9 +342,10 @@ describe('view components', () => {
 		expect(panel).not.toContain('Waiting for controllers…');
 		expect(panel).not.toContain('Retry');
 		expect(panel).toContain('Connecting...');
+		expect(panel).toContain('>Stop connecting</button>');
 		expect(panel).not.toContain('>Reconnect</button>');
-		expect(panel.match(/<span class="sr-only">Connecting\.\.\.<\/span>/g)).toHaveLength(2);
-		expect(panel.match(/connecting-dot/g)).toHaveLength(6);
+		expect(panel.match(/<span class="sr-only">Connecting\.\.\.<\/span>/g)).toHaveLength(1);
+		expect(panel.match(/connecting-dot/g)).toHaveLength(3);
 		expect(panel.match(/connection-status-pulse/g)).toHaveLength(2);
 		expect(panel).toContain('shadow-[0_0_16px_rgba(56,189,248,.95)]');
 		expect(panel).toContain('Automatic reconnect in Chrome');
@@ -367,6 +369,32 @@ describe('view components', () => {
 		expect(panel).toContain('bg-mint/10');
 		expect(panel).not.toContain('shadow-[inset_0_0_18px');
 		expect(panel).not.toContain('divide-y');
+		const pairingPanel = render(
+			<DevicePairingPanel
+				browserNotice=""
+				click={{
+					...common,
+					connectedCount: 0,
+					connectionActive: true,
+					controllers: [],
+					onForgetController: () => undefined,
+					onPairController: () => undefined,
+					pairedCount: 0,
+					reconnecting: false,
+				}}
+				heartRate={common}
+				onClose={() => undefined}
+				open
+				trainer={{
+					...common,
+					busy: true,
+					phase: 'pairing',
+					status: 'Pairing…',
+				}}
+			/>
+		);
+		expect(pairingPanel).toContain('>Cancel pairing</button>');
+		expect(pairingPanel).not.toContain('disabled=""');
 		const inactiveClickPanel = render(
 			<DevicePairingPanel
 				browserNotice=""
@@ -568,7 +596,7 @@ describe('view components', () => {
 		expect(panel.match(/Download GPX/g)).toHaveLength(6);
 		expect(panel).toContain('10.0 mi out &amp; back');
 		expect(panel).toContain('15.0 mi loop');
-		expect(panel).toContain('15–25% resistance');
+		expect(panel).toContain('repeated gradual climbs and descents');
 		expect(panel).toContain('49 ft climbing');
 		expect(panel).not.toContain('15 m climbing');
 		expect(panel).toContain('stroke="#64748b"');

@@ -624,6 +624,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 			<DevicePairingPanel
 				click={{
 					...click,
+					onCancel: click.disconnect,
 					onDisconnect: click.disconnect,
 					onForget: click.forget,
 					onForgetController: click.forgetDevice,
@@ -632,6 +633,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				}}
 				heartRate={{
 					...heartRate,
+					onCancel: heartRate.cancelConnection,
 					onDisconnect: heartRate.disconnect,
 					onForget: heartRate.forget,
 					onPair: heartRate.pair,
@@ -643,6 +645,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					busy: trainer.connectionBusy,
 					connected: trainer.connected,
 					name: trainer.pairedDeviceName,
+					onCancel: trainer.cancelConnection,
 					onDisconnect: trainer.disconnect,
 					onForget: trainer.forget,
 					onPair: trainer.connect,

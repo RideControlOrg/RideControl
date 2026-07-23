@@ -15,6 +15,7 @@ import { SideTray } from './side-tray';
 interface DeviceSlot extends DeviceConnectionView {
 	battery?: number;
 	name?: string;
+	onCancel: () => void;
 	onDisconnect: () => void;
 	onForget: () => void | Promise<void>;
 	onPair: () => void | Promise<void>;
@@ -165,19 +166,6 @@ function SlowReconnectNotice() {
 	);
 }
 
-function DeviceConnectionAction({
-	busy,
-	disconnecting,
-}: {
-	busy: boolean;
-	disconnecting: boolean;
-}) {
-	if (busy) {
-		return <ConnectingLabel />;
-	}
-	return disconnecting ? 'Disconnect' : 'Reconnect';
-}
-
 function ClickConnectionStatus({ click, waiting }: { click: ClickSlot; waiting: boolean }) {
 	if (!click.connectionActive && click.pairedCount) {
 		return <>Reconnects when the session resumes</>;
@@ -224,14 +212,24 @@ function StatusDot({
 function DeviceActions({ slot }: { slot: DeviceSlot }) {
 	const actionBusy = slot.busy;
 	if (!slot.paired) {
+		if (actionBusy) {
+			return (
+				<button
+					className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs transition hover:border-slate-500 hover:text-white"
+					onClick={slot.onCancel}
+					type="button"
+				>
+					Cancel pairing
+				</button>
+			);
+		}
 		return (
 			<button
 				className="h-9 rounded-lg bg-lime px-3 font-bold text-ink text-xs transition hover:bg-[#e4ff9c] disabled:opacity-50"
-				disabled={actionBusy}
 				onClick={slot.onPair}
 				type="button"
 			>
-				{actionBusy ? 'Pairing…' : 'Pair'}
+				Pair
 			</button>
 		);
 	}
@@ -240,15 +238,23 @@ function DeviceActions({ slot }: { slot: DeviceSlot }) {
 
 function ConnectedDeviceActions({ slot }: { slot: Omit<DeviceSlot, 'onPair'> }) {
 	const disconnecting = slot.connected && !slot.busy;
+	let connectionAction = slot.onReconnect;
+	let connectionLabel = 'Reconnect';
+	if (slot.busy) {
+		connectionAction = slot.onCancel;
+		connectionLabel = 'Stop connecting';
+	} else if (disconnecting) {
+		connectionAction = slot.onDisconnect;
+		connectionLabel = 'Disconnect';
+	}
 	return (
 		<div className="flex flex-wrap justify-end gap-2">
 			<button
 				className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs transition hover:border-slate-500 hover:text-white disabled:opacity-50"
-				disabled={slot.busy}
-				onClick={disconnecting ? slot.onDisconnect : slot.onReconnect}
+				onClick={connectionAction}
 				type="button"
 			>
-				<DeviceConnectionAction busy={slot.busy} disconnecting={disconnecting} />
+				{connectionLabel}
 			</button>
 			<button
 				className="h-9 rounded-lg border border-rose-400/25 px-3 font-semibold text-rose-300 text-xs transition hover:border-rose-400/60 hover:bg-rose-400/5"

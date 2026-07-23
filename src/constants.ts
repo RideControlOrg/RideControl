@@ -19,6 +19,7 @@ export const CHROME_BLUETOOTH_PERMISSION_MESSAGE = 'Chrome returned no site-auth
 export const WEB_BLUETOOTH_UNAVAILABLE_MESSAGE =
 	'Web Bluetooth requires current Chrome or Edge on localhost or HTTPS.';
 export const BLUETOOTH_GATT_CONNECTION_TIMEOUT_MS = 30_000;
+export const BLUETOOTH_TRAINER_SETUP_TIMEOUT_MS = 30_000;
 export const BLUETOOTH_OPERATION_TIMEOUT_MS = 5000;
 export const OPTIONAL_BLUETOOTH_OPERATION_TIMEOUT_MS = 1000;
 export const RECORDING_PAUSE_DELAY_MS = 10_000;

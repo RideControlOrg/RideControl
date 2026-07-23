@@ -11,8 +11,11 @@ import {
 	shiftedGear,
 	storedGear,
 	VIRTUAL_GEAR_COMBINATIONS,
+	virtualGearLoadMultiplier,
 	virtualGearRatio,
 } from '../src/lib/gears';
+import { KILOMETERS_PER_MILE } from '../src/lib/units';
+import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
 
 describe('virtual gears', () => {
 	test('clamps gear positions to the supported 1–24 range', () => {
@@ -74,17 +77,31 @@ describe('virtual gears', () => {
 		);
 	});
 
-	test('scales terrain resistance from the easiest physical ratio and clamps targets', () => {
-		expect(resistanceForVirtualGear(30, MIN_GEAR)).toBe(30);
-		expect(resistanceForVirtualGear(30, DEFAULT_GEAR)).toBe(48);
-		expect(resistanceForVirtualGear(30, MAX_GEAR)).toBe(81.5);
+	test('spreads prepared terrain load across the complete physical drivetrain', () => {
+		expect(resistanceForVirtualGear(30, MIN_GEAR)).toBe(11.7);
+		expect(resistanceForVirtualGear(30, DEFAULT_GEAR)).toBe(30);
+		expect(resistanceForVirtualGear(30, MAX_GEAR)).toBe(86.6);
 		expect(resistanceForVirtualGear(80, MAX_GEAR)).toBe(100);
+		expect(virtualGearLoadMultiplier(DEFAULT_GEAR)).toBe(1);
+	});
+
+	test('keeps a modest Prairie Roll climb easy in gear one', () => {
+		const prairieRoll = WORKOUT_COURSES.find((course) => course.id === 'prairie-roll');
+		if (!prairieRoll) {
+			throw new Error('Expected the Prairie Roll workout course');
+		}
+		const terrain = workoutTerrainAtDistance(prairieRoll, 1.3 * KILOMETERS_PER_MILE);
+		expect(terrain.grade).toBeCloseTo(1.8, 1);
+		expect(terrain.resistance).toBe(16);
+		expect(resistanceForVirtualGear(terrain.resistance, MIN_GEAR)).toBe(6.3);
+		expect(resistanceForVirtualGear(terrain.resistance, DEFAULT_GEAR)).toBe(16);
+		expect(resistanceForVirtualGear(terrain.resistance, MAX_GEAR)).toBe(46.2);
 	});
 
 	test('applies each physical ratio change to consecutive free-ride shifts', () => {
 		const harder = resistanceAfterGearShift(30, 12, 13);
-		expect(harder).toBe(30.6);
+		expect(harder).toBe(31.2);
 		expect(resistanceAfterGearShift(harder, 13, 12)).toBeCloseTo(30, 1);
-		expect(resistanceAfterGearShift(3, 12, 1)).toBe(1.9);
+		expect(resistanceAfterGearShift(3, 12, 1)).toBe(1.2);
 	});
 });

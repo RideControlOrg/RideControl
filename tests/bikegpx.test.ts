@@ -29,7 +29,6 @@ const catalog: BikeGpxCatalog = {
 };
 
 const course: WorkoutCourse = {
-	baseResistance: 12,
 	description: 'Aland Islands · Near Finström → Near Sund — 12 km',
 	difficulty: 'moderate',
 	distance: 0.25,

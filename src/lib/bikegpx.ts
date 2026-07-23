@@ -160,7 +160,6 @@ function routeCourse(value: unknown): WorkoutCourse | undefined {
 	if (
 		!(
 			isRecord(value) &&
-			isFiniteNumber(value.baseResistance) &&
 			isString(value.description) &&
 			isWorkoutDifficulty(value.difficulty) &&
 			isFiniteNumber(value.distance) &&
@@ -182,7 +181,6 @@ function routeCourse(value: unknown): WorkoutCourse | undefined {
 		return;
 	}
 	return {
-		baseResistance: value.baseResistance,
 		description: value.description,
 		difficulty: value.difficulty,
 		distance: value.distance,

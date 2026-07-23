@@ -260,7 +260,7 @@ describe('reconnect controller', () => {
 		expect(watchSignal?.aborted).toBeTrue();
 	});
 
-	test('preserves an advertisement received during an in-flight attempt', async () => {
+	test('preserves retry backoff after an advertisement during an in-flight attempt', async () => {
 		const callbacks: Array<() => void | Promise<void>> = [];
 		const delays: number[] = [];
 		let finishAttempt: ((connected: boolean) => void) | undefined;
@@ -284,7 +284,7 @@ describe('reconnect controller', () => {
 		finishAttempt?.(false);
 		await firstAttempt;
 
-		expect(delays).toEqual([500, 1]);
+		expect(delays).toEqual([500, 500]);
 		expect(controller.isPending('heart-rate')).toBeTrue();
 	});
 });

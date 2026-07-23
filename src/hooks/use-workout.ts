@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 
+const AUTOMATED_RESISTANCE_DEADBAND = 0.5;
+
 export function useWorkoutResistance({
 	active,
 	connected,
@@ -14,10 +16,18 @@ export function useWorkoutResistance({
 	resistance?: number;
 }) {
 	const automatedResistance = useRef(false);
+	const lastAutomatedResistance = useRef<number | undefined>(undefined);
 
 	useEffect(() => {
 		if (active && connected && resistance !== undefined) {
-			onResistanceChange(resistance);
+			if (
+				lastAutomatedResistance.current === undefined ||
+				Math.abs(resistance - lastAutomatedResistance.current) >=
+					AUTOMATED_RESISTANCE_DEADBAND
+			) {
+				onResistanceChange(resistance);
+				lastAutomatedResistance.current = resistance;
+			}
 			automatedResistance.current = true;
 		} else if (
 			automatedResistance.current &&
@@ -26,8 +36,10 @@ export function useWorkoutResistance({
 		) {
 			onRestoreResistance();
 			automatedResistance.current = false;
-		} else if (!connected && (!active || resistance === undefined)) {
+			lastAutomatedResistance.current = undefined;
+		} else if (!connected) {
 			automatedResistance.current = false;
+			lastAutomatedResistance.current = undefined;
 		}
 	}, [active, connected, onResistanceChange, onRestoreResistance, resistance]);
 }

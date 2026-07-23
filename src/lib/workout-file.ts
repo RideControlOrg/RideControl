@@ -21,13 +21,13 @@ import {
 	WORKOUT_COURSES,
 	workoutRouteCloses,
 } from './workouts';
-import { xmlDescendant, xmlEscape, xmlNumber, xmlText } from './xml';
+import { xmlDescendant, xmlEscape, xmlText } from './xml';
 
 export const CUSTOM_WORKOUTS_STORAGE_KEY = 'ride-control-custom-workouts';
 export const WORKOUT_ORDER_STORAGE_KEY = 'ride-control-workout-order';
 export const WORKOUT_GPX_EXTENSION_NAMESPACE =
 	'https://github.com/RideControlOrg/RideControl/xmlschemas/WorkoutExtension/v1';
-export const WORKOUT_GPX_FORMAT_VERSION = 2;
+export const WORKOUT_GPX_FORMAT_VERSION = 3;
 export const MAX_WORKOUT_NAME_LENGTH = 100;
 
 const WORKOUT_LIBRARY_FORMAT = 'ride-control-workout-library';
@@ -138,7 +138,6 @@ function workoutMetadata(
 	container: Element,
 	points: GeographicRoutePoint[]
 ): {
-	baseResistance?: number;
 	descriptionAttribution?: WorkoutCourse['descriptionAttribution'];
 	difficulty: WorkoutDifficulty;
 	id: string;
@@ -150,7 +149,6 @@ function workoutMetadata(
 	const routeTypeValue = xmlText(xmlDescendant(container, 'CourseType'));
 	const startingLocation = xmlText(xmlDescendant(container, 'StartingLocation')).trim();
 	return {
-		baseResistance: xmlNumber(xmlDescendant(container, 'BaseResistance')),
 		descriptionAttribution: isWorkoutDescriptionAttribution(descriptionAttributionValue)
 			? descriptionAttributionValue
 			: undefined,
@@ -207,7 +205,6 @@ export function workoutFileContents(course: WorkoutCourse): string {
 			<rc:FormatVersion>${WORKOUT_GPX_FORMAT_VERSION}</rc:FormatVersion>
 			<rc:WorkoutId>${xmlEscape(course.id)}</rc:WorkoutId>
 			<rc:Difficulty>${course.difficulty}</rc:Difficulty>
-			<rc:BaseResistance>${course.baseResistance.toFixed(1)}</rc:BaseResistance>
 			<rc:CourseType>${course.routeType}</rc:CourseType>
 			${course.descriptionAttribution ? `<rc:DescriptionAttribution>${course.descriptionAttribution}</rc:DescriptionAttribution>` : ''}
 			${course.startingLocation ? `<rc:StartingLocation>${xmlEscape(course.startingLocation)}</rc:StartingLocation>` : ''}
@@ -253,7 +250,6 @@ export function parseWorkoutFile(
 	}
 	const distance = points.at(-1)?.distance ?? 0;
 	const course = restoreWorkoutCourse({
-		baseResistance: metadata.baseResistance,
 		description: parsed.description || IMPORTED_GPX_DESCRIPTION,
 		descriptionAttribution: metadata.descriptionAttribution,
 		difficulty: metadata.difficulty,

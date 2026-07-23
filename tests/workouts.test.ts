@@ -213,7 +213,7 @@ describe('terrain workouts', () => {
 		expect(workoutMapProgressPath(pointToPoint, finish)).toBe(workoutMapPath(pointToPoint));
 	});
 
-	test('offers a fifteen-mile course with long rollers centered on 20% resistance', () => {
+	test('offers a fifteen-mile course whose rollers use the universal grade load', () => {
 		const rollingCourse = WORKOUT_COURSES.find((workout) => workout.id === 'prairie-roll');
 		if (!rollingCourse) {
 			throw new Error('Expected the Prairie Roll workout course');
@@ -236,10 +236,9 @@ describe('terrain workouts', () => {
 		const average =
 			resistances.reduce((sum, resistance) => sum + resistance, 0) / resistances.length;
 		expect(rollingCourse.distance).toBeCloseTo(24.140_16);
-		expect(rollingCourse.baseResistance).toBe(20);
-		expect(Math.min(...resistances)).toBeWithin(14, 17);
-		expect(Math.max(...resistances)).toBeWithin(24, 26);
-		expect(average).toBeWithin(19, 21);
+		expect(Math.min(...resistances)).toBeWithin(4, 9);
+		expect(Math.max(...resistances)).toBeWithin(15, 18);
+		expect(average).toBeWithin(11, 13);
 	});
 
 	test('keeps gentle elevation profiles visually low beside climbing courses', () => {
@@ -368,7 +367,6 @@ describe('terrain workouts', () => {
 		const pointCount = 10_001;
 		const distance = 10;
 		const detailedCourse = restoreWorkoutCourse({
-			baseResistance: 12,
 			description: 'A detailed course',
 			difficulty: 'moderate',
 			distance,
@@ -441,10 +439,12 @@ describe('terrain workouts', () => {
 		expect(
 			restoreWorkoutCourse({ ...course, routeType: WORKOUT_ROUTE_TYPE.OUT_AND_BACK })
 		).toBeUndefined();
-		expect(restoreWorkoutCourse({ ...course, baseResistance: undefined })).toMatchObject({
-			baseResistance: 12,
+		const restoredLegacyBaseResistance = restoreWorkoutCourse({
+			...course,
+			baseResistance: 101,
 		});
-		expect(restoreWorkoutCourse({ ...course, baseResistance: 101 })).toBeUndefined();
+		expect(restoredLegacyBaseResistance).toBeDefined();
+		expect(restoredLegacyBaseResistance).not.toHaveProperty('baseResistance');
 		expect(restoreWorkoutCourse({ ...course, distance: 'far' })).toBeUndefined();
 		expect(restoreSessionWorkout({ course: { ...course, points: [] } })).toBeUndefined();
 		expect(restoreWorkoutCourse({ ...course, id: ' ' })).toBeUndefined();

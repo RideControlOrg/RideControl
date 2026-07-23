@@ -28,6 +28,7 @@ export const MAXIMUM_VIRTUAL_DRIVE_RATIO = Math.max(
 );
 
 const RESISTANCE_PRECISION = 10;
+const VIRTUAL_GEAR_LOAD_EXPONENT = 2;
 
 export function clampGear(gear: number): number {
 	return clamp(Math.round(gear), MIN_GEAR, MAX_GEAR);
@@ -56,10 +57,13 @@ function roundedResistance(resistance: number): number {
 	return Math.round(clampResistance(resistance) * RESISTANCE_PRECISION) / RESISTANCE_PRECISION;
 }
 
-export function resistanceForVirtualGear(baseResistance: number, gear: number): number {
-	return roundedResistance(
-		baseResistance * (virtualGearRatio(gear) / MINIMUM_VIRTUAL_DRIVE_RATIO)
-	);
+export function virtualGearLoadMultiplier(gear: number): number {
+	const relativeRatio = virtualGearRatio(gear) / virtualGearRatio(DEFAULT_GEAR);
+	return relativeRatio ** VIRTUAL_GEAR_LOAD_EXPONENT;
+}
+
+export function resistanceForVirtualGear(terrainResistance: number, gear: number): number {
+	return roundedResistance(clampResistance(terrainResistance) * virtualGearLoadMultiplier(gear));
 }
 
 export function resistanceAfterGearShift(
@@ -67,5 +71,7 @@ export function resistanceAfterGearShift(
 	fromGear: number,
 	toGear: number
 ): number {
-	return roundedResistance(resistance * (virtualGearRatio(toGear) / virtualGearRatio(fromGear)));
+	return roundedResistance(
+		resistance * (virtualGearLoadMultiplier(toGear) / virtualGearLoadMultiplier(fromGear))
+	);
 }
