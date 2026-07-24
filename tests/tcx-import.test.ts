@@ -53,6 +53,11 @@ describe('TCX import', () => {
 		expect(imported.profileSnapshot).toEqual(session.profileSnapshot);
 	});
 
+	test('keeps legacy Comments notes compatible with session descriptions', () => {
+		const legacy = sessionToTcx(session).replace('Description:', 'Comments:');
+		expect(parseTcxSessions(legacy)[0]?.comments).toBe(session.comments);
+	});
+
 	test('imports every TCX trackpoint from a ride longer than the former sample limit', () => {
 		const [sample] = session.history;
 		if (!sample) {

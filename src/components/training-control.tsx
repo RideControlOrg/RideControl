@@ -1,11 +1,13 @@
 import { CONTROL_MODE } from '../lib/control-mode';
 import { unreachable } from '../lib/errors';
+import type { VirtualDrivetrain } from '../lib/profile';
 import type { ResistanceAdjustmentDirection, ResistanceRamp } from '../types';
 import { GearTrainingControl } from './gear-training-control';
 import { ResistanceTrainingControl } from './resistance-training-control';
 
 type TrainingControlModel =
 	| {
+			drivetrain: VirtualDrivetrain;
 			gear: number;
 			maximumGear: number;
 			mode: typeof CONTROL_MODE.GEAR;
@@ -32,6 +34,7 @@ export function TrainingControl({
 			return (
 				<GearTrainingControl
 					connected={connected}
+					drivetrain={control.drivetrain}
 					gear={control.gear}
 					maximumGear={control.maximumGear}
 					onShift={control.onShift}

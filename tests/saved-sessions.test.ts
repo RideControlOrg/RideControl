@@ -18,6 +18,7 @@ import {
 	sessionListAfterDelete,
 	sessionSummary,
 } from '../src/lib/saved-sessions';
+import { MAXIMUM_SESSION_DESCRIPTION_LENGTH } from '../src/lib/session-description';
 import {
 	createSessionWorkoutSnapshot,
 	restoreSessionWorkoutSnapshot,
@@ -68,6 +69,11 @@ describe('saved session utilities', () => {
 		});
 		expect(session.distance).toBe(10);
 		expect(session.history[0]?.resistance).toBe(42);
+		expect(
+			createSavedSession(snapshot, {
+				comments: 'x'.repeat(MAXIMUM_SESSION_DESCRIPTION_LENGTH + 1),
+			}).comments
+		).toHaveLength(MAXIMUM_SESSION_DESCRIPTION_LENGTH);
 	});
 
 	test('creates a lightweight summary without sample history', () => {

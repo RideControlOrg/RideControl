@@ -15,6 +15,7 @@ import { nonNegativeNumber } from './numbers';
 import { parsedTeeth, riderPhysicsProfileFromStoredValue } from './profile';
 import { clampResistance } from './resistance';
 import { addMetricAggregates } from './session';
+import { normalizeSessionDescription } from './session-description';
 import { IMPORTED_TCX_ID_PREFIX, isRideControlTcxExtensionNamespace } from './tcx-schema';
 import {
 	KILOMETERS_PER_HOUR_PER_METER_PER_SECOND,
@@ -34,7 +35,7 @@ import {
 
 const LINE_BREAK = /\r?\n/;
 const FEELING_NOTE = /^Feeling:\s*(.+)$/i;
-const COMMENTS_NOTE_PREFIX = /^Comments:\s*/i;
+const DESCRIPTION_NOTE_PREFIX = /^(?:Comments|Description):\s*/i;
 const VALID_FEELINGS = new Set<SessionFeeling>(['great', 'good', 'okay', 'tough', 'exhausted']);
 
 function dateValue(value: string): number | undefined {
@@ -67,10 +68,10 @@ function notesMetadata(activity: Element): Pick<SavedSession, 'comments' | 'feel
 				continue;
 			}
 		}
-		commentLines.push(line.replace(COMMENTS_NOTE_PREFIX, ''));
+		commentLines.push(line.replace(DESCRIPTION_NOTE_PREFIX, ''));
 	}
 	return {
-		comments: commentLines.join('\n').trim(),
+		comments: normalizeSessionDescription(commentLines.join('\n')),
 		feeling,
 	};
 }
@@ -166,6 +167,8 @@ function activityProfileSnapshot(activity: Element) {
 		return;
 	}
 	return riderPhysicsProfileFromStoredValue({
+		bikeId: text(child(profile, 'BikeId')) || undefined,
+		bikeName: text(child(profile, 'BikeName')) || undefined,
 		bikeWeightKg: numberValue(child(profile, 'BikeWeightKilograms')),
 		frontChainringTeeth: parsedTeeth(text(child(profile, 'FrontChainrings'))),
 		rearCassetteTeeth: parsedTeeth(text(child(profile, 'RearCassette'))),

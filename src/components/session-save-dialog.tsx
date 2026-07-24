@@ -2,9 +2,9 @@ import { useForm, useSelector } from '@tanstack/react-form';
 import { useEffect } from 'react';
 import { unreachable } from '../lib/errors';
 import { formatSessionTime, SESSION_FEELING_OPTIONS } from '../lib/saved-sessions';
+import { MAXIMUM_SESSION_DESCRIPTION_LENGTH } from '../lib/session-description';
 import {
 	emptySessionSaveFormValues,
-	MAXIMUM_SESSION_COMMENTS_LENGTH,
 	sessionMetadataFromFormValues,
 	sessionSaveFormSchema,
 } from '../lib/session-save-form';
@@ -149,16 +149,25 @@ export function SessionSaveDialog({
 					{(field) => (
 						<label
 							className="mt-5 block font-semibold text-sm"
-							htmlFor="session-comments"
+							htmlFor="session-description"
 						>
-							Comments <span className="font-normal text-slate-500">(optional)</span>
+							<span className="flex items-center justify-between gap-4">
+								<span>
+									Description{' '}
+									<span className="font-normal text-slate-500">(optional)</span>
+								</span>
+								<span className="font-normal text-slate-500 text-xs tabular-nums">
+									{field.state.value.length} /{' '}
+									{MAXIMUM_SESSION_DESCRIPTION_LENGTH}
+								</span>
+							</span>
 							<textarea
 								className="mt-2 min-h-24 w-full resize-y rounded-xl border border-line bg-[#10151a] px-3 py-2.5 text-sm outline-none placeholder:text-slate-600 focus:border-mint"
-								id="session-comments"
-								maxLength={MAXIMUM_SESSION_COMMENTS_LENGTH}
+								id="session-description"
+								maxLength={MAXIMUM_SESSION_DESCRIPTION_LENGTH}
 								onBlur={field.handleBlur}
 								onChange={(event) => field.handleChange(event.target.value)}
-								placeholder="Anything worth remembering about this ride?"
+								placeholder="Describe anything worth remembering about this ride."
 								value={field.state.value}
 							/>
 							<FormFieldError field={field} />

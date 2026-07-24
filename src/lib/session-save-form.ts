@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import type { SessionFeeling, SessionMetadata } from '../types';
 import { SESSION_FEELING_OPTIONS } from './saved-sessions';
-
-export const MAXIMUM_SESSION_COMMENTS_LENGTH = 2000;
+import {
+	MAXIMUM_SESSION_DESCRIPTION_LENGTH,
+	normalizeSessionDescription,
+} from './session-description';
 
 const sessionFeelingSchema = z
 	.custom<SessionFeeling>(
@@ -15,8 +17,8 @@ export const sessionSaveFormSchema = z.object({
 	comments: z
 		.string()
 		.max(
-			MAXIMUM_SESSION_COMMENTS_LENGTH,
-			`Comments must be at most ${MAXIMUM_SESSION_COMMENTS_LENGTH} characters.`
+			MAXIMUM_SESSION_DESCRIPTION_LENGTH,
+			`Description must be at most ${MAXIMUM_SESSION_DESCRIPTION_LENGTH} characters.`
 		),
 	feeling: sessionFeelingSchema,
 });
@@ -30,7 +32,7 @@ export function emptySessionSaveFormValues(): SessionSaveFormValues {
 export function sessionMetadataFromFormValues(values: SessionSaveFormValues): SessionMetadata {
 	const validated = sessionSaveFormSchema.parse(values);
 	return {
-		comments: validated.comments.trim(),
+		comments: normalizeSessionDescription(validated.comments),
 		feeling: validated.feeling,
 	};
 }

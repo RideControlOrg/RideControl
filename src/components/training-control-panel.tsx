@@ -2,11 +2,13 @@ import type { ReactNode } from 'react';
 
 export function TrainingControlPanel({
 	children,
+	detail,
 	title,
 	unit,
 	value,
 }: {
 	children: ReactNode;
+	detail?: ReactNode;
 	title: string;
 	unit: string;
 	value: number;
@@ -20,6 +22,11 @@ export function TrainingControlPanel({
 						{value}
 						<span className="ml-1 text-slate-500 text-xs">{unit}</span>
 					</output>
+					{detail ? (
+						<div className="mt-0.5 whitespace-nowrap font-medium text-slate-400 text-xs tabular-nums">
+							{detail}
+						</div>
+					) : null}
 				</div>
 			</div>
 			{children}

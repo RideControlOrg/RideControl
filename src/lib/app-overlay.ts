@@ -19,6 +19,7 @@ export const OPEN_SIDE_TRAY_STORAGE_KEY = 'ride-control-open-side-tray';
 const SIDE_TRAY_OVERLAYS = [
 	APP_OVERLAY.DEVICES,
 	APP_OVERLAY.HISTORY,
+	APP_OVERLAY.PROFILE,
 	APP_OVERLAY.WORKOUTS,
 ] as const;
 

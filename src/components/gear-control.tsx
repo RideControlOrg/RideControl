@@ -69,7 +69,9 @@ export function GearControl({
 	}, [disabled, gear, heldDirection, maximumGear, stopHolding]);
 
 	const progress =
-		maximumGear === MIN_GEAR ? 100 : ((gear - MIN_GEAR) / (maximumGear - MIN_GEAR)) * 100;
+		maximumGear === MIN_GEAR
+			? 100
+			: ((gear - MIN_GEAR + 1) / (maximumGear - MIN_GEAR + 1)) * 100;
 	const activeDirection = heldDirection ?? shiftFlash;
 	const buttonClass =
 		'grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-slate-300 transition duration-150 hover:border-mint disabled:opacity-40';

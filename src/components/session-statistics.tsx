@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { formatDuration } from '../lib/format';
+import type { RiderWeightEntry } from '../lib/profile';
 import {
 	SESSION_ANALYTICS_PEAK,
 	SESSION_ANALYTICS_PERIOD,
@@ -23,6 +23,7 @@ import {
 	speedUnitLabel,
 } from '../lib/units';
 import type { SpeedUnit } from '../types';
+import { RiderWeightChart } from './rider-weight-chart';
 
 const NUMBER_FORMATTER = new Intl.NumberFormat(undefined, {
 	maximumFractionDigits: 1,
@@ -88,10 +89,10 @@ function StatisticsCard({ label, unit, value }: { label: string; unit?: string; 
 			<p className="font-bold text-[10px] text-slate-500 uppercase tracking-[.12em]">
 				{label}
 			</p>
-			<p className="mt-2 truncate font-bold text-4xl text-white leading-none sm:text-5xl">
-				{value}
+			<p className="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1 font-bold text-4xl text-white leading-none sm:text-5xl">
+				<span className="whitespace-nowrap">{value}</span>
 				{unit ? (
-					<span className="ml-1.5 font-semibold text-slate-400 text-sm sm:text-base">
+					<span className="font-semibold text-slate-400 text-sm sm:text-base">
 						{unit}
 					</span>
 				) : null}
@@ -125,7 +126,7 @@ function AnalyticsTrendChart({
 			<div className="flex items-start justify-between gap-6">
 				<div className="min-w-0">
 					<h4 className="font-bold text-base">{title}</h4>
-					<p className="mt-2 truncate font-bold text-3xl text-white tabular-nums">
+					<p className="wrap-anywhere mt-2 font-bold text-3xl text-white tabular-nums">
 						{formatValue(latestValue)}
 						{unit ? (
 							<span className="ml-1.5 font-semibold text-slate-400 text-sm">
@@ -239,7 +240,7 @@ function AnalyticsTrendOverview({
 									/>
 									{metric.label}
 								</p>
-								<p className="mt-1 truncate font-bold text-2xl text-white tabular-nums leading-none">
+								<p className="wrap-anywhere mt-1 font-bold text-2xl text-white tabular-nums leading-none">
 									{metric.formatValue(latestValue)}
 									{metric.unit ? (
 										<span className="ml-1 font-semibold text-slate-500 text-xs">
@@ -412,7 +413,9 @@ function PeakCard({
 		return (
 			<div className={className}>
 				<p className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</p>
-				<p className="mt-2 truncate font-bold text-xl leading-none sm:text-2xl">{value}</p>
+				<p className="wrap-anywhere mt-2 font-bold text-xl leading-none sm:text-2xl">
+					{value}
+				</p>
 			</div>
 		);
 	}
@@ -424,7 +427,7 @@ function PeakCard({
 			type="button"
 		>
 			<p className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</p>
-			<p className="mt-2 truncate font-bold text-xl leading-none sm:text-2xl">{value}</p>
+			<p className="wrap-anywhere mt-2 font-bold text-xl leading-none sm:text-2xl">{value}</p>
 		</button>
 	);
 }
@@ -438,6 +441,7 @@ export function SessionStatistics({
 	onSelectSession,
 	speedUnit,
 	trendEndTimestamp,
+	weightHistory = [],
 }: {
 	analytics: SessionAnalyticsCache;
 	error: string;
@@ -447,6 +451,7 @@ export function SessionStatistics({
 	onSelectSession: (id: string) => void;
 	speedUnit: SpeedUnit;
 	trendEndTimestamp?: number;
+	weightHistory?: readonly RiderWeightEntry[];
 }) {
 	const [trendRange, setTrendRange] = useState<SessionTrendRange>(initialTrendRange);
 	const [trendMetricKey, setTrendMetricKey] = useState<TrendMetricSelection>(initialTrendMetric);
@@ -560,7 +565,7 @@ export function SessionStatistics({
 				</div>
 				{loading ? <span className="text-cyan-300 text-xs">Updating…</span> : null}
 			</div>
-			<div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
+			<div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				<StatisticsCard
 					label="Rides"
 					value={INTEGER_FORMATTER.format(totals.sessionCount)}
@@ -590,7 +595,7 @@ export function SessionStatistics({
 					value={INTEGER_FORMATTER.format(totals.calories)}
 				/>
 			</div>
-			<div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+			<div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				<StatisticsCard
 					label="Average speed"
 					unit={speedUnitLabel(speedUnit)}
@@ -654,7 +659,7 @@ export function SessionStatistics({
 			</div>
 			<section className="mt-5 rounded-xl border border-line bg-[#12171d] p-4">
 				<h3 className="font-bold text-base">Personal bests</h3>
-				<div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
+				<div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{peakDefinitions.map((definition) => {
 						const peak = analytics.peaks[definition.key];
 						return (
@@ -667,6 +672,16 @@ export function SessionStatistics({
 						);
 					})}
 				</div>
+			</section>
+			<section className="mt-5">
+				<h3 className="font-bold text-xl">Weight over time</h3>
+				{weightHistory.length > 0 ? (
+					<RiderWeightChart entries={weightHistory} speedUnit={speedUnit} />
+				) : (
+					<p className="mt-3 rounded-xl border border-line bg-[#12171d] p-4 text-slate-500 text-sm">
+						Save your weight in Profile to begin tracking it here.
+					</p>
+				)}
 			</section>
 			<div className="mt-6 flex flex-wrap items-end justify-between gap-3">
 				<div>
@@ -740,9 +755,6 @@ export function SessionStatistics({
 					<AnalyticsTrendOverview data={chartData} metrics={trendMetrics} />
 				)}
 			</div>
-			<p className="mt-4 text-center text-[10px] text-slate-600">
-				Exact ride time: {formatDuration(totals.elapsedSeconds)}
-			</p>
 		</div>
 	);
 }

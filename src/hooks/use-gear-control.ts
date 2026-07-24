@@ -23,7 +23,7 @@ export function useGearControl({
 	ready: boolean;
 	setNotice: (notice: string) => void;
 }) {
-	const [gear, setGear] = useState(() => storedGear());
+	const [gear, setGear] = useState(() => storedGear(localStorage, maximumGear));
 	const [shiftFlash, setShiftFlash] = useState<ResistanceAdjustmentDirection | undefined>();
 	const gearRef = useRef(gear);
 	const keyboardControlsEnabled = useRef(true);

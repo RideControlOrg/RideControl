@@ -1,7 +1,7 @@
 import { cloudflare } from '@cloudflare/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 interface GitHubPullRequest {
 	html_url?: unknown;
@@ -14,6 +14,20 @@ const buildTimestampUtc = process.env.VITE_BUILD_TIMESTAMP ?? new Date().toISOSt
 const buildPrUrl =
 	process.env.VITE_BUILD_PR_URL ??
 	'https://github.com/RideControlOrg/RideControl/pulls?q=is%3Apr+is%3Aclosed';
+
+function deploymentVersionPlugin(version: string): Plugin {
+	return {
+		apply: 'build',
+		generateBundle() {
+			this.emitFile({
+				fileName: 'version.json',
+				source: `${JSON.stringify({ version })}\n`,
+				type: 'asset',
+			});
+		},
+		name: 'ride-control-deployment-version',
+	};
+}
 
 function validPullRequest(pullRequest: GitHubPullRequest) {
 	return (
@@ -80,6 +94,6 @@ export default defineConfig(async () => {
 			'import.meta.env.RIDE_CONTROL_BUILD_RECENT_PRS': JSON.stringify(recentPullRequests),
 			'import.meta.env.RIDE_CONTROL_BUILD_TIMESTAMP_UTC': JSON.stringify(buildTimestampUtc),
 		},
-		plugins: [react(), tailwindcss(), cloudflare()],
+		plugins: [deploymentVersionPlugin(buildTimestampUtc), react(), tailwindcss(), cloudflare()],
 	};
 });

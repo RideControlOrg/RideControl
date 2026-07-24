@@ -262,10 +262,10 @@ export function SessionDetail({
 				</div>
 				<div className="rounded-xl border border-line bg-[#12171d] p-4">
 					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">
-						COMMENTS
+						DESCRIPTION
 					</p>
 					<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
-						{session.comments || 'No comments'}
+						{session.comments || 'No description'}
 					</p>
 				</div>
 			</div>

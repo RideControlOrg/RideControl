@@ -11,6 +11,7 @@ describe('application overlays', () => {
 	test('recognizes only side-tray overlays', () => {
 		expect(isSideTrayOverlay(APP_OVERLAY.DEVICES)).toBe(true);
 		expect(isSideTrayOverlay(APP_OVERLAY.HISTORY)).toBe(true);
+		expect(isSideTrayOverlay(APP_OVERLAY.PROFILE)).toBe(true);
 		expect(isSideTrayOverlay(APP_OVERLAY.WORKOUTS)).toBe(true);
 		expect(isSideTrayOverlay(APP_OVERLAY.SHORTCUTS)).toBe(false);
 		expect(isSideTrayOverlay(APP_OVERLAY.WELCOME)).toBe(false);
@@ -26,7 +27,12 @@ describe('application overlays', () => {
 		};
 
 		expect(loadOpenSideTray(storage)).toBeUndefined();
-		for (const overlay of [APP_OVERLAY.DEVICES, APP_OVERLAY.HISTORY, APP_OVERLAY.WORKOUTS]) {
+		for (const overlay of [
+			APP_OVERLAY.DEVICES,
+			APP_OVERLAY.HISTORY,
+			APP_OVERLAY.PROFILE,
+			APP_OVERLAY.WORKOUTS,
+		]) {
 			expect(persistOpenSideTray(overlay, storage)).toBe(true);
 			expect(loadOpenSideTray(storage)).toBe(overlay);
 		}

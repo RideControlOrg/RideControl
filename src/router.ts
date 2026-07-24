@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { App } from './app';
 import { emptySession } from './constants';
 import { APP_ROUTE_PATH } from './lib/app-route';
+import { profileTabSchema } from './lib/profile-tab';
 import { sessionCalendarMonthKeySchema } from './lib/session-calendar';
 import { sessionHistoryViewSchema } from './lib/session-history-view';
 import type { StoredSession } from './types';
@@ -18,6 +19,16 @@ const sessionSearchSchema = z.object({
 	date: sessionCalendarMonthKeySchema.optional(),
 	view: sessionHistoryViewSchema.optional(),
 });
+const profileSearchSchema = z.object({
+	tab: profileTabSchema.optional(),
+});
+
+function validateProfileSearch(search: unknown): {
+	tab?: z.infer<typeof profileTabSchema>;
+} {
+	const parsed = profileSearchSchema.safeParse(search);
+	return parsed.success ? parsed.data : {};
+}
 
 function validateSessionSearch(search: unknown): {
 	date?: string;
@@ -39,6 +50,11 @@ export function createAppRouter({ history, initialSession = emptySession }: AppR
 	const childRoutes = [
 		createRoute({ getParentRoute: () => rootRoute, path: APP_ROUTE_PATH.HOME }),
 		createRoute({ getParentRoute: () => rootRoute, path: APP_ROUTE_PATH.DEVICES }),
+		createRoute({
+			getParentRoute: () => rootRoute,
+			path: APP_ROUTE_PATH.PROFILE,
+			validateSearch: validateProfileSearch,
+		}),
 		createRoute({ getParentRoute: () => rootRoute, path: APP_ROUTE_PATH.WORKOUTS }),
 		createRoute({ getParentRoute: () => rootRoute, path: APP_ROUTE_PATH.WORKOUT }),
 		createRoute({ getParentRoute: () => rootRoute, path: APP_ROUTE_PATH.BIKEGPX }),

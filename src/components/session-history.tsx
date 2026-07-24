@@ -1,4 +1,4 @@
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSessionHistory } from '../hooks/use-session-history';
 import { useSessionInsights } from '../hooks/use-session-insights';
@@ -17,6 +17,7 @@ import {
 	historyKeyboardShortcuts,
 	historyShortcutForKey,
 } from '../lib/keyboard';
+import type { RiderWeightEntry } from '../lib/profile';
 import { adjacentSession } from '../lib/saved-sessions';
 import {
 	sessionCalendarMonth,
@@ -42,6 +43,7 @@ import { SessionDetail } from './session-detail';
 import { SessionHistoryList } from './session-history-list';
 import { SessionStatistics } from './session-statistics';
 import { SideTray } from './side-tray';
+import { Tabs } from './tabs';
 
 function shouldIgnoreHistoryAction(event: KeyboardEvent) {
 	return (
@@ -62,6 +64,7 @@ export function SessionHistory({
 	requestedSessionMonth,
 	requestedView,
 	speedUnit,
+	weightHistory = [],
 }: {
 	onClose: () => void;
 	onSelectCalendarMonth: (month: string) => void;
@@ -73,6 +76,7 @@ export function SessionHistory({
 	requestedSessionMonth?: string;
 	requestedView?: SessionHistoryView;
 	speedUnit: SpeedUnit;
+	weightHistory?: readonly RiderWeightEntry[];
 }) {
 	const {
 		deleteSelectedSession: deleteHistorySession,
@@ -246,39 +250,6 @@ export function SessionHistory({
 		},
 		[onSelectView]
 	);
-	const selectHistoryViewFromKeyboard = useCallback(
-		(event: ReactKeyboardEvent<HTMLButtonElement>, view: SessionHistoryView) => {
-			const currentIndex = SESSION_HISTORY_VIEW_OPTIONS.findIndex(
-				(option) => option.value === view
-			);
-			let nextIndex: number | undefined;
-			if (event.key === 'ArrowLeft') {
-				nextIndex =
-					(currentIndex - 1 + SESSION_HISTORY_VIEW_OPTIONS.length) %
-					SESSION_HISTORY_VIEW_OPTIONS.length;
-			} else if (event.key === 'ArrowRight') {
-				nextIndex = (currentIndex + 1) % SESSION_HISTORY_VIEW_OPTIONS.length;
-			} else if (event.key === 'Home') {
-				nextIndex = 0;
-			} else if (event.key === 'End') {
-				nextIndex = SESSION_HISTORY_VIEW_OPTIONS.length - 1;
-			}
-			const nextView =
-				nextIndex === undefined
-					? undefined
-					: SESSION_HISTORY_VIEW_OPTIONS[nextIndex]?.value;
-			if (!nextView) {
-				return;
-			}
-			event.preventDefault();
-			selectHistoryView(nextView);
-			event.currentTarget.ownerDocument
-				.getElementById(`session-history-tab-${nextView}`)
-				?.focus();
-		},
-		[selectHistoryView]
-	);
-
 	const selectStatisticsSession = useCallback(
 		(id: string) => {
 			selectHistorySession(id);
@@ -431,34 +402,13 @@ export function SessionHistory({
 						</button>
 					</div>
 				</header>
-				<div
-					aria-label="Session history views"
-					className="flex items-end gap-5 border-line border-b bg-[#12171d] px-3 sm:px-5"
-					role="tablist"
-				>
-					{SESSION_HISTORY_VIEW_OPTIONS.map((option) => (
-						<button
-							aria-controls={`session-history-panel-${option.value}`}
-							aria-selected={historyView === option.value}
-							className={`-mb-px border-b-2 px-1 py-3 font-semibold text-sm transition ${
-								historyView === option.value
-									? 'border-cyan-400 text-white'
-									: 'border-transparent text-slate-400 hover:border-slate-600 hover:text-white'
-							}`}
-							id={`session-history-tab-${option.value}`}
-							key={option.value}
-							onClick={() => selectHistoryView(option.value)}
-							onKeyDown={(event) =>
-								selectHistoryViewFromKeyboard(event, option.value)
-							}
-							role="tab"
-							tabIndex={historyView === option.value ? 0 : -1}
-							type="button"
-						>
-							{option.label}
-						</button>
-					))}
-				</div>
+				<Tabs
+					ariaLabel="Session history views"
+					idPrefix="session-history"
+					onChange={selectHistoryView}
+					options={SESSION_HISTORY_VIEW_OPTIONS}
+					value={historyView}
+				/>
 				<div
 					aria-labelledby={`session-history-tab-${historyView}`}
 					className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none md:flex-row"
@@ -472,6 +422,7 @@ export function SessionHistory({
 							loading={insightsLoading}
 							onSelectSession={selectStatisticsSession}
 							speedUnit={speedUnit}
+							weightHistory={weightHistory}
 						/>
 					) : (
 						<>
