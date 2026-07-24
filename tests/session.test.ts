@@ -8,6 +8,7 @@ import {
 	loadStoredSession,
 	restoreAggregate,
 	sessionContinuation,
+	sessionHasRecordedData,
 	sessionNeedsUnloadWarning,
 	storedResistance,
 } from '../src/lib/session';
@@ -60,7 +61,13 @@ describe('session utilities', () => {
 	});
 
 	test('protects recorded active sessions from accidental page exit', () => {
+		expect(sessionHasRecordedData(false, 1)).toBe(true);
+		expect(sessionHasRecordedData(false, 0)).toBe(false);
+		expect(sessionHasRecordedData(true, 1)).toBe(false);
 		expect(sessionNeedsUnloadWarning(false, 1)).toBe(true);
+		expect(sessionNeedsUnloadWarning(false, 1, true, false)).toBe(true);
+		expect(sessionNeedsUnloadWarning(false, 1, false, true)).toBe(true);
+		expect(sessionNeedsUnloadWarning(false, 1, false, false)).toBe(false);
 		expect(sessionNeedsUnloadWarning(false, 0)).toBe(false);
 		expect(sessionNeedsUnloadWarning(true, 1)).toBe(false);
 

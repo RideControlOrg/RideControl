@@ -22,7 +22,7 @@ describe('profile image preparation', () => {
 			width: 200,
 		});
 		expect(() => resizedProfileImageDimensions(0, 400)).toThrow(
-			'The profile image has invalid dimensions.'
+			'The image has invalid dimensions.'
 		);
 	});
 
@@ -85,7 +85,7 @@ describe('profile image preparation', () => {
 			throw new Error('The decoder should not run.');
 		});
 
-		await expect(preparation).rejects.toThrow('Choose a profile image smaller than 32 MB.');
+		await expect(preparation).rejects.toThrow('Choose an image smaller than 32 MB.');
 		expect(decoded).toBeFalse();
 	});
 
@@ -103,7 +103,7 @@ describe('profile image preparation', () => {
 		);
 
 		await expect(preparation).rejects.toThrow(
-			'This image could not be compressed enough for your profile.'
+			'This image could not be compressed enough for local storage.'
 		);
 		expect(closed).toBeTrue();
 	});

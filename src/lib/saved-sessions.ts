@@ -29,6 +29,7 @@ import {
 	sessionAnalyticsContribution,
 	updateSessionAnalyticsCache,
 } from './session-analytics';
+import { normalizeSessionDescription } from './session-description';
 import {
 	createSessionWorkoutSnapshot,
 	restoreSessionWorkoutSnapshot,
@@ -366,7 +367,7 @@ export function createSavedSession(
 ): SavedSession {
 	return {
 		...snapshot,
-		comments: metadata.comments.trim(),
+		comments: normalizeSessionDescription(metadata.comments),
 		endedAt,
 		feeling: metadata.feeling,
 		id,
@@ -446,9 +447,13 @@ export function saveSessionRecords(
 	getStore: StoreGetter<Pick<IDBObjectStore, 'put'>>,
 	session: SavedSession
 ): { snapshotId?: string } {
-	const records = storedSessionRecords(session);
+	const normalizedSession = {
+		...session,
+		comments: normalizeSessionDescription(session.comments),
+	};
+	const records = storedSessionRecords(normalizedSession);
 	getStore(SESSION_STORE).put(records.session);
-	getStore(SUMMARY_STORE).put(sessionSummary(session));
+	getStore(SUMMARY_STORE).put(sessionSummary(normalizedSession));
 	if (records.snapshot) {
 		getStore(WORKOUT_STORE).put(records.snapshot);
 	}
@@ -598,6 +603,7 @@ export function normalizeSavedSession(session: SavedSession): SavedSession {
 				aggregateResistance(session.history)
 			),
 		},
+		comments: normalizeSessionDescription(session.comments),
 		controlMode: controlModeForHistory(session.history, session.controlMode),
 		elevationTotals: restoreElevationTotals(session.elevationTotals, session.history),
 		importedAt: normalizedImportedAt(session.importedAt),

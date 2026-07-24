@@ -9,13 +9,19 @@ import { DevicePairingPanel } from './components/device-pairing';
 import { KeyboardShortcutsDialog } from './components/keyboard-shortcuts-dialog';
 import { PrivacyPolicyDialog, TermsOfServiceDialog } from './components/legal-dialog';
 import { Notification } from './components/notification';
-import { ProfileDialog } from './components/profile-dialog';
+import { ProfilePanel } from './components/profile-panel';
 import { RideMetrics } from './components/ride-metrics';
 import { SessionControls } from './components/session-controls';
 import { SessionHistory } from './components/session-history';
 import { SessionOverview } from './components/session-overview';
+import {
+	SessionRecoveryNotice,
+	sessionRecoveryConnectionsReady,
+	useAutoDismissSessionRecoveryNotice,
+} from './components/session-recovery-notice';
 import { SessionSaveDialog } from './components/session-save-dialog';
 import { TrainingControl } from './components/training-control';
+import { DeploymentVersionUpdateNotice } from './components/version-update-notice';
 import { WelcomeDialog } from './components/welcome-dialog';
 import { WorkoutPanel } from './components/workout-panel';
 import { WorkoutProgress } from './components/workout-progress';
@@ -59,8 +65,9 @@ import { eventTargetsInteractiveControl, keyboardEventHasModifiers } from './lib
 import { unreachable } from './lib/errors';
 import { maximumGear, resistanceForVirtualGear } from './lib/gears';
 import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from './lib/keyboard';
-import { profileTotalMassKg, type RiderProfile } from './lib/profile';
-import { sessionNeedsUnloadWarning } from './lib/session';
+import { activeRiderPhysicsProfile, type RiderPhysicsProfile } from './lib/profile';
+import type { ProfileTab } from './lib/profile-tab';
+import { sessionHasRecordedData, sessionNeedsUnloadWarning } from './lib/session';
 import { loadSessionHistoryView, type SessionHistoryView } from './lib/session-history-view';
 import { requestUnloadConfirmation } from './lib/unload';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
@@ -100,7 +107,7 @@ function personalizedWorkoutResistance({
 	virtualShiftingActive,
 }: {
 	gear: number;
-	profile: RiderProfile;
+	profile: RiderPhysicsProfile;
 	profileReady: boolean;
 	terrainResistance?: number;
 	virtualShiftingActive: boolean;
@@ -109,7 +116,12 @@ function personalizedWorkoutResistance({
 		return;
 	}
 	return virtualShiftingActive
-		? resistanceForVirtualGear(terrainResistance, gear, profile, profileTotalMassKg(profile))
+		? resistanceForVirtualGear(
+				terrainResistance,
+				gear,
+				profile,
+				profile.riderWeightKg + profile.bikeWeightKg
+			)
 		: terrainResistance;
 }
 
@@ -127,6 +139,9 @@ function restoredRoute(overlay: AppOverlay | undefined): AppRoute {
 			historyView: loadSessionHistoryView(),
 			kind: APP_ROUTE_KIND.SESSION,
 		};
+	}
+	if (overlay === APP_OVERLAY.PROFILE) {
+		return { kind: APP_ROUTE_KIND.PROFILE };
 	}
 	if (overlay === APP_OVERLAY.WORKOUTS) {
 		if (loadBikeGpxBrowserOpen()) {
@@ -165,6 +180,14 @@ function sessionRouteSearch(
 	};
 }
 
+function profileRouteSearch(profileTab?: ProfileTab): { tab?: ProfileTab } {
+	return profileTab ? { tab: profileTab } : {};
+}
+
+function profileRouteRequest(route: AppRoute): ProfileTab | undefined {
+	return route.kind === APP_ROUTE_KIND.PROFILE ? route.profileTab : undefined;
+}
+
 function sessionRouteRequest(route: AppRoute): {
 	calendarMonth?: string;
 	historyView?: SessionHistoryView;
@@ -183,6 +206,10 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const matchedAppRoute = useMemo(() => appRouteFromRouterMatch(routerMatch), [routerMatch]);
 	const navigate = useNavigate();
 	const [initialAppNavigation] = useState(() => initialNavigation(matchedAppRoute, pathname));
+	const [showRestoredSessionNotice, setShowRestoredSessionNotice] = useState(() =>
+		sessionHasRecordedData(initialSession.ended, initialSession.elapsedSeconds)
+	);
+	const dismissRestoredSessionNotice = useCallback(() => setShowRestoredSessionNotice(false), []);
 	const restoringRoute = useRef(
 		pathname === APP_ROUTE_PATH.HOME &&
 			initialAppNavigation.route.kind !== APP_ROUTE_KIND.HOME &&
@@ -191,7 +218,11 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const appRoute = restoringRoute.current ? initialAppNavigation.route : matchedAppRoute;
 	const rememberedDevices = useRememberedBluetoothDevices();
 	const riderProfile = useProfile();
-	const trainer = useTrainer(rememberedDevices, riderProfile.profile);
+	const riderPhysicsProfile = useMemo(
+		() => activeRiderPhysicsProfile(riderProfile.profile),
+		[riderProfile.profile]
+	);
+	const trainer = useTrainer(rememberedDevices, riderPhysicsProfile);
 	const [activeOverlay, setActiveOverlayState] = useState<AppOverlay | undefined>(
 		initialAppNavigation.overlay
 	);
@@ -217,6 +248,13 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					return;
 				case APP_ROUTE_KIND.HOME:
 					navigate({ replace, to: APP_ROUTE_PATH.HOME }).catch(() => undefined);
+					return;
+				case APP_ROUTE_KIND.PROFILE:
+					navigate({
+						replace,
+						search: profileRouteSearch(route.profileTab),
+						to: APP_ROUTE_PATH.PROFILE,
+					}).catch(() => undefined);
 					return;
 				case APP_ROUTE_KIND.SESSION:
 					if (route.sessionId) {
@@ -262,6 +300,10 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					historyView: loadSessionHistoryView(),
 					kind: APP_ROUTE_KIND.SESSION,
 				});
+				return;
+			}
+			if (overlay === APP_OVERLAY.PROFILE) {
+				navigateToAppRoute({ kind: APP_ROUTE_KIND.PROFILE });
 				return;
 			}
 			if (overlay === APP_OVERLAY.WORKOUTS) {
@@ -312,7 +354,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const virtualShiftingReady = virtualShiftingConnectionReady({
 		trainerConnected: trainer.connected,
 	});
-	const profileMaximumGear = maximumGear(riderProfile.profile);
+	const profileMaximumGear = maximumGear(riderPhysicsProfile);
 	const gearResistanceRef = useRef<(fromGear: number, toGear: number) => void>(
 		trainer.shiftResistanceForGears
 	);
@@ -338,7 +380,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		trainer.lastPedalingAt,
 		trainer.trainerReportsDistance,
 		initialSession,
-		riderProfile.ready ? riderProfile.profile : undefined
+		riderProfile.ready ? riderPhysicsProfile : undefined
 	);
 	const dashboardWorkout = workoutDashboardPreview({
 		distance: session.rideDistance,
@@ -355,7 +397,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const activeControlMode = trainingControlMode(click.paired, workoutSelected);
 	const workoutResistance = personalizedWorkoutResistance({
 		gear: gearControl.gear,
-		profile: riderProfile.profile,
+		profile: riderPhysicsProfile,
 		profileReady: riderProfile.ready,
 		terrainResistance: workoutTerrain?.resistance,
 		virtualShiftingActive,
@@ -366,8 +408,8 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					resistanceForVirtualGear(
 						workoutTerrain.resistance,
 						toGear,
-						riderProfile.profile,
-						profileTotalMassKg(riderProfile.profile)
+						riderPhysicsProfile,
+						riderPhysicsProfile.riderWeightKg + riderPhysicsProfile.bikeWeightKg
 					)
 				)
 		: trainer.shiftResistanceForGears;
@@ -404,7 +446,13 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		workflow.requestPersistentStorage();
 	}, [workflow.requestPersistentStorage]);
 
-	const warnBeforeUnload = sessionNeedsUnloadWarning(session.ended, session.elapsedSeconds);
+	const physicsSettingsLocked = sessionHasRecordedData(session.ended, session.elapsedSeconds);
+	const warnBeforeUnload = sessionNeedsUnloadWarning(
+		session.ended,
+		session.elapsedSeconds,
+		session.isRiding,
+		session.manuallyPaused
+	);
 	useEffect(() => {
 		if (!warnBeforeUnload) {
 			return;
@@ -506,6 +554,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const selectedWorkoutId = selectedWorkoutCourse ? selectedWorkoutCourse.id : undefined;
 	const bikeGpxBrowserOpen = appRoute.kind === APP_ROUTE_KIND.BIKEGPX;
 	const bikeGpxRouteId = bikeGpxBrowserOpen ? appRoute.routeId : undefined;
+	const requestedProfileTab = profileRouteRequest(appRoute);
 	const focusedWorkoutId =
 		appRoute.kind === APP_ROUTE_KIND.WORKOUT ? appRoute.workoutId : undefined;
 	const {
@@ -567,6 +616,15 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		},
 		[navigateToAppRoute, requestedSessionCalendarMonth, requestedSessionId]
 	);
+	const selectProfileTab = useCallback(
+		(profileTab: ProfileTab) => {
+			navigateToAppRoute({
+				kind: APP_ROUTE_KIND.PROFILE,
+				profileTab,
+			});
+		},
+		[navigateToAppRoute]
+	);
 	useEffect(() => {
 		if (!selectedWorkoutCourse) {
 			return;
@@ -598,6 +656,21 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		click.busy,
 		click.pairingRole !== undefined,
 	].some(Boolean);
+	const recoveredSessionDevicesConnected = sessionRecoveryConnectionsReady({
+		clickConnectedCount: click.connectedCount,
+		clickPairedCount: click.pairedCount,
+		heartRateConnected: heartRate.connected,
+		heartRatePaired: heartRate.paired,
+		rememberedDevicesFailed: rememberedDevices.error !== undefined,
+		rememberedDevicesLoaded: rememberedDevices.devices !== undefined,
+		rememberedDevicesSupported: rememberedDevices.supported,
+		trainerConnected: trainer.connected,
+	});
+	useAutoDismissSessionRecoveryNotice(
+		showRestoredSessionNotice,
+		recoveredSessionDevicesConnected,
+		dismissRestoredSessionNotice
+	);
 
 	return (
 		<main className="flex min-h-dvh min-w-0 flex-col overflow-x-clip bg-ink selection:bg-mint/30">
@@ -626,6 +699,10 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						pairedDeviceCount={pairedDeviceCount}
 					/>
 				</DashboardToolbar>
+				<DeploymentVersionUpdateNotice />
+				{showRestoredSessionNotice ? (
+					<SessionRecoveryNotice onDismiss={dismissRestoredSessionNotice} />
+				) : null}
 				<RideMetrics
 					aggregates={session.aggregates}
 					elapsedSeconds={session.elapsedSeconds}
@@ -660,6 +737,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						control={
 							virtualShiftingActive
 								? {
+										drivetrain: riderPhysicsProfile,
 										gear: gearControl.gear,
 										maximumGear: profileMaximumGear,
 										mode: CONTROL_MODE.GEAR,
@@ -709,6 +787,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				requestedSessionMonth={requestedSessionCalendarMonth}
 				requestedView={requestedSessionHistoryView}
 				speedUnit={speedUnit}
+				weightHistory={riderProfile.profile.weightHistory}
 			/>
 			<WorkoutPanel
 				activeCourse={session.selectedWorkout?.course}
@@ -784,13 +863,15 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				onClose={() => setActiveOverlay(undefined)}
 				open={activeOverlay === APP_OVERLAY.TERMS}
 			/>
-			<ProfileDialog
+			<ProfilePanel
 				onClose={() => setActiveOverlay(undefined)}
 				onSave={riderProfile.save}
 				onSelectSpeedUnit={preferencesStore.actions.selectSpeedUnit}
+				onSelectTab={selectProfileTab}
 				open={activeOverlay === APP_OVERLAY.PROFILE}
-				physicsSettingsLocked={warnBeforeUnload}
+				physicsSettingsLocked={physicsSettingsLocked}
 				profile={riderProfile.profile}
+				requestedTab={requestedProfileTab}
 				speedUnit={speedUnit}
 				storageError={riderProfile.storageError}
 			/>

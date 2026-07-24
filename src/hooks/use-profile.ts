@@ -38,8 +38,8 @@ export function useProfile() {
 	}, []);
 
 	const save = useCallback(async (nextProfile: RiderProfile) => {
-		await saveRiderProfile(nextProfile);
-		setProfile(nextProfile);
+		const savedProfile = await saveRiderProfile(nextProfile);
+		setProfile(savedProfile);
 		setStorageError('');
 	}, []);
 

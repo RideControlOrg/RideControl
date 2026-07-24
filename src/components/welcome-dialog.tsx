@@ -1,14 +1,17 @@
 import { useForm } from '@tanstack/react-form';
 import { useCallback, useEffect } from 'react';
 import { useCloseOnEscape } from '../hooks/use-dialog-behavior';
+import { isTestedChromeBrowser } from '../lib/browser';
 import { emptyWelcomeFormValues, welcomeFormSchema } from '../lib/welcome-form';
 
 export function WelcomeDialog({
 	onClose,
 	open,
+	testedChromeBrowser = isTestedChromeBrowser(globalThis.navigator),
 }: {
 	onClose: (dontShowAgain: boolean) => void;
 	open: boolean;
+	testedChromeBrowser?: boolean;
 }) {
 	const form = useForm({
 		defaultValues: emptyWelcomeFormValues(),
@@ -70,6 +73,21 @@ export function WelcomeDialog({
 					adjust resistance or shift virtual gears while keeping detailed records of every
 					ride—all from your browser.
 				</p>
+				{testedChromeBrowser ? null : (
+					<p className="mt-3 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3.5 py-3 text-amber-100 text-sm leading-6">
+						Ride Control is only tested with Google Chrome and likely only works
+						correctly in Chrome.{' '}
+						<a
+							className="font-bold text-amber-100 underline decoration-amber-200/50 underline-offset-2 hover:decoration-amber-100"
+							href="https://www.google.com/chrome/"
+							rel="noreferrer"
+							target="_blank"
+						>
+							Download Chrome
+						</a>
+						.
+					</p>
+				)}
 				<p className="mt-3 text-slate-400 text-sm leading-6">
 					Ride Control is a freely available, open-source GPLv3 application. View the{' '}
 					<a

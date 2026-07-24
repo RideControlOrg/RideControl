@@ -11,8 +11,8 @@ export const SPEED_UNIT_STORAGE_KEY = 'speed-unit';
 const DESCRIPTION_DISTANCE_SUFFIX = /(?:—|-)\s*\d+(?:[.,]\d+)?\s*(?:km|mi)\s*$/iu;
 
 export const SPEED_UNIT_OPTIONS: { label: string; value: SpeedUnit }[] = [
-	{ label: 'KM/H', value: 'kmh' },
-	{ label: 'MPH', value: 'mph' },
+	{ label: 'Metric', value: 'kmh' },
+	{ label: 'Imperial', value: 'mph' },
 ];
 
 export function storedSpeedUnit(storage: Pick<Storage, 'getItem'> = localStorage): SpeedUnit {

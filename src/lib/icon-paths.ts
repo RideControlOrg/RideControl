@@ -16,5 +16,6 @@ export const ICON_PATHS: Record<string, string> = {
 	route: 'M4 17c3-7 5-9 9-9 3 0 4 2 7 2M4 17h4m-4 0v-4M20 7h-4m4 0v4',
 	speed: 'M4 16a8 8 0 1 1 16 0M12 16l4-5M7 20h10',
 	stop: 'M6 6h12v12H6z',
+	trash: 'M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5',
 	upload: 'M12 16V4m0 0 4 4m-4-4L8 8M5 20h14',
 };

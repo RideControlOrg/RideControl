@@ -40,8 +40,17 @@ export function sessionContinuation(snapshot: SessionSnapshot): StoredSession {
 	};
 }
 
-export function sessionNeedsUnloadWarning(ended: boolean, elapsedSeconds: number): boolean {
+export function sessionHasRecordedData(ended: boolean, elapsedSeconds: number): boolean {
 	return !ended && elapsedSeconds > 0;
+}
+
+export function sessionNeedsUnloadWarning(
+	ended: boolean,
+	elapsedSeconds: number,
+	isRiding = true,
+	manuallyPaused = false
+): boolean {
+	return sessionHasRecordedData(ended, elapsedSeconds) && (isRiding || manuallyPaused);
 }
 
 export function addAggregate(

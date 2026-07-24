@@ -42,7 +42,7 @@ export function resizedProfileImageDimensions(
 			positiveImageDimension(maximumEdge)
 		)
 	) {
-		throw new Error('The profile image has invalid dimensions.');
+		throw new Error('The image has invalid dimensions.');
 	}
 	const scale = Math.min(1, maximumEdge / Math.max(width, height));
 	return {
@@ -68,7 +68,7 @@ function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
 				if (blob?.type === PROFILE_IMAGE_OUTPUT_TYPE) {
 					resolve(blob);
 				} else {
-					reject(new Error('This browser could not compress the profile image.'));
+					reject(new Error('This browser could not compress the image.'));
 				}
 			},
 			PROFILE_IMAGE_OUTPUT_TYPE,
@@ -87,7 +87,7 @@ async function decodeProfileImage(image: Blob): Promise<DecodedProfileImage> {
 			canvas.width = dimensions.width;
 			const context = canvas.getContext('2d');
 			if (!context) {
-				throw new Error('This browser could not prepare the profile image.');
+				throw new Error('This browser could not prepare the image.');
 			}
 			context.imageSmoothingEnabled = true;
 			context.imageSmoothingQuality = 'high';
@@ -101,10 +101,10 @@ async function decodeProfileImage(image: Blob): Promise<DecodedProfileImage> {
 
 function validateProfileImageSource(image: Blob): void {
 	if (!PROFILE_IMAGE_TYPES.some((type) => type === image.type)) {
-		throw new Error('Choose a JPEG, PNG, or WebP profile image.');
+		throw new Error('Choose a JPEG, PNG, or WebP image.');
 	}
 	if (image.size > MAXIMUM_PROFILE_IMAGE_SOURCE_BYTES) {
-		throw new Error('Choose a profile image smaller than 32 MB.');
+		throw new Error('Choose an image smaller than 32 MB.');
 	}
 }
 
@@ -140,7 +140,7 @@ export async function prepareProfileImage(
 		if (smallest && smallest.size <= MAXIMUM_PREPARED_PROFILE_IMAGE_BYTES) {
 			return smallest;
 		}
-		throw new Error('This image could not be compressed enough for your profile.');
+		throw new Error('This image could not be compressed enough for local storage.');
 	} finally {
 		source.close();
 	}

@@ -9,11 +9,8 @@ import {
 	riderProfileFromFormValues,
 } from '../src/lib/profile-form';
 import { renameWorkoutFormSchema } from '../src/lib/rename-workout-form';
-import {
-	MAXIMUM_SESSION_COMMENTS_LENGTH,
-	sessionMetadataFromFormValues,
-	sessionSaveFormSchema,
-} from '../src/lib/session-save-form';
+import { MAXIMUM_SESSION_DESCRIPTION_LENGTH } from '../src/lib/session-description';
+import { sessionMetadataFromFormValues, sessionSaveFormSchema } from '../src/lib/session-save-form';
 import { welcomeFormSchema } from '../src/lib/welcome-form';
 
 describe('dialog form schemas', () => {
@@ -30,7 +27,7 @@ describe('dialog form schemas', () => {
 		expect(imperial.speedUnit).toBe('mph');
 		expect(imperial.riderWeight).toBe('165.3');
 		expect(metricAgain.riderWeight).toBe(metric.riderWeight);
-		expect(metricAgain.bikeWeight).toBe(metric.bikeWeight);
+		expect(metricAgain.bikes[0]?.bikeWeight).toBe(metric.bikes[0]?.bikeWeight);
 	});
 
 	test('tracks unsaved profile edits and clears them after reset', () => {
@@ -52,28 +49,56 @@ describe('dialog form schemas', () => {
 	});
 
 	test('normalizes validated profile text and drivetrain values', () => {
+		const defaults = profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh');
+		const [defaultBike] = defaults.bikes;
+		const [defaultDomainBike] = DEFAULT_RIDER_PROFILE.bikes;
+		if (!(defaultBike && defaultDomainBike)) {
+			throw new Error('Expected a default bike');
+		}
 		const values = {
-			...profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh'),
-			frontChainrings: '50 / 34',
+			...defaults,
+			bikes: [
+				{
+					...defaultBike,
+					frontChainrings: '50 / 34',
+					name: ' Road bike ',
+					rearCassette: '11,13,15,17',
+				},
+			],
 			identity: ' Non-binary ',
 			name: ' Riley ',
-			rearCassette: '11,13,15,17',
 		};
 		expect(riderProfileFromFormValues(values)).toEqual({
 			...DEFAULT_RIDER_PROFILE,
-			frontChainringTeeth: [50, 34],
+			bikes: [
+				{
+					...defaultDomainBike,
+					frontChainringTeeth: [50, 34],
+					name: 'Road bike',
+					rearCassetteTeeth: [11, 13, 15, 17],
+				},
+			],
 			identity: 'Non-binary',
 			image: undefined,
 			name: 'Riley',
-			rearCassetteTeeth: [11, 13, 15, 17],
 		});
 	});
 
 	test('reports profile weight and drivetrain errors on their fields', () => {
+		const defaults = profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh');
+		const [defaultBike] = defaults.bikes;
+		if (!defaultBike) {
+			throw new Error('Expected a default bike');
+		}
 		const values = {
-			...profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh'),
-			frontChainrings: '53/53',
-			rearCassette: '1/2/3',
+			...defaults,
+			bikes: [
+				{
+					...defaultBike,
+					frontChainrings: '53/53',
+					rearCassette: '1/2/3',
+				},
+			],
 			riderWeight: '0',
 		};
 		const result = profileFormSchema.safeParse(values);
@@ -84,17 +109,27 @@ describe('dialog form schemas', () => {
 		expect(result.error.issues).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ path: ['riderWeight'] }),
-				expect.objectContaining({ path: ['frontChainrings'] }),
-				expect.objectContaining({ path: ['rearCassette'] }),
+				expect.objectContaining({ path: ['bikes', 0, 'frontChainrings'] }),
+				expect.objectContaining({ path: ['bikes', 0, 'rearCassette'] }),
 			])
 		);
 	});
 
 	test('rejects too many chainrings and virtual gears', () => {
+		const defaults = profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh');
+		const [defaultBike] = defaults.bikes;
+		if (!defaultBike) {
+			throw new Error('Expected a default bike');
+		}
 		const result = profileFormSchema.safeParse({
-			...profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh'),
-			frontChainrings: '56/50/44/38',
-			rearCassette: '11/12/13/14/15/16/17',
+			...defaults,
+			bikes: [
+				{
+					...defaultBike,
+					frontChainrings: '56/50/44/38',
+					rearCassette: '11/12/13/14/15/16/17',
+				},
+			],
 		});
 		expect(result.success).toBeFalse();
 		if (result.success) {
@@ -108,18 +143,131 @@ describe('dialog form schemas', () => {
 		);
 	});
 
-	test('accepts supported profile images and rejects other blobs', () => {
+	test('keeps multiple bikes and the active selection independent', () => {
+		const defaults = profileFormValues(DEFAULT_RIDER_PROFILE, 'mph');
+		const [roadBike] = defaults.bikes;
+		if (!roadBike) {
+			throw new Error('Expected a default bike');
+		}
+		const profile = riderProfileFromFormValues({
+			...defaults,
+			activeBikeId: 'gravel-bike',
+			bikes: [
+				{ ...roadBike, id: 'road-bike', name: 'Road bike' },
+				{
+					...roadBike,
+					bikeWeight: '24.3',
+					color: ' Forest green ',
+					frontChainrings: '46/30',
+					id: 'gravel-bike',
+					manufacturer: ' Cannondale ',
+					model: ' Topstone ',
+					name: 'Gravel bike',
+					purchasedOn: '2024-04-20',
+					rearCassette: '11/13/15/17/19/21/24/28/32/36/40/44',
+				},
+			],
+		});
+		expect(profile.activeBikeId).toBe('gravel-bike');
+		expect(profile.bikes).toHaveLength(2);
+		expect(profile.bikes[0]?.name).toBe('Road bike');
+		expect(profile.bikes[1]).toMatchObject({
+			color: 'Forest green',
+			frontChainringTeeth: [46, 30],
+			id: 'gravel-bike',
+			manufacturer: 'Cannondale',
+			model: 'Topstone',
+			name: 'Gravel bike',
+			purchasedOn: '2024-04-20',
+			rearCassetteTeeth: [11, 13, 15, 17, 19, 21, 24, 28, 32, 36, 40, 44],
+		});
+		expect(profile.bikes[1]?.weightKg).toBeCloseTo(11.02, 2);
+	});
+
+	test('accepts 1× bikes with either 11 or 12 rear gears', () => {
+		const defaults = profileFormValues(DEFAULT_RIDER_PROFILE, 'kmh');
+		const [defaultBike] = defaults.bikes;
+		if (!defaultBike) {
+			throw new Error('Expected a default bike');
+		}
+		for (const rearCassette of [
+			'11/13/15/17/19/21/24/28/32/36/42',
+			'10/12/14/16/18/21/24/28/32/36/42/50',
+		]) {
+			const values = {
+				...defaults,
+				bikes: [
+					{
+						...defaultBike,
+						frontChainrings: '42',
+						rearCassette,
+					},
+				],
+			};
+			expect(profileFormSchema.safeParse(values).success).toBeTrue();
+			const [bike] = riderProfileFromFormValues(values).bikes;
+			expect(bike?.frontChainringTeeth).toEqual([42]);
+			expect(bike?.rearCassetteTeeth).toEqual(rearCassette.split('/').map(Number));
+		}
+	});
+
+	test('accepts supported rider and bike images and rejects unsafe files', () => {
 		const values = profileFormValues(DEFAULT_RIDER_PROFILE, 'mph');
+		const [bike] = values.bikes;
+		if (!bike) {
+			throw new Error('Expected a default bike');
+		}
+		const image = new Blob(['image'], { type: 'image/webp' });
 		expect(
 			profileFormSchema.safeParse({
 				...values,
-				image: new Blob(['image'], { type: 'image/webp' }),
+				bikes: [{ ...bike, image }],
+				image,
 			}).success
 		).toBeTrue();
 		expect(
 			profileFormSchema.safeParse({
 				...values,
 				image: new Blob(['document'], { type: 'application/pdf' }),
+			}).success
+		).toBeFalse();
+		expect(
+			profileFormSchema.safeParse({
+				...values,
+				bikes: [
+					{
+						...bike,
+						image: new Blob(['document'], { type: 'application/pdf' }),
+					},
+				],
+			}).success
+		).toBeFalse();
+		const oversizedImage = new Blob(['image'], { type: 'image/jpeg' });
+		Object.defineProperty(oversizedImage, 'size', { value: 32 * 1024 * 1024 + 1 });
+		expect(
+			profileFormSchema.safeParse({
+				...values,
+				bikes: [{ ...bike, image: oversizedImage }],
+			}).success
+		).toBeFalse();
+	});
+
+	test('validates optional bike metadata', () => {
+		const values = profileFormValues(DEFAULT_RIDER_PROFILE, 'mph');
+		const [bike] = values.bikes;
+		if (!bike) {
+			throw new Error('Expected a default bike');
+		}
+		expect(
+			profileFormSchema.safeParse({
+				...values,
+				bikes: [{ ...bike, purchasedOn: '2024-02-29' }],
+			}).success
+		).toBeTrue();
+		expect(
+			profileFormSchema.safeParse({
+				...values,
+				bikes: [{ ...bike, purchasedOn: '2025-02-29' }],
 			}).success
 		).toBeFalse();
 	});
@@ -131,7 +279,7 @@ describe('dialog form schemas', () => {
 		expect(renameWorkoutFormSchema.safeParse({ name: '   ' }).success).toBeFalse();
 	});
 
-	test('validates session metadata and trims comments', () => {
+	test('validates session metadata and trims the description', () => {
 		expect(
 			sessionMetadataFromFormValues({
 				comments: '  Felt strong  ',
@@ -140,7 +288,7 @@ describe('dialog form schemas', () => {
 		).toEqual({ comments: 'Felt strong', feeling: 'great' });
 		expect(
 			sessionSaveFormSchema.safeParse({
-				comments: 'x'.repeat(MAXIMUM_SESSION_COMMENTS_LENGTH + 1),
+				comments: 'x'.repeat(MAXIMUM_SESSION_DESCRIPTION_LENGTH + 1),
 				feeling: 'great',
 			}).success
 		).toBeFalse();

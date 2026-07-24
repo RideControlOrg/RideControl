@@ -7,11 +7,13 @@ import {
 	MIN_GEAR,
 	MINIMUM_VIRTUAL_DRIVE_RATIO,
 	maximumGear,
+	neutralGear,
 	resistanceAfterGearShift,
 	resistanceForVirtualGear,
 	shiftedGear,
 	storedGear,
 	VIRTUAL_GEAR_COMBINATIONS,
+	virtualGearCombination,
 	virtualGearCombinations,
 	virtualGearLoadMultiplier,
 	virtualGearRatio,
@@ -36,6 +38,10 @@ describe('virtual gears', () => {
 
 	test('starts in the neutral gear when no virtual gear is remembered', () => {
 		expect(storedGear({ getItem: () => null })).toBe(DEFAULT_GEAR);
+		expect(neutralGear(11)).toBe(6);
+		expect(neutralGear(12)).toBe(6);
+		expect(storedGear({ getItem: () => null }, 11)).toBe(6);
+		expect(storedGear({ getItem: () => null }, 12)).toBe(6);
 	});
 
 	test('orders every physical 2×12 combination from easiest to hardest', () => {
@@ -73,9 +79,24 @@ describe('virtual gears', () => {
 		expect(virtualGearRatio(MAX_GEAR)).toBeCloseTo(MAXIMUM_VIRTUAL_DRIVE_RATIO, 10);
 		expect(MINIMUM_VIRTUAL_DRIVE_RATIO).toBe(39 / 24);
 		expect(MAXIMUM_VIRTUAL_DRIVE_RATIO).toBe(53 / 12);
-		expect(virtualGearRatio(2) / virtualGearRatio(1)).not.toBeCloseTo(
+		expect(virtualGearRatio(DEFAULT_GEAR)).toBe(39 / 15);
+		expect(virtualGearCombination(DEFAULT_GEAR)).toMatchObject({
+			cassetteTeeth: 15,
+			chainringTeeth: 39,
+			ratio: 39 / 15,
+		});
+		expect(virtualGearCombination(21)).toMatchObject({
+			cassetteTeeth: 15,
+			chainringTeeth: 53,
+			ratio: 53 / 15,
+		});
+		expect(virtualGearRatio(2) / virtualGearRatio(1)).toBeCloseTo(
 			virtualGearRatio(3) / virtualGearRatio(2),
-			3
+			10
+		);
+		expect(virtualGearRatio(13) / virtualGearRatio(12)).toBeCloseTo(
+			virtualGearRatio(14) / virtualGearRatio(13),
+			10
 		);
 	});
 
@@ -87,12 +108,15 @@ describe('virtual gears', () => {
 		expect(virtualGearLoadMultiplier(DEFAULT_GEAR)).toBe(1);
 	});
 
-	test('keeps the hardest gears loaded through a descent', () => {
+	test('ramps the hardest gears smoothly through a descent', () => {
 		const lightRiderAndBikeKg = 68;
 		expect(resistanceForVirtualGear(4, MIN_GEAR, undefined, lightRiderAndBikeKg)).toBe(1.3);
 		expect(resistanceForVirtualGear(4, DEFAULT_GEAR, undefined, lightRiderAndBikeKg)).toBe(3.2);
-		expect(resistanceForVirtualGear(4, 22, undefined, lightRiderAndBikeKg)).toBe(20.7);
-		expect(resistanceForVirtualGear(4, 23, undefined, lightRiderAndBikeKg)).toBe(27);
+		expect(
+			Array.from({ length: 9 }, (_, index) =>
+				resistanceForVirtualGear(4, 16 + index, undefined, lightRiderAndBikeKg)
+			)
+		).toEqual([7.8, 10.3, 12.9, 15.8, 19, 22.5, 26.2, 30.4, 34.9]);
 		expect(resistanceForVirtualGear(4, MAX_GEAR, undefined, lightRiderAndBikeKg)).toBe(34.9);
 		expect(resistanceAfterGearShift(4, DEFAULT_GEAR, MAX_GEAR)).toBe(34.9);
 	});
@@ -110,9 +134,9 @@ describe('virtual gears', () => {
 		expect(resistanceForVirtualGear(terrain.resistance, MAX_GEAR)).toBe(46.2);
 	});
 
-	test('applies each physical ratio change to consecutive free-ride shifts', () => {
+	test('applies each interpolated ratio change to consecutive free-ride shifts', () => {
 		const harder = resistanceAfterGearShift(30, 12, 13);
-		expect(harder).toBe(31.2);
+		expect(harder).toBe(32.8);
 		expect(resistanceAfterGearShift(harder, 13, 12)).toBeCloseTo(30, 1);
 		expect(resistanceAfterGearShift(3, 12, 1)).toBe(1.2);
 	});
@@ -128,5 +152,34 @@ describe('virtual gears', () => {
 		const defaultMassResistance = resistanceForVirtualGear(20, 4, drivetrain, 84);
 		const heavierResistance = resistanceForVirtualGear(20, 4, drivetrain, 100);
 		expect(heavierResistance).toBeGreaterThan(defaultMassResistance);
+	});
+
+	test('models 1×11 and 1×12 drivetrains across every rear gear', () => {
+		for (const rearCassetteTeeth of [
+			[11, 13, 15, 17, 19, 21, 24, 28, 32, 36, 42],
+			[10, 12, 14, 16, 18, 21, 24, 28, 32, 36, 42, 50],
+		]) {
+			const drivetrain = {
+				frontChainringTeeth: [42],
+				rearCassetteTeeth,
+			};
+			const combinations = virtualGearCombinations(drivetrain);
+			expect(maximumGear(drivetrain)).toBe(rearCassetteTeeth.length);
+			expect(combinations).toHaveLength(rearCassetteTeeth.length);
+			expect(combinations.at(0)?.ratio).toBe(42 / Math.max(...rearCassetteTeeth));
+			expect(combinations.at(-1)?.ratio).toBe(42 / Math.min(...rearCassetteTeeth));
+			expect(virtualGearCombination(1, drivetrain)).toMatchObject({
+				cassetteTeeth: Math.max(...rearCassetteTeeth),
+				chainringTeeth: 42,
+			});
+			expect(
+				Array.from(
+					{ length: rearCassetteTeeth.length - 1 },
+					(_, index) =>
+						virtualGearRatio(index + 2, drivetrain) >
+						virtualGearRatio(index + 1, drivetrain)
+				).every(Boolean)
+			).toBeTrue();
+		}
 	});
 });

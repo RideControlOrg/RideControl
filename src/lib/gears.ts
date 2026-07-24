@@ -63,14 +63,18 @@ export function maximumGear(drivetrain: VirtualDrivetrain = DEFAULT_VIRTUAL_DRIV
 	);
 }
 
+export function neutralGear(maximum = MAX_GEAR): number {
+	return Math.ceil(Math.max(MIN_GEAR, maximum) / 2);
+}
+
 export function clampGear(gear: number, maximum = MAX_GEAR): number {
 	return clamp(Math.round(gear), MIN_GEAR, Math.max(MIN_GEAR, maximum));
 }
 
 export function storedGear(
 	storage: Pick<Storage, 'getItem'> = localStorage,
-	fallback = DEFAULT_GEAR,
-	maximum = MAX_GEAR
+	maximum = MAX_GEAR,
+	fallback = neutralGear(maximum)
 ): number {
 	const saved = Number(storage.getItem(GEAR_STORAGE_KEY));
 	return Number.isFinite(saved) && saved > 0
@@ -90,7 +94,15 @@ export function virtualGearRatio(
 	return gearRatioFromCombinations(gear, combinations);
 }
 
-function gearRatioFromCombinations(
+export function virtualGearCombination(
+	gear: number,
+	drivetrain: VirtualDrivetrain = DEFAULT_VIRTUAL_DRIVETRAIN
+): VirtualGearCombination | undefined {
+	const combinations = virtualGearCombinations(drivetrain);
+	return combinations.at(clampGear(gear, combinations.length) - MIN_GEAR);
+}
+
+function physicalGearRatioFromCombinations(
 	gear: number,
 	combinations: readonly VirtualGearCombination[]
 ): number {
@@ -99,6 +111,28 @@ function gearRatioFromCombinations(
 		combinations.at(0)?.ratio ??
 		MINIMUM_VIRTUAL_DRIVE_RATIO
 	);
+}
+
+function gearRatioFromCombinations(
+	gear: number,
+	combinations: readonly VirtualGearCombination[]
+): number {
+	const maximum = Math.max(MIN_GEAR, combinations.length);
+	const current = clampGear(gear, maximum);
+	const neutral = neutralGear(maximum);
+	if (maximum === MIN_GEAR || current === neutral) {
+		return physicalGearRatioFromCombinations(current, combinations);
+	}
+
+	const startGear = current < neutral ? MIN_GEAR : neutral;
+	const endGear = current < neutral ? neutral : maximum;
+	const startRatio = physicalGearRatioFromCombinations(startGear, combinations);
+	const endRatio = physicalGearRatioFromCombinations(endGear, combinations);
+	const progress = (current - startGear) / (endGear - startGear);
+
+	// Equal percentage steps feel like a continuous drivetrain while preserving
+	// the configured easiest, neutral, and hardest physical ratios.
+	return startRatio * (endRatio / startRatio) ** progress;
 }
 
 function roundedResistance(resistance: number): number {
@@ -116,10 +150,10 @@ function gearLoadMultiplierFromCombinations(
 	gear: number,
 	combinations: readonly VirtualGearCombination[]
 ): number {
-	const neutralGear = Math.ceil(combinations.length / 2);
+	const neutral = neutralGear(combinations.length);
 	const relativeRatio =
 		gearRatioFromCombinations(gear, combinations) /
-		gearRatioFromCombinations(neutralGear, combinations);
+		gearRatioFromCombinations(neutral, combinations);
 	return relativeRatio ** VIRTUAL_GEAR_LOAD_EXPONENT;
 }
 

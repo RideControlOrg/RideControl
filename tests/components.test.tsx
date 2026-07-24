@@ -10,7 +10,7 @@ import { KeyboardShortcutsDialog } from '../src/components/keyboard-shortcuts-di
 import { PrivacyPolicyDialog, TermsOfServiceDialog } from '../src/components/legal-dialog';
 import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
 import { Notification } from '../src/components/notification';
-import { ProfileDialog } from '../src/components/profile-dialog';
+import { ProfilePanel, RemoveBikeDialog, RemoveImageDialog } from '../src/components/profile-panel';
 import { RenameWorkoutDialog } from '../src/components/rename-workout-dialog';
 import { ResistanceControl } from '../src/components/resistance-control';
 import { SessionCalendar } from '../src/components/session-calendar';
@@ -19,9 +19,14 @@ import { SessionControls } from '../src/components/session-controls';
 import { DeleteSessionDialog, SessionDetail } from '../src/components/session-detail';
 import { SessionHistory } from '../src/components/session-history';
 import { SessionHistoryList } from '../src/components/session-history-list';
+import {
+	SessionRecoveryNotice,
+	sessionRecoveryConnectionsReady,
+} from '../src/components/session-recovery-notice';
 import { SessionSaveDialog } from '../src/components/session-save-dialog';
 import { SessionStatistics } from '../src/components/session-statistics';
 import { TrainingControl } from '../src/components/training-control';
+import { VersionUpdateNotice } from '../src/components/version-update-notice';
 import { WelcomeDialog } from '../src/components/welcome-dialog';
 import { WorkoutPanel } from '../src/components/workout-panel';
 import { WorkoutProgress } from '../src/components/workout-progress';
@@ -32,8 +37,10 @@ import {
 	emptySession,
 } from '../src/constants';
 import { formatGrade } from '../src/lib/format';
+import { DEFAULT_VIRTUAL_DRIVETRAIN } from '../src/lib/gears';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
+import { PROFILE_TAB } from '../src/lib/profile-tab';
 import { formatSessionImportTime, sessionSummary } from '../src/lib/saved-sessions';
 import {
 	buildSessionAnalyticsCache,
@@ -62,6 +69,7 @@ const solidChartBoundaries =
 	/d="M0 14H100 M0 90H100"[^>]*stroke="#3a4654"(?![^>]*stroke-dasharray)/;
 const dashedChartGuides =
 	/d="M0 52H100 M25 14V90 M50 14V90 M75 14V90"[^>]*stroke-dasharray="2.5 2.5"/;
+const gearProgressStyle = /style="width:([^"]+)"/;
 const noCustomWorkoutIds = new Set<string>();
 
 describe('view components', () => {
@@ -69,6 +77,14 @@ describe('view components', () => {
 		expect(render(<Icon name="heart" />)).toContain('<title>heart</title>');
 		expect(render(<Icon name="move-vertical" />)).toContain('<title>move-vertical</title>');
 		expect(render(<Icon name="unknown" />)).toContain('<title>unknown</title>');
+	});
+
+	test('renders a persistent deployment update notice', () => {
+		const html = render(<VersionUpdateNotice onReload={() => undefined} />);
+		expect(html).toContain('role="status"');
+		expect(html).toContain('A new Ride Control version is available.');
+		expect(html).toContain('Reload when convenient to use the latest version.');
+		expect(html).toContain('>Reload now</button>');
 	});
 
 	test('renders metric values and accent classes', () => {
@@ -529,6 +545,24 @@ describe('view components', () => {
 		);
 		expect(disabled).not.toContain('Connect the trainer before shifting gears.');
 		expect(disabled.match(/disabled=""/g)).toHaveLength(2);
+
+		const firstGear = render(
+			<GearControl disabled={false} gear={1} maximumGear={24} onChange={() => undefined} />
+		);
+		const secondGear = render(
+			<GearControl disabled={false} gear={2} maximumGear={24} onChange={() => undefined} />
+		);
+		const lastGear = render(
+			<GearControl disabled={false} gear={24} maximumGear={24} onChange={() => undefined} />
+		);
+		const firstGearProgress = firstGear.match(gearProgressStyle)?.[1];
+		const secondGearProgress = secondGear.match(gearProgressStyle)?.[1];
+		const lastGearProgress = lastGear.match(gearProgressStyle)?.[1];
+		expect(Number.parseFloat(firstGearProgress ?? '0')).toBeGreaterThan(0);
+		expect(Number.parseFloat(secondGearProgress ?? '0')).toBeGreaterThan(
+			Number.parseFloat(firstGearProgress ?? '0')
+		);
+		expect(lastGearProgress).toBe('100%');
 	});
 
 	test('renders only the selected training control mode', () => {
@@ -536,6 +570,7 @@ describe('view components', () => {
 			<TrainingControl
 				connected
 				control={{
+					drivetrain: DEFAULT_VIRTUAL_DRIVETRAIN,
 					gear: 12,
 					maximumGear: 24,
 					mode: 'gear',
@@ -545,6 +580,7 @@ describe('view components', () => {
 		);
 		expect(gear).toContain('Virtual shifting');
 		expect(gear).toContain('of 24');
+		expect(gear).toContain('39/15 · 2.60:1 · 1.00× load');
 		expect(gear).not.toContain('to shift');
 		expect(gear).not.toContain('Resistance control');
 
@@ -868,9 +904,47 @@ describe('view components', () => {
 		expect(html).not.toContain('fixed right-4 bottom-3 left-4');
 		expect(html).toContain('rounded-2xl border border-line bg-panel p-4');
 		expect(html).toContain('xl:grid-cols-[1.45fr_.55fr]');
-		expect(html).not.toContain('>KM/H</button>');
-		expect(html).not.toContain('>MPH</button>');
+		expect(html).not.toContain('>Metric</button>');
+		expect(html).not.toContain('>Imperial</button>');
+		expect(html).not.toContain('Your ride data is safe and has been restored');
 		expect(html).toMatch(enabledEndSessionButton);
+	});
+
+	test('explains active session recovery after a reload', async () => {
+		const notice = render(<SessionRecoveryNotice onDismiss={() => undefined} />);
+		expect(notice).toContain('Your ride data is safe and has been restored');
+		expect(notice).toContain('wait for your devices to reconnect before continuing');
+		expect(notice).toContain('aria-label="Dismiss restored session notice"');
+		expect(
+			sessionRecoveryConnectionsReady({
+				clickConnectedCount: 0,
+				clickPairedCount: 1,
+				heartRateConnected: true,
+				heartRatePaired: true,
+				rememberedDevicesFailed: false,
+				rememberedDevicesLoaded: true,
+				rememberedDevicesSupported: true,
+				trainerConnected: true,
+			})
+		).toBeFalse();
+		expect(
+			sessionRecoveryConnectionsReady({
+				clickConnectedCount: 1,
+				clickPairedCount: 1,
+				heartRateConnected: true,
+				heartRatePaired: true,
+				rememberedDevicesFailed: false,
+				rememberedDevicesLoaded: true,
+				rememberedDevicesSupported: true,
+				trainerConnected: true,
+			})
+		).toBeTrue();
+
+		const html = await renderApp({
+			...emptySession,
+			elapsedSeconds: 60,
+		});
+		expect(html).toContain('Your ride data is safe and has been restored');
 	});
 
 	test('renders version details in an accessible dialog', () => {
@@ -942,19 +1016,40 @@ describe('view components', () => {
 
 	test('renders an inclusive local profile editor', () => {
 		const profile = {
-			bikeWeightKg: 9,
-			frontChainringTeeth: [53, 39],
+			activeBikeId: 'road-bike',
+			bikes: [
+				{
+					frontChainringTeeth: [53, 39],
+					id: 'road-bike',
+					image: new Blob(['bike'], { type: 'image/webp' }),
+					name: 'Road bike',
+					rearCassetteTeeth: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24],
+					weightKg: 9,
+				},
+				{
+					frontChainringTeeth: [46, 30],
+					id: 'gravel-bike',
+					name: 'Gravel bike',
+					rearCassetteTeeth: [11, 13, 15, 17, 19, 21, 24, 28, 32, 36, 40, 44],
+					weightKg: 11,
+				},
+			],
 			identity: '',
+			image: new Blob(['profile'], { type: 'image/webp' }),
 			name: 'Riley',
-			rearCassetteTeeth: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24],
 			riderWeightKg: 75,
+			weightHistory: [
+				{ recordedAt: Date.UTC(2026, 5, 1), weightKg: 76 },
+				{ recordedAt: Date.UTC(2026, 6, 1), weightKg: 75 },
+			],
 		};
 		expect(
 			render(
-				<ProfileDialog
+				<ProfilePanel
 					onClose={() => undefined}
 					onSave={async () => undefined}
 					onSelectSpeedUnit={() => undefined}
+					onSelectTab={() => undefined}
 					open={false}
 					physicsSettingsLocked={false}
 					profile={profile}
@@ -964,10 +1059,11 @@ describe('view components', () => {
 			)
 		).toBe('');
 		const html = render(
-			<ProfileDialog
+			<ProfilePanel
 				onClose={() => undefined}
 				onSave={async () => undefined}
 				onSelectSpeedUnit={() => undefined}
+				onSelectTab={() => undefined}
 				open
 				physicsSettingsLocked={false}
 				profile={profile}
@@ -976,28 +1072,100 @@ describe('view components', () => {
 			/>
 		);
 		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('data-side-tray="true"');
 		expect(html).toContain('id="profile-title">Profile</h2>');
-		expect(html).toContain('Choose profile image');
+		expect(html).toContain('flex min-w-0 items-baseline gap-3');
+		expect(html).toContain('truncate text-slate-400 text-sm');
+		expect(html).toContain('aria-label="Profile sections"');
+		expect(html).toContain(
+			'scrollbar-hidden flex shrink-0 items-end gap-5 overflow-x-auto overflow-y-hidden'
+		);
+		expect(html.match(/role="tab"/g)).toHaveLength(2);
+		expect(html.match(/role="tabpanel"/g)).toHaveLength(2);
+		expect(html).toContain('aria-controls="profile-panel-personal"');
+		expect(html).toContain('id="profile-tab-personal"');
+		expect(html).toContain('id="profile-panel-personal"');
+		expect(html).toContain('aria-controls="profile-panel-bikes"');
+		expect(html).toContain('id="profile-tab-bikes"');
+		expect(html).toContain('id="profile-panel-bikes"');
+		expect(html).toContain('>Personal details</button>');
+		expect(html).toContain('hidden=""');
+		expect(html.match(/Change image/g)).toHaveLength(2);
+		expect(html.match(/<title>upload<\/title>/g)).toHaveLength(2);
+		expect(html.match(/<title>trash<\/title>/g)).toHaveLength(2);
+		expect(html.match(/aria-controls="remove-image-dialog"/g)).toHaveLength(2);
+		expect(html).not.toContain('Resized and compressed in this browser before storage.');
 		expect(html).toContain('Sex or gender identity');
 		expect(html).toContain('value="Non-binary"');
 		expect(html).toContain('value="Two-Spirit"');
-		expect(html).toContain('never used in workout calculations');
 		expect(html).toContain('Display units');
 		expect(html).toContain('aria-pressed="true"');
-		expect(html).toContain('>KM/H</button>');
-		expect(html).toContain('>MPH</button>');
-		expect(html).toContain('Controls speed, distance, elevation, and weight units.');
+		expect(html).toContain('>Metric</button>');
+		expect(html).toContain('>Imperial</button>');
 		expect(html).toContain('Your weight (lb)');
+		expect(html).toContain('Weight history');
+		expect(html).toContain('data-weight-history="true"');
+		expect(html).not.toContain('rider-weight-calendar');
+		expect(html).not.toContain('Previous weight month');
+		expect(html).toContain('data-weight-chart-size="compact"');
+		expect(html).toContain('data-weight-plot="true"');
+		expect(html.match(/data-weight-point="true"/g)).toHaveLength(2);
+		expect(html).toContain('data-weight-line="true"');
+		expect(html).toContain('data-weight-area="true"');
+		expect(html).toContain('Change');
+		expect(html).toContain('−2.2');
+		expect(html).not.toContain('Each saved weight change is recorded locally.');
+		expect(html).toContain('165.3');
+		expect(html).toContain('Bikes');
+		expect(html).toContain('Road bike');
+		expect(html).toContain('Gravel bike');
+		expect(html).toContain('Active bike settings');
+		expect(html).toContain('id="profile-bike-image"');
+		expect(html).toContain('Manufacturer');
+		expect(html).toContain('id="profile-bike-manufacturer"');
+		expect(html).toContain('Model');
+		expect(html).toContain('id="profile-bike-model"');
+		expect(html).toContain('Color');
+		expect(html).toContain('id="profile-bike-color"');
+		expect(html).toContain('Purchase date');
+		expect(html).toContain('id="profile-bike-purchased-on"');
+		expect(html).toContain('type="date"');
 		expect(html).toContain('Bike weight (lb)');
 		expect(html).toContain('value="53/39"');
-		expect(html).toContain('This setup creates 24 virtual gears');
-		expect(html).toContain('IndexedDB');
+		expect(html).toContain('Use one value for a 1× setup, such as 42');
+		expect(html).toContain('including an 11- or 12-speed cassette');
+		expect(html).toContain('This 2×12 setup creates 24 virtual gears');
+		expect(html).toContain('aria-controls="remove-bike-dialog"');
+		expect(html).toContain('aria-haspopup="dialog"');
+		expect(html).toContain(
+			'Your profile stays on device. In the future we will offer cloud storage and sync, as a premium feature.'
+		);
 		expect(html).toContain('aria-label="Close profile"');
-		const lockedHtml = render(
-			<ProfileDialog
+		const bikesHtml = render(
+			<ProfilePanel
 				onClose={() => undefined}
 				onSave={async () => undefined}
 				onSelectSpeedUnit={() => undefined}
+				onSelectTab={() => undefined}
+				open
+				physicsSettingsLocked={false}
+				profile={profile}
+				requestedTab={PROFILE_TAB.BIKES}
+				speedUnit="mph"
+				storageError=""
+			/>
+		);
+		expect(bikesHtml).toContain('aria-controls="profile-panel-bikes" aria-selected="true"');
+		expect(bikesHtml).toContain('aria-labelledby="profile-tab-personal" hidden=""');
+		expect(bikesHtml).toContain('aria-labelledby="profile-tab-bikes" id="profile-panel-bikes"');
+		expect(bikesHtml).not.toContain('Your profile stays on device');
+		expect(bikesHtml).not.toContain('data-profile-guidance');
+		const lockedHtml = render(
+			<ProfilePanel
+				onClose={() => undefined}
+				onSave={async () => undefined}
+				onSelectSpeedUnit={() => undefined}
+				onSelectTab={() => undefined}
 				open
 				physicsSettingsLocked
 				profile={profile}
@@ -1005,9 +1173,101 @@ describe('view components', () => {
 				storageError=""
 			/>
 		);
-		expect(lockedHtml).toContain('Weight and drivetrain settings are locked');
+		expect(lockedHtml).toContain('data-profile-guidance="personal"');
+		expect(lockedHtml).toContain('Rider weight is locked while a ride is active');
+		expect(lockedHtml).not.toContain('The active bike, bike weight, and drivetrain are locked');
+		expect(lockedHtml).toContain(
+			'In the future we will offer cloud storage and sync, as a premium feature.'
+		);
 		expect(lockedHtml).toContain('id="profile-rider-weight"');
 		expect(lockedHtml).toContain('disabled=""');
+		const lockedBikesHtml = render(
+			<ProfilePanel
+				onClose={() => undefined}
+				onSave={async () => undefined}
+				onSelectSpeedUnit={() => undefined}
+				onSelectTab={() => undefined}
+				open
+				physicsSettingsLocked
+				profile={profile}
+				requestedTab={PROFILE_TAB.BIKES}
+				speedUnit="mph"
+				storageError=""
+			/>
+		);
+		expect(lockedBikesHtml).toContain('data-profile-guidance="bikes"');
+		expect(lockedBikesHtml).toContain(
+			'The active bike, bike weight, and drivetrain are locked while a ride is active'
+		);
+		expect(lockedBikesHtml).not.toContain('Rider weight is locked');
+		expect(lockedBikesHtml).not.toContain('Your profile stays on device');
+	});
+
+	test('confirms before removing profile and bike images', () => {
+		expect(
+			render(
+				<RemoveImageDialog
+					kind="profile"
+					onCancel={() => undefined}
+					onConfirm={() => undefined}
+					open={false}
+				/>
+			)
+		).toBe('');
+		const profileHtml = render(
+			<RemoveImageDialog
+				kind="profile"
+				onCancel={() => undefined}
+				onConfirm={() => undefined}
+				open
+			/>
+		);
+		expect(profileHtml).toContain('role="alertdialog"');
+		expect(profileHtml).toContain('id="remove-image-title">Remove profile image?</h2>');
+		expect(profileHtml).toContain(
+			'Your profile image will be removed when you save your changes.'
+		);
+		expect(profileHtml).toContain('>Remove image</button>');
+
+		const bikeHtml = render(
+			<RemoveImageDialog
+				bikeName="Road bike"
+				kind="bike"
+				onCancel={() => undefined}
+				onConfirm={() => undefined}
+				open
+			/>
+		);
+		expect(bikeHtml).toContain('id="remove-image-title">Remove bike image?</h2>');
+		expect(bikeHtml).toContain('Road bike');
+		expect(bikeHtml).toContain('will be removed when you save your changes');
+	});
+
+	test('confirms before removing a profile bike', () => {
+		expect(
+			render(
+				<RemoveBikeDialog
+					bikeName="Gravel bike"
+					onCancel={() => undefined}
+					onConfirm={() => undefined}
+					open={false}
+				/>
+			)
+		).toBe('');
+		const html = render(
+			<RemoveBikeDialog
+				bikeName="Gravel bike"
+				onCancel={() => undefined}
+				onConfirm={() => undefined}
+				open
+			/>
+		);
+		expect(html).toContain('role="alertdialog"');
+		expect(html).toContain('aria-modal="true"');
+		expect(html).toContain('id="remove-bike-title">Remove this bike?</h2>');
+		expect(html).toContain('Gravel bike');
+		expect(html).toContain('will be removed from your profile when you save your changes');
+		expect(html).toContain('>Remove bike</button>');
 	});
 
 	test('shows manual virtual shifting for a terrain workout without Click controllers', async () => {
@@ -1027,7 +1287,9 @@ describe('view components', () => {
 
 	test('renders the first-time welcome message', () => {
 		expect(render(<WelcomeDialog onClose={() => undefined} open={false} />)).toBe('');
-		const html = render(<WelcomeDialog onClose={() => undefined} open />);
+		const html = render(
+			<WelcomeDialog onClose={() => undefined} open testedChromeBrowser={false} />
+		);
 		expect(html).toContain('aria-modal="true"');
 		expect(html).not.toContain('WELCOME TO');
 		expect(html).toContain('RideControl.xyz');
@@ -1043,6 +1305,13 @@ describe('view components', () => {
 		expect(html).toContain(
 			'From the history, you can download your rides as Strava-compatible FIT files'
 		);
+		expect(html).toContain('only tested with Google Chrome');
+		expect(html).toContain('likely only works correctly in Chrome');
+		expect(html).toContain('href="https://www.google.com/chrome/"');
+		expect(html).toContain('>Download Chrome</a>');
+		expect(
+			render(<WelcomeDialog onClose={() => undefined} open testedChromeBrowser />)
+		).not.toContain('Download Chrome');
 	});
 
 	test('renders the keyboard controls reference', () => {
@@ -1275,6 +1544,9 @@ describe('view components', () => {
 		expect(html).toContain('Save this session?');
 		expect(html).not.toContain('SESSION ENDED');
 		expect(html).toContain('How did it feel?');
+		expect(html).toContain('Description');
+		expect(html).toContain('0 / 500');
+		expect(html).toContain('maxLength="500"');
 		expect(html).toContain('Continue without saving');
 		expect(html).toContain('Save &amp; continue');
 		const endSession = render(
@@ -1346,6 +1618,9 @@ describe('view components', () => {
 		expect(html).toContain('List');
 		expect(html).toContain('Statistics');
 		expect(html).toContain('role="tablist"');
+		expect(html).toContain(
+			'scrollbar-hidden flex shrink-0 items-end gap-5 overflow-x-auto overflow-y-hidden'
+		);
 		expect(html.match(/role="tab"/g)).toHaveLength(3);
 		expect(html).toContain('aria-selected="true"');
 		expect(html).toContain('role="tabpanel"');
@@ -1424,6 +1699,10 @@ describe('view components', () => {
 				onSelectSession={() => undefined}
 				speedUnit="mph"
 				trendEndTimestamp={new Date(2026, 6, 23, 12).getTime()}
+				weightHistory={[
+					{ recordedAt: Date.UTC(2026, 5, 1), weightKg: 76 },
+					{ recordedAt: Date.UTC(2026, 6, 1), weightKg: 75 },
+				]}
 			/>
 		);
 
@@ -1447,10 +1726,42 @@ describe('view components', () => {
 		expect(html.match(/data-analytics-bar="value"/g)).toHaveLength(1);
 		expect(html.match(/data-analytics-bar="empty"/g)).toHaveLength(11);
 		expect(html).toContain('Active years');
+		expect(html).not.toContain('Exact ride time');
+		expect(html).toContain('Weight over time');
+		expect(html).toContain('data-weight-chart-size="full"');
+		expect(html.match(/data-testid="rider-weight-chart"/g)).toHaveLength(1);
+		expect(html.match(/data-weight-point="true"/g)).toHaveLength(2);
 		expect(html.match(/sm:text-5xl/g)).toHaveLength(18);
 		expect(html.match(/sm:text-2xl/g)).toHaveLength(9);
+		expect(html).toContain('mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3');
+		expect(html).toContain('mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3');
+		expect(html).toContain('mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3');
+		expect(html).not.toContain('mt-2 truncate font-bold text-4xl');
+		expect(html).toContain('<span class="whitespace-nowrap">');
 		expect(html).toContain('max-w-12');
 		expect(html).toContain('height:85%');
+
+		const largeTotals = render(
+			<SessionStatistics
+				analytics={{
+					...analytics,
+					totals: {
+						...analytics.totals,
+						calories: 12_345_678,
+						elapsedSeconds: 123 * 86_400 + 4 * 3600,
+						sessionCount: 1_234_567,
+					},
+				}}
+				error=""
+				loading={false}
+				onSelectSession={() => undefined}
+				speedUnit="mph"
+				trendEndTimestamp={new Date(2026, 6, 23, 12).getTime()}
+			/>
+		);
+		expect(largeTotals).toContain('1,234,567');
+		expect(largeTotals).toContain('123d 4h');
+		expect(largeTotals).toContain('12,345,678');
 
 		const overview = render(
 			<SessionStatistics

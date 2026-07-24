@@ -9,6 +9,7 @@ import { downloadBrowserFile } from './download';
 import { aggregateAverage, aggregateMaximum } from './format';
 import { nonNegativeNumber } from './numbers';
 import type { RiderPhysicsProfile } from './profile';
+import { normalizeSessionDescription } from './session-description';
 import {
 	RIDECONTROL_TCX_EXTENSION_NAMESPACE,
 	TCX_ACTIVITY_EXTENSION_NAMESPACE,
@@ -98,10 +99,17 @@ function profileSummaryXml(profile?: RiderPhysicsProfile): string {
 	if (!profile) {
 		return '';
 	}
+	const bikeIdentity = [
+		profile.bikeId ? `<rc:BikeId>${xmlEscape(profile.bikeId)}</rc:BikeId>` : '',
+		profile.bikeName ? `<rc:BikeName>${xmlEscape(profile.bikeName)}</rc:BikeName>` : '',
+	]
+		.filter(Boolean)
+		.map((value) => `\n\t\t\t\t\t\t\t${value}`)
+		.join('');
 	return `
 						<rc:ProfileSnapshot>
 							<rc:RiderWeightKilograms>${profile.riderWeightKg.toFixed(3)}</rc:RiderWeightKilograms>
-							<rc:BikeWeightKilograms>${profile.bikeWeightKg.toFixed(3)}</rc:BikeWeightKilograms>
+							<rc:BikeWeightKilograms>${profile.bikeWeightKg.toFixed(3)}</rc:BikeWeightKilograms>${bikeIdentity}
 							<rc:FrontChainrings>${profile.frontChainringTeeth.join('/')}</rc:FrontChainrings>
 							<rc:RearCassette>${profile.rearCassetteTeeth.join('/')}</rc:RearCassette>
 						</rc:ProfileSnapshot>`;
@@ -109,6 +117,7 @@ function profileSummaryXml(profile?: RiderPhysicsProfile): string {
 
 export function sessionToTcx(session: SavedSession): string {
 	const startedAt = new Date(session.startedAt).toISOString();
+	const description = normalizeSessionDescription(session.comments);
 	const distances = sessionSampleDistances(session);
 	const trackpoints = session.history
 		.map((sample, index) =>
@@ -122,7 +131,7 @@ export function sessionToTcx(session: SavedSession): string {
 		.join('');
 	const notes = [
 		session.feeling ? `Feeling: ${session.feeling}` : '',
-		session.comments ? `Comments: ${session.comments}` : '',
+		description ? `Description: ${description}` : '',
 	]
 		.filter(Boolean)
 		.join('\n');

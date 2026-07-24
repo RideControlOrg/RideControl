@@ -47,6 +47,8 @@ export const savedSessionFixture: SavedSession = {
 		speed: 30,
 	},
 	profileSnapshot: {
+		bikeId: 'road-bike',
+		bikeName: 'Road & gravel bike',
 		bikeWeightKg: 9,
 		frontChainringTeeth: [53, 39],
 		rearCassetteTeeth: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24],

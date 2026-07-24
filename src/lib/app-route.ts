@@ -1,5 +1,6 @@
 import { APP_OVERLAY, type SideTrayOverlay } from './app-overlay';
 import { unreachable } from './errors';
+import { type ProfileTab, profileTabSchema } from './profile-tab';
 import { sessionCalendarMonthKeySchema } from './session-calendar';
 import { type SessionHistoryView, sessionHistoryViewSchema } from './session-history-view';
 
@@ -8,6 +9,7 @@ export const APP_ROUTE_PATH = {
 	BIKEGPX_ROUTE: '/bikegpx/$routeId',
 	DEVICES: '/devices',
 	HOME: '/',
+	PROFILE: '/profile',
 	SESSION: '/sessions/$sessionId',
 	SESSIONS: '/sessions',
 	WORKOUT: '/workouts/$workoutId',
@@ -18,6 +20,7 @@ export const APP_ROUTE_KIND = {
 	BIKEGPX: 'bikegpx',
 	DEVICES: 'devices',
 	HOME: 'home',
+	PROFILE: 'profile',
 	SESSION: 'session',
 	WORKOUT: 'workout',
 } as const;
@@ -26,6 +29,7 @@ export type AppRoute =
 	| { kind: typeof APP_ROUTE_KIND.BIKEGPX; routeId?: string }
 	| { kind: typeof APP_ROUTE_KIND.DEVICES }
 	| { kind: typeof APP_ROUTE_KIND.HOME }
+	| { kind: typeof APP_ROUTE_KIND.PROFILE; profileTab?: ProfileTab }
 	| {
 			calendarMonth?: string;
 			historyView?: SessionHistoryView;
@@ -52,6 +56,14 @@ function matchedSessionRoute(
 	};
 }
 
+function matchedProfileRoute(search: Readonly<Record<string, unknown>> | undefined): AppRoute {
+	const parsedTab = profileTabSchema.safeParse(search?.tab);
+	return {
+		kind: APP_ROUTE_KIND.PROFILE,
+		...(parsedTab.success ? { profileTab: parsedTab.data } : {}),
+	};
+}
+
 export function appRouteFromRouterMatch(
 	match:
 		| {
@@ -70,6 +82,8 @@ export function appRouteFromRouterMatch(
 			return { kind: APP_ROUTE_KIND.BIKEGPX };
 		case APP_ROUTE_PATH.DEVICES:
 			return { kind: APP_ROUTE_KIND.DEVICES };
+		case APP_ROUTE_PATH.PROFILE:
+			return matchedProfileRoute(match.search);
 		case APP_ROUTE_PATH.SESSION:
 			return matchedSessionRoute(match.params.sessionId, match.search);
 		case APP_ROUTE_PATH.SESSIONS:
@@ -92,6 +106,8 @@ export function appRouteSideTray(route: AppRoute): SideTrayOverlay | undefined {
 			return APP_OVERLAY.WORKOUTS;
 		case APP_ROUTE_KIND.DEVICES:
 			return APP_OVERLAY.DEVICES;
+		case APP_ROUTE_KIND.PROFILE:
+			return APP_OVERLAY.PROFILE;
 		case APP_ROUTE_KIND.SESSION:
 			return APP_OVERLAY.HISTORY;
 		case APP_ROUTE_KIND.HOME:

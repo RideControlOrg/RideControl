@@ -25,11 +25,13 @@ describe('TCX export', () => {
 		expect(tcx).toContain('<rc:ProfileSnapshot>');
 		expect(tcx).toContain('<rc:RiderWeightKilograms>75.000</rc:RiderWeightKilograms>');
 		expect(tcx).toContain('<rc:BikeWeightKilograms>9.000</rc:BikeWeightKilograms>');
+		expect(tcx).toContain('<rc:BikeId>road-bike</rc:BikeId>');
+		expect(tcx).toContain('<rc:BikeName>Road &amp; gravel bike</rc:BikeName>');
 		expect(tcx).toContain('<rc:FrontChainrings>53/39</rc:FrontChainrings>');
 		expect(tcx).toContain(
 			'<rc:RearCassette>12/13/14/15/16/17/18/19/20/21/22/24</rc:RearCassette>'
 		);
-		expect(tcx).toContain('Comments: Hard &amp; fun &lt;again&gt;');
+		expect(tcx).toContain('Description: Hard &amp; fun &lt;again&gt;');
 		expect(tcx).not.toContain('NaN');
 	});
 
