@@ -847,6 +847,13 @@ describe('view components', () => {
 		expect(html).toContain('text-slate-500 text-xs');
 		expect(html).toContain('type="button">Ride Control</button>');
 		expect(html).toContain('type="button">Profile</button>');
+		expect(html.indexOf('type="button">Sessions</button>')).toBeLessThan(
+			html.indexOf('type="button">Profile</button>')
+		);
+		expect(html.indexOf('type="button">Profile</button>')).toBeLessThan(
+			html.indexOf('aria-label="Show keyboard controls"')
+		);
+		expect(html.slice(html.indexOf('<footer')).includes('>Profile</button>')).toBeFalse();
 		expect(html).toContain('mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 py-3');
 		expect(html).toContain('mb-4 flex flex-wrap items-center justify-between gap-3');
 		expect(html).toContain('mt-4 grid min-w-0 gap-4 *:min-w-0');
@@ -1341,6 +1348,37 @@ describe('view components', () => {
 		expect(html).toContain('absolute top-3 right-14 grid h-9 w-9');
 		expect(html).toContain('absolute top-3 right-3 grid h-9 w-9');
 		expect(html.match(/hover:text-white sm:static/g)).toHaveLength(2);
+	});
+
+	test('virtualizes a large session history list', () => {
+		const summaries = Array.from({ length: 100 }, (_, index) => ({
+			...sessionSummary({
+				...savedSessionFixture,
+				endedAt: savedSessionFixture.endedAt - index * 1000,
+				id: `session-${index}`,
+				startedAt: savedSessionFixture.startedAt - index * 1000,
+			}),
+			workoutName: `Workout ${index}`,
+		}));
+		const html = render(
+			<SessionHistoryList
+				error=""
+				highlightedSessionIds={[]}
+				onLoadMore={() => undefined}
+				onSelect={() => undefined}
+				open
+				selectedId={summaries[0]?.id}
+				speedUnit="kmh"
+				summaries={summaries}
+				total={summaries.length}
+			/>
+		);
+		const renderedSessionCount = html.match(/aria-pressed=/g)?.length ?? 0;
+		expect(html).toContain('data-session-history-virtualized="true"');
+		expect(html).toContain('Workout 0');
+		expect(renderedSessionCount).toBeGreaterThan(0);
+		expect(renderedSessionCount).toBeLessThan(summaries.length);
+		expect(html).not.toContain('Workout 99');
 	});
 
 	test('highlights every session from the latest import in history navigation', () => {

@@ -5,6 +5,7 @@ export function DashboardTools({
 	devicesConnecting,
 	onOpenDevices,
 	onOpenHistory,
+	onOpenProfile,
 	onOpenShortcuts,
 	pairedDeviceCount,
 }: {
@@ -12,17 +13,25 @@ export function DashboardTools({
 	devicesConnecting: boolean;
 	onOpenDevices: () => void;
 	onOpenHistory: () => void;
+	onOpenProfile: () => void;
 	onOpenShortcuts: () => void;
 	pairedDeviceCount: number;
 }) {
 	return (
-		<div className="flex items-center gap-3">
+		<div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
 			<button
 				className="h-10 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
 				onClick={onOpenHistory}
 				type="button"
 			>
 				Sessions
+			</button>
+			<button
+				className="h-10 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
+				onClick={onOpenProfile}
+				type="button"
+			>
+				Profile
 			</button>
 			<button
 				aria-label="Show keyboard controls"

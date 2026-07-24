@@ -558,6 +558,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						devicesConnecting={devicesConnecting}
 						onOpenDevices={() => setActiveOverlay(APP_OVERLAY.DEVICES)}
 						onOpenHistory={() => setActiveOverlay(APP_OVERLAY.HISTORY)}
+						onOpenProfile={() => setActiveOverlay(APP_OVERLAY.PROFILE)}
 						onOpenShortcuts={() => setActiveOverlay(APP_OVERLAY.SHORTCUTS)}
 						pairedDeviceCount={pairedDeviceCount}
 					/>
@@ -615,7 +616,6 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 			</Dashboard>
 			<AppFooter
 				onOpenPrivacy={() => setActiveOverlay(APP_OVERLAY.PRIVACY)}
-				onOpenProfile={() => setActiveOverlay(APP_OVERLAY.PROFILE)}
 				onOpenTerms={() => setActiveOverlay(APP_OVERLAY.TERMS)}
 				onOpenVersion={() => setActiveOverlay(APP_OVERLAY.BUILD)}
 				onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)}
