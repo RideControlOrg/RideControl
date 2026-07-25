@@ -74,14 +74,18 @@ export interface GpxProviderCatalog extends GpxProvider {
 	collections: GpxProviderCollection[];
 }
 
+export function isBikeGpxProvider(providerId: string): boolean {
+	return providerId === 'bikegpx';
+}
+
 export function shouldShowGpxCollectionSelector(
 	providerCatalog: Pick<GpxProviderCatalog, 'id'>
 ): boolean {
-	return providerCatalog.id !== 'bikegpx';
+	return !isBikeGpxProvider(providerCatalog.id);
 }
 
 export function gpxGroupFilterLabel(providerId: string): string {
-	return providerId === 'bikegpx' ? 'All countries' : 'All groups';
+	return isBikeGpxProvider(providerId) ? 'All countries' : 'All groups';
 }
 
 export function formatGpxCatalogStats(catalog: GpxCatalog, unit: SpeedUnit): string {
