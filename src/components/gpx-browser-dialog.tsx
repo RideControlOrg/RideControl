@@ -29,6 +29,7 @@ import {
 	gpxPreviewRoute,
 	gpxRouteAssetUrl,
 	gpxRouteKey,
+	isBikeGpxProvider,
 	shouldShowGpxCollectionSelector,
 } from '../lib/gpx-provider';
 import { distanceUnitLabel } from '../lib/units';
@@ -923,6 +924,22 @@ export function GpxBrowserDialog({
 									? formatGpxCatalogStats(catalog, speedUnit)
 									: (selectedCollection?.description ??
 										'Choose a provider and route collection.')}
+								{selectedProvider && isBikeGpxProvider(selectedProvider.id) ? (
+									<>
+										{' '}
+										Thanks to{' '}
+										<a
+											className="text-cyan-300 underline decoration-cyan-400/50 underline-offset-2 hover:text-cyan-200"
+											href={selectedProvider.sourceUrl}
+											rel="noreferrer"
+											target="_blank"
+										>
+											BikeGPX
+										</a>{' '}
+										for the original route data, which Ride Control heavily
+										processes and cleans.
+									</>
+								) : null}
 							</p>
 						</div>
 					</div>

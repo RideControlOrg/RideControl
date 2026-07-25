@@ -10,6 +10,7 @@ import {
 	gpxPreviewRoute,
 	gpxRouteAssetUrl,
 	gpxRouteMatchesQuery,
+	isBikeGpxProvider,
 	restoreGpxCatalog,
 	restoreGpxProviders,
 	shouldShowGpxCollectionSelector,
@@ -95,6 +96,8 @@ describe('GPX provider backend client', () => {
 		expect(shouldShowGpxCollectionSelector({ id: 'grand-tours' })).toBe(true);
 		expect(gpxGroupFilterLabel('bikegpx')).toBe('All countries');
 		expect(gpxGroupFilterLabel('grand-tours')).toBe('All groups');
+		expect(isBikeGpxProvider('bikegpx')).toBe(true);
+		expect(isBikeGpxProvider('grand-tours')).toBe(false);
 	});
 
 	test('formats prepared collection distance and climbing totals', () => {
