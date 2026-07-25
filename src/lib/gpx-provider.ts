@@ -1,12 +1,26 @@
 import type { SpeedUnit, WorkoutCourse, WorkoutRoutePoint } from '../types';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
-import { formatDistance, formatElevation, KILOMETERS_PER_MILE } from './units';
+import {
+	convertDistance,
+	convertElevation,
+	distanceUnitLabel,
+	elevationUnitLabel,
+	formatDistance,
+	formatElevation,
+	KILOMETERS_PER_MILE,
+} from './units';
 import { isWorkoutDifficulty, type WorkoutDifficulty } from './workout-schema';
 
 const SEARCH_WHITESPACE = /\s+/u;
 const PREPARED_ROUTE_VERSION = 5;
 const CONFIGURED_API_ROOT = import.meta.env.VITE_RIDECONTROL_API_URL || '/api';
 const API_ROOT = CONFIGURED_API_ROOT.replace(/\/$/u, '');
+const COLLECTION_DISTANCE_FORMATTER = new Intl.NumberFormat(undefined, {
+	maximumFractionDigits: 1,
+});
+const COLLECTION_ELEVATION_FORMATTER = new Intl.NumberFormat(undefined, {
+	maximumFractionDigits: 0,
+});
 
 export interface GpxRouteImage {
 	alt: string;
@@ -58,6 +72,39 @@ export interface GpxProviderCollection extends GpxCollection {
 
 export interface GpxProviderCatalog extends GpxProvider {
 	collections: GpxProviderCollection[];
+}
+
+export function shouldShowGpxCollectionSelector(
+	providerCatalog: Pick<GpxProviderCatalog, 'id'>
+): boolean {
+	return providerCatalog.id !== 'bikegpx';
+}
+
+export function gpxGroupFilterLabel(providerId: string): string {
+	return providerId === 'bikegpx' ? 'All countries' : 'All groups';
+}
+
+export function formatGpxCatalogStats(catalog: GpxCatalog, unit: SpeedUnit): string {
+	const totals = catalog.routes.reduce(
+		(result, route) => {
+			const analysis = catalog.analyses[route.id];
+			return analysis
+				? {
+						distance: result.distance + analysis.distance,
+						elevationGain: result.elevationGain + analysis.elevationGain,
+					}
+				: result;
+		},
+		{ distance: 0, elevationGain: 0 }
+	);
+	if (totals.distance <= 0) {
+		return '';
+	}
+	const distance = COLLECTION_DISTANCE_FORMATTER.format(convertDistance(totals.distance, unit));
+	const climbing = COLLECTION_ELEVATION_FORMATTER.format(
+		convertElevation(totals.elevationGain, unit)
+	);
+	return `${distance} ${distanceUnitLabel(unit)} · ${climbing} ${elevationUnitLabel(unit)} climbing`;
 }
 
 export interface GpxCatalog {

@@ -8,7 +8,7 @@ import {
 	tileLayer,
 } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { workoutRouteCoordinateAtProgress } from '../lib/workout-map';
 import type { WorkoutCourse } from '../types';
 
@@ -39,7 +39,13 @@ function endpointsOverlap(course: WorkoutCourse): boolean {
 	);
 }
 
-export function WorkoutRouteMap({ course }: { course: WorkoutCourse }) {
+export function WorkoutRouteMap({
+	children,
+	course,
+}: {
+	children?: ReactNode;
+	course: WorkoutCourse;
+}) {
 	const mapContainer = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -145,17 +151,20 @@ export function WorkoutRouteMap({ course }: { course: WorkoutCourse }) {
 	return (
 		<section aria-label={`${course.name} route map`} className="relative min-h-96 flex-1">
 			<div className="absolute inset-0" ref={mapContainer} />
-			<div className="pointer-events-none absolute top-4 right-4 z-500 rounded-xl border border-slate-600/70 bg-[#10151a]/90 px-3 py-2 text-[11px] text-slate-300 shadow-xl backdrop-blur-sm">
-				<div className="flex items-center gap-2">
-					<span className="h-2.5 w-2.5 rounded-full bg-mint" />
-					<span>{endpointsOverlap(course) ? 'Start and finish' : 'Start'}</span>
-				</div>
-				{endpointsOverlap(course) ? null : (
-					<div className="mt-1.5 flex items-center gap-2">
-						<span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-						<span>Finish</span>
+			<div className="pointer-events-none absolute top-4 right-4 z-500 flex w-[calc(100%-2rem)] flex-col items-end gap-2">
+				<div className="rounded-xl border border-slate-600/70 bg-[#10151a]/90 px-3 py-2 text-[11px] text-slate-300 shadow-xl backdrop-blur-sm">
+					<div className="flex items-center gap-2">
+						<span className="h-2.5 w-2.5 rounded-full bg-mint" />
+						<span>{endpointsOverlap(course) ? 'Start and finish' : 'Start'}</span>
 					</div>
-				)}
+					{endpointsOverlap(course) ? null : (
+						<div className="mt-1.5 flex items-center gap-2">
+							<span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+							<span>Finish</span>
+						</div>
+					)}
+				</div>
+				{children}
 			</div>
 		</section>
 	);

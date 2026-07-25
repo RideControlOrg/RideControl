@@ -380,6 +380,19 @@ describe('session store', () => {
 		});
 	});
 
+	test('deselects a workout before recording starts', () => {
+		const [course] = WORKOUT_COURSES;
+		if (!course) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const store = createSessionStore(restoredSession(), 1000);
+		store.actions.selectWorkout(course);
+		expect(store.get().workout?.course.id).toBe(course.id);
+
+		store.actions.selectWorkout(undefined);
+		expect(store.get().workout).toBeUndefined();
+	});
+
 	test('records an intentional discard until the session is reset or saved', () => {
 		const store = createSessionStore(restoredSession(), 1000);
 		store.actions.endSession(5000);

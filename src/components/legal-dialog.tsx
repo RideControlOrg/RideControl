@@ -134,9 +134,8 @@ export function PrivacyPolicyDialog({ onClose, open }: { onClose: () => void; op
 						name.
 					</li>
 					<li>
-						Links to route providers such as BikeGPX and Cyclingstage, OpenStreetMap,
-						GitHub, and sponsorship services are governed by those services' own privacy
-						practices.
+						Links to route providers, OpenStreetMap, GitHub, and sponsorship services
+						are governed by those services' own privacy practices.
 					</li>
 					<li>
 						If you email us, your message and address are processed by our email

@@ -3,13 +3,16 @@ import {
 	fetchGpxCatalog,
 	fetchGpxProviders,
 	fetchGpxRoute,
+	formatGpxCatalogStats,
 	formatGpxRouteStats,
 	type GpxCatalog,
+	gpxGroupFilterLabel,
 	gpxPreviewRoute,
 	gpxRouteAssetUrl,
 	gpxRouteMatchesQuery,
 	restoreGpxCatalog,
 	restoreGpxProviders,
+	shouldShowGpxCollectionSelector,
 } from '../src/lib/gpx-provider';
 import type { WorkoutCourse } from '../src/types';
 
@@ -87,6 +90,18 @@ afterEach(() => {
 });
 
 describe('GPX provider backend client', () => {
+	test('hides BikeGPX public routes but shows Grand Tour collections', () => {
+		expect(shouldShowGpxCollectionSelector(provider)).toBe(false);
+		expect(shouldShowGpxCollectionSelector({ id: 'grand-tours' })).toBe(true);
+		expect(gpxGroupFilterLabel('bikegpx')).toBe('All countries');
+		expect(gpxGroupFilterLabel('grand-tours')).toBe('All groups');
+	});
+
+	test('formats prepared collection distance and climbing totals', () => {
+		expect(formatGpxCatalogStats(catalog, 'mph')).toBe('7.7 mi · 607 ft climbing');
+		expect(formatGpxCatalogStats(catalog, 'kmh')).toBe('12.4 km · 185 m climbing');
+	});
+
 	test('restores validated providers and catalogs', () => {
 		const providers = [{ ...provider, collections: [{ ...collection, routeCount: 1 }] }];
 		expect(restoreGpxProviders(providers)).toEqual(providers);

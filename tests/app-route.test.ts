@@ -23,17 +23,17 @@ async function loadedRoute(pathname: string) {
 
 describe('application deep links', () => {
 	test('matches direct GPX, workout, session, devices, and profile links', async () => {
-		const gpx = await loadedRoute('/gpx/cyclingstage/tour-de-france-2026/7');
+		const gpx = await loadedRoute('/gpx/grand-tours/tour-de-france-2026/7');
 		expect(gpx.match?.routeId).toBe(APP_ROUTE_PATH.GPX_ROUTE);
 		expect(gpx.match?.params).toEqual({
 			collectionId: 'tour-de-france-2026',
-			providerId: 'cyclingstage',
+			providerId: 'grand-tours',
 			routeId: '7',
 		});
 		expect(appRouteFromRouterMatch(gpx.match)).toEqual({
 			collectionId: 'tour-de-france-2026',
 			kind: APP_ROUTE_KIND.GPX,
-			providerId: 'cyclingstage',
+			providerId: 'grand-tours',
 			routeId: '7',
 		});
 
@@ -125,12 +125,12 @@ describe('application deep links', () => {
 			router.buildLocation({
 				params: {
 					collectionId: 'tour/de-france',
-					providerId: 'cycling stage',
+					providerId: 'grand tours',
 					routeId: 'stage/1',
 				},
 				to: APP_ROUTE_PATH.GPX_ROUTE,
 			}).href
-		).toBe('/gpx/cycling%20stage/tour%2Fde-france/stage%2F1');
+		).toBe('/gpx/grand%20tours/tour%2Fde-france/stage%2F1');
 		expect(
 			router.buildLocation({
 				params: { workoutId: 'hill climb' },

@@ -180,7 +180,17 @@ describe('terrain workouts', () => {
 		expect(outboundPosition.y).toBeCloseTo(returnPosition.y);
 		expect(workoutProgress(outAndBack, distance / 2)).toBeCloseTo(0.5);
 		expect(workoutCompletedLaps(outAndBack, distance)).toBe(1);
-		expect(workoutTerrainAtDistance(outAndBack, distance).distance).toBe(0);
+		expect(workoutTerrainAtDistance(outAndBack, distance)).toMatchObject({
+			completedLaps: 1,
+			distance,
+			lap: 1,
+			progress: 1,
+		});
+		expect(workoutTerrainAtDistance(outAndBack, distance + 0.01)).toMatchObject({
+			completedLaps: 1,
+			distance: expect.closeTo(0.01),
+			lap: 2,
+		});
 		expect(workoutMapPath(outAndBack)).toStartWith('M ');
 	});
 
@@ -295,7 +305,8 @@ describe('terrain workouts', () => {
 		expect(workoutCompletedLaps(course, course.distance - 0.01)).toBe(0);
 		expect(workoutLap(course, course.distance - 0.01)).toBe(1);
 		expect(workoutCompletedLaps(course, course.distance)).toBe(1);
-		expect(workoutLap(course, course.distance)).toBe(2);
+		expect(workoutLap(course, course.distance)).toBe(1);
+		expect(workoutProgress(course, course.distance)).toBe(1);
 		expect(workoutCompletedLaps(course, course.distance * 2.25)).toBe(2);
 		expect(workoutProgress(course, course.distance * 2.25)).toBeCloseTo(0.25);
 	});

@@ -1,6 +1,10 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useCloseOnEscape, useDialogInitialFocus } from '../hooks/use-dialog-behavior';
+import {
+	useBodyScrollLock,
+	useCloseOnEscape,
+	useDialogInitialFocus,
+} from '../hooks/use-dialog-behavior';
 import { useGpxCatalog, useGpxProviders } from '../hooks/use-gpx-catalog';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { errorMessage } from '../lib/errors';
@@ -14,14 +18,18 @@ import {
 } from '../lib/gpx-browser-preferences';
 import {
 	fetchGpxRoute,
+	formatGpxCatalogStats,
 	formatGpxRouteStats,
 	type GpxCatalog,
 	type GpxRouteAnalysis,
+	type GpxRouteImage,
 	type GpxRouteResult,
 	type GpxRouteSummary,
+	gpxGroupFilterLabel,
 	gpxPreviewRoute,
 	gpxRouteAssetUrl,
 	gpxRouteKey,
+	shouldShowGpxCollectionSelector,
 } from '../lib/gpx-provider';
 import { distanceUnitLabel } from '../lib/units';
 import {
@@ -114,6 +122,7 @@ function RouteListItem({
 }
 
 function RouteSidebar({
+	allGroupsLabel,
 	analyses,
 	catalog,
 	catalogError,
@@ -136,6 +145,7 @@ function RouteSidebar({
 	scrollStorageKey,
 	speedUnit,
 }: {
+	allGroupsLabel: string;
 	analyses: Record<string, GpxRouteAnalysis>;
 	catalog?: GpxCatalog;
 	catalogError: string;
@@ -214,7 +224,7 @@ function RouteSidebar({
 						onChange={(event) => onGroupChange(event.currentTarget.value)}
 						value={group}
 					>
-						<option value="">All groups</option>
+						<option value="">{allGroupsLabel}</option>
 						{groups.map((groupName) => (
 							<option key={groupName} value={groupName}>
 								{groupName}
@@ -476,12 +486,14 @@ function RoutePreviewDetails({
 function RoutePreview({
 	analysis,
 	customCourseIds,
+	onExpandImage,
 	onImportCourse,
 	route,
 	speedUnit,
 }: {
 	analysis?: GpxRouteAnalysis;
 	customCourseIds: ReadonlySet<string>;
+	onExpandImage: (route: GpxRouteSummary) => void;
 	onImportCourse: (course: WorkoutCourse) => Promise<WorkoutCourse>;
 	route?: GpxRouteSummary;
 	speedUnit: SpeedUnit;
@@ -509,22 +521,27 @@ function RoutePreview({
 
 	return (
 		<div className="relative flex min-h-96 min-w-0 flex-1 flex-col bg-[#0e141a]">
-			{preview.course ? <WorkoutRouteMap course={preview.course} /> : null}
-			{route?.image ? (
-				<figure className="absolute top-3 right-3 z-400 hidden max-w-72 overflow-hidden rounded-lg border border-slate-600/50 bg-[#10151a]/92 shadow-black/30 shadow-lg sm:block">
-					<img
-						alt={route.image.alt}
-						className="h-28 w-full object-cover"
-						height="112"
-						src={route.image.url}
-						width="288"
-					/>
-					{route.image.attribution ? (
-						<figcaption className="px-2 py-1 text-[9px] text-slate-500">
-							Image: {route.image.attribution}
-						</figcaption>
+			{preview.course ? (
+				<WorkoutRouteMap course={preview.course}>
+					{route?.image ? (
+						<figure className="pointer-events-auto hidden w-72 max-w-full overflow-hidden rounded-lg border border-slate-600/50 bg-[#10151a]/92 shadow-black/30 shadow-lg sm:block">
+							<button
+								aria-label={`Enlarge ${route.image.alt}`}
+								className="block w-full cursor-zoom-in overflow-hidden focus-visible:outline-2 focus-visible:outline-cyan-300 focus-visible:-outline-offset-2"
+								onClick={() => onExpandImage(route)}
+								type="button"
+							>
+								<img
+									alt={route.image.alt}
+									className="h-auto w-full object-contain transition hover:brightness-110"
+									height="112"
+									src={route.image.url}
+									width="288"
+								/>
+							</button>
+						</figure>
 					) : null}
-				</figure>
+				</WorkoutRouteMap>
 			) : null}
 			{preview.loading ? (
 				<div
@@ -568,6 +585,65 @@ function RoutePreview({
 	);
 }
 
+function RouteImageLightbox({
+	image,
+	onClose,
+	open,
+	routeName,
+}: {
+	image?: GpxRouteImage;
+	onClose: () => void;
+	open: boolean;
+	routeName: string;
+}) {
+	useCloseOnEscape(open, onClose);
+	useBodyScrollLock(open);
+	const closeButtonRef = useDialogInitialFocus<HTMLButtonElement>(open);
+
+	if (!(open && image)) {
+		return null;
+	}
+
+	return (
+		<div className="fixed inset-0 z-60 grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
+			<button
+				aria-label="Dismiss enlarged route image"
+				className="absolute inset-0 h-full w-full cursor-zoom-out"
+				onClick={onClose}
+				type="button"
+			/>
+			<section
+				aria-label={`${routeName} image preview`}
+				aria-modal="true"
+				className="relative z-10 flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-600 bg-[#10151a] shadow-2xl shadow-black/70"
+				role="dialog"
+			>
+				<button
+					aria-label="Close enlarged route image"
+					className="absolute top-3 right-3 z-10 grid h-9 w-9 place-items-center rounded-lg border border-slate-500/60 bg-[#10151a]/90 text-lg text-slate-300 shadow-lg backdrop-blur-sm hover:bg-slate-700 hover:text-white"
+					onClick={onClose}
+					ref={closeButtonRef}
+					type="button"
+				>
+					×
+				</button>
+				<figure className="flex min-h-0 flex-col">
+					<img
+						alt={image.alt}
+						className="max-h-[calc(100dvh-6rem)] min-h-0 max-w-full object-contain"
+						height="560"
+						src={image.url}
+						width="1440"
+					/>
+					<figcaption className="shrink-0 border-slate-700 border-t px-4 py-2 font-semibold text-slate-200 text-xs">
+						{routeName}
+					</figcaption>
+				</figure>
+			</section>
+		</div>
+	);
+}
+
 export interface GpxBrowserSelection {
 	collectionId: string;
 	providerId: string;
@@ -593,9 +669,9 @@ export function GpxBrowserDialog({
 	requestedRouteId?: string;
 	speedUnit: SpeedUnit;
 }) {
-	useCloseOnEscape(true, onClose);
 	const closeButtonRef = useDialogInitialFocus<HTMLButtonElement>();
 	const reportedRouteId = useRef<ReportedGpxRouteId>(undefined);
+	const [expandedImageRouteKey, setExpandedImageRouteKey] = useState('');
 	const [search, setSearchState] = useState(() =>
 		initialGpxBrowserSearch({
 			collectionId: requestedCollectionId,
@@ -648,6 +724,11 @@ export function GpxBrowserDialog({
 		[analyses, difficulty, group, maximumDistance, minimumDistance, query, routes, speedUnit]
 	);
 	const selectedRoute = gpxPreviewRoute(filteredRoutes, selectedRouteId);
+	const expandedImageRoute =
+		selectedRoute && gpxRouteKey(selectedRoute) === expandedImageRouteKey
+			? selectedRoute
+			: undefined;
+	useCloseOnEscape(!expandedImageRoute, onClose);
 
 	useEffect(() => {
 		if (providers.length === 0) {
@@ -805,31 +886,43 @@ export function GpxBrowserDialog({
 									</option>
 								))}
 							</select>
-							<label className="sr-only" htmlFor="gpx-collection">
-								Route collection
-							</label>
-							<select
-								className="h-8 rounded-lg border border-line bg-[#0e141a] px-2 text-slate-200 text-xs outline-none focus:border-cyan-400/70"
-								id="gpx-collection"
-								onChange={(event) => changeCollection(event.currentTarget.value)}
-								value={collectionId}
-							>
-								{selectedProvider?.collections.map((collection) => {
-									const routeCount =
-										catalog?.provider.id === collection.providerId &&
-										catalog.collection.id === collection.id
-											? catalog.routes.length
-											: collection.routeCount;
-									return (
-										<option key={collection.id} value={collection.id}>
-											{collection.name} ({routeCount.toLocaleString()})
-										</option>
-									);
-								})}
-							</select>
+							{selectedProvider &&
+							shouldShowGpxCollectionSelector(selectedProvider) ? (
+								<>
+									<label className="sr-only" htmlFor="gpx-collection">
+										Route collection
+									</label>
+									<select
+										className="h-8 rounded-lg border border-line bg-[#0e141a] px-2 text-slate-200 text-xs outline-none focus:border-cyan-400/70"
+										id="gpx-collection"
+										onChange={(event) =>
+											changeCollection(event.currentTarget.value)
+										}
+										value={collectionId}
+									>
+										{selectedProvider?.collections.map((collection) => {
+											const routeCount =
+												catalog?.provider.id === collection.providerId &&
+												catalog.collection.id === collection.id
+													? catalog.routes.length
+													: collection.routeCount;
+											return (
+												<option key={collection.id} value={collection.id}>
+													{collection.name} ({routeCount.toLocaleString()}
+													)
+												</option>
+											);
+										})}
+									</select>
+								</>
+							) : null}
 							<p className="text-slate-500 text-xs">
-								{selectedCollection?.description ??
-									'Choose a provider and route collection.'}
+								{catalog &&
+								selectedProvider?.id === catalog.provider.id &&
+								shouldShowGpxCollectionSelector(selectedProvider)
+									? formatGpxCatalogStats(catalog, speedUnit)
+									: (selectedCollection?.description ??
+										'Choose a provider and route collection.')}
 							</p>
 						</div>
 					</div>
@@ -845,6 +938,7 @@ export function GpxBrowserDialog({
 				</header>
 				<div className="flex min-h-0 flex-1 flex-col lg:flex-row">
 					<RouteSidebar
+						allGroupsLabel={gpxGroupFilterLabel(providerId)}
 						analyses={analyses}
 						catalog={catalog}
 						catalogError={catalogError}
@@ -908,12 +1002,19 @@ export function GpxBrowserDialog({
 					<RoutePreview
 						analysis={selectedRoute ? analyses[selectedRoute.id] : undefined}
 						customCourseIds={customCourseIds}
+						onExpandImage={(route) => setExpandedImageRouteKey(gpxRouteKey(route))}
 						onImportCourse={onImportCourse}
 						route={selectedRoute}
 						speedUnit={speedUnit}
 					/>
 				</div>
 			</section>
+			<RouteImageLightbox
+				image={expandedImageRoute?.image}
+				onClose={() => setExpandedImageRouteKey('')}
+				open={Boolean(expandedImageRoute?.image)}
+				routeName={expandedImageRoute ? expandedImageRoute.name : ''}
+			/>
 		</div>
 	);
 }

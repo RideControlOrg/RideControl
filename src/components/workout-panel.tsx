@@ -246,11 +246,11 @@ function WorkoutCourseCard({
 				</div>
 				<button
 					className={`mt-4 h-10 w-full rounded-lg border font-bold text-xs transition ${selected ? 'border-mint/30 bg-mint/10 text-mint' : 'border-slate-700 bg-slate-800/70 text-slate-200 hover:border-slate-500 hover:bg-slate-700/70 hover:text-white'} disabled:cursor-not-allowed disabled:opacity-40`}
-					disabled={disabled || selected}
+					disabled={disabled}
 					onClick={onSelect}
 					type="button"
 				>
-					{selected ? 'Selected' : 'Choose workout'}
+					{selected ? 'Deselect workout' : 'Choose workout'}
 				</button>
 			</div>
 		</article>
@@ -617,7 +617,13 @@ export function WorkoutPanel({
 											}}
 											onRemove={() => onRemoveCourse(course.id)}
 											onRename={() => setRenamingCourse(course)}
-											onSelect={() => onSelect(course)}
+											onSelect={() =>
+												onSelect(
+													activeCourse?.id === course.id
+														? undefined
+														: course
+												)
+											}
 											onViewMap={() => setMappedCourse(course)}
 											selected={activeCourse?.id === course.id}
 											speedUnit={speedUnit}

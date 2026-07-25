@@ -780,6 +780,7 @@ describe('view components', () => {
 			/>
 		);
 		expect(selectedPanel).toContain('Clear selected workout');
+		expect(selectedPanel).toContain('Deselect workout');
 		expect(selectedPanel).not.toContain('Ride without a workout');
 
 		const terrain = workoutTerrainAtDistance(course, course.distance * 2 + 2);

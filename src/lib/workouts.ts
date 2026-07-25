@@ -330,7 +330,9 @@ function loopDistance(courseDistance: number, totalDistance: number): number {
 	if (courseDistance <= 0) {
 		return 0;
 	}
-	return nonNegativeNumber(totalDistance) % courseDistance;
+	const distance = nonNegativeNumber(totalDistance);
+	const position = distance % courseDistance;
+	return distance > 0 && position <= ROUTE_VALUE_EPSILON ? courseDistance : position;
 }
 
 function coursePosition(course: WorkoutCourse, totalDistance: number): number {
@@ -402,9 +404,13 @@ export function workoutSelectionLocked({
 }
 
 export function workoutLap(course: WorkoutCourse, totalDistance: number): number {
-	return course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT
-		? 1
-		: workoutCompletedLaps(course, totalDistance) + 1;
+	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
+		return 1;
+	}
+	const completedLaps = workoutCompletedLaps(course, totalDistance);
+	return coursePosition(course, totalDistance) === course.distance
+		? Math.max(1, completedLaps)
+		: completedLaps + 1;
 }
 
 export function workoutCompletedLaps(course: WorkoutCourse, totalDistance: number): number {
@@ -430,7 +436,8 @@ export function workoutElevationTotalsAtDistance(
 	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
 		return partialLap;
 	}
-	const completedLaps = workoutCompletedLaps(course, totalDistance);
+	const completedLaps =
+		workoutCompletedLaps(course, totalDistance) - (position === course.distance ? 1 : 0);
 	const fullLap = totalsByPoint.at(-1) ?? emptyElevationTotals;
 	return {
 		ascent: fullLap.ascent * completedLaps + partialLap.ascent,

@@ -13,7 +13,7 @@ import {
 
 const directRoute = {
 	collectionId: 'tour-de-france-2026',
-	providerId: 'cyclingstage',
+	providerId: 'grand-tours',
 	routeId: '7',
 };
 
@@ -90,7 +90,7 @@ describe('GPX browser preferences', () => {
 		expect(loadGpxBrowserSearch(storage)).toEqual(search);
 		expect(
 			gpxRouteListScrollPositionStorageKey(directRoute.providerId, directRoute.collectionId)
-		).toBe('ride-control-gpx-route-list-scroll-position:cyclingstage:tour-de-france-2026');
+		).toBe('ride-control-gpx-route-list-scroll-position:grand-tours:tour-de-france-2026');
 		expect(persistGpxBrowserOpen(false, storage)).toBeTrue();
 		expect(loadGpxBrowserOpen(storage)).toBeFalse();
 	});
