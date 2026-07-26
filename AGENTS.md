@@ -4,6 +4,7 @@
 - Keep Biome completely clean: warnings and unused suppression comments are CI failures.
 - Run `bun run ci` again immediately before every push, and do not push unless it passes for the exact commit being pushed. While GitHub Actions is unavailable, local CI is the required merge gate; do not wait for a GitHub Actions status check to merge.
 - `bun run ci` must run the Ultracite-configured Biome checks and Tailwind CSS language-server diagnostics automatically, followed by the unit tests, TypeScript check, and production build.
+- Prefer behavior-focused tests. Do not assert static copy or CSS classes unless they are dynamic or contract-critical; tests that merely mirror markup add maintenance without protecting behavior.
 - Fix all reported issues rather than bypassing or disabling checks unless the project requirements explicitly demand an exception.
 - Keep the codebase as DRY as practical: before adding constants, calculations, formatting, parsing, labels, or state-derivation logic, search for an existing domain utility and reuse or extend it. Consolidate meaningful duplication into clearly named domain modules, but do not introduce generic abstractions that hide simple behavior or couple unrelated concepts solely because their implementations look similar.
 - Make dashboard numbers as large, high-contrast, and easy to read at a glance as the available layout practically allows. Numeric ride status must be visually dominant over its label; do not use caption-sized values when space exists for prominent dashboard typography.

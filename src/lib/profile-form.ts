@@ -165,6 +165,7 @@ export const profileFormSchema = z
 				MAXIMUM_PROFILE_IDENTITY_LENGTH,
 				`Identity must be at most ${MAXIMUM_PROFILE_IDENTITY_LENGTH} characters.`
 			),
+		identityHistory: z.array(z.string().trim().min(1).max(MAXIMUM_PROFILE_IDENTITY_LENGTH)),
 		image: profileImageSchema,
 		name: z
 			.string()
@@ -259,6 +260,7 @@ export function profileFormValues(profile: RiderProfile, speedUnit: SpeedUnit): 
 			rearCassette: formattedTeeth(bike.rearCassetteTeeth),
 		})),
 		identity: profile.identity,
+		identityHistory: [...profile.identityHistory],
 		image: profile.image,
 		name: profile.name,
 		riderWeight: displayedProfileWeight(profile.riderWeightKg, speedUnit),
@@ -326,6 +328,7 @@ export function riderProfileFromFormValues(
 			};
 		}),
 		identity: validated.identity.trim(),
+		identityHistory: validated.identityHistory,
 		image: validated.image,
 		name: validated.name.trim(),
 		riderWeightKg,

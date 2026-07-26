@@ -2,11 +2,7 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSessionHistory } from '../hooks/use-session-history';
 import { useSessionInsights } from '../hooks/use-session-insights';
-import {
-	ACTIVITY_FILE_FORMAT,
-	type ActivityFileFormat,
-	isActivityFileFormat,
-} from '../lib/activity-file';
+import { ACTIVITY_FILE_FORMAT, type ActivityFileFormat } from '../lib/activity-file';
 import { APP_OVERLAY } from '../lib/app-overlay';
 import {
 	eventTargetsEditableControl,
@@ -39,6 +35,7 @@ import {
 import { preferencesStore } from '../stores/preferences-store';
 import type { ChartMode, SavedSession, SpeedUnit } from '../types';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
+import { SelectMenu } from './select-menu';
 import { SessionCalendar } from './session-calendar';
 import { SessionDetail } from './session-detail';
 import { SessionHistoryList } from './session-history-list';
@@ -53,6 +50,11 @@ function shouldIgnoreHistoryAction(event: KeyboardEvent) {
 		eventTargetsEditableControl(event)
 	);
 }
+
+const SESSION_DOWNLOAD_FORMAT_OPTIONS = [
+	{ label: 'FIT', value: ACTIVITY_FILE_FORMAT.FIT },
+	{ label: 'TCX', value: ACTIVITY_FILE_FORMAT.TCX },
+] as const;
 
 export function SessionHistory({
 	onClose,
@@ -314,17 +316,19 @@ export function SessionHistory({
 				panelClassName="flex max-w-6xl flex-col overflow-hidden sm:w-[min(72rem,calc(100vw-2rem))]"
 				tray={APP_OVERLAY.HISTORY}
 			>
-				<header className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-line border-b py-3 pr-24 pl-5 sm:px-5">
+				<header className="relative flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 pr-24 pb-0 pl-5 sm:px-5 sm:pt-2 sm:pb-0">
 					<div className="mr-auto flex min-w-0 items-center gap-2">
 						<h2 className="font-bold text-xl" id="session-history-title">
 							Sessions
 						</h2>
 						<p
+							aria-label={`${total.toLocaleString()} ${total === 1 ? 'session' : 'sessions'}${historyStatus ? `, ${historyStatus}` : ''}`}
 							aria-live="polite"
 							className="max-w-xl truncate text-slate-500 text-xs"
-							title={historyStatus || undefined}
+							role="status"
+							title={`${total.toLocaleString()} ${total === 1 ? 'session' : 'sessions'}${historyStatus ? ` · ${historyStatus}` : ''}`}
 						>
-							{total} {total === 1 ? 'session' : 'sessions'}
+							{total.toLocaleString()}
 							{historyStatus ? (
 								<span className="text-cyan-300"> · {historyStatus}</span>
 							) : null}
@@ -345,7 +349,7 @@ export function SessionHistory({
 							type="file"
 						/>
 						<button
-							className="rounded-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
+							className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
 							disabled={transferring}
 							onClick={() => importInput.current?.click()}
 							type="button"
@@ -354,38 +358,36 @@ export function SessionHistory({
 						</button>
 						<fieldset
 							aria-label="Download all sessions"
-							className="isolate m-0 inline-flex min-w-0 border-0 p-0"
+							className="m-0 inline-flex min-w-0 border-0 p-0"
 							data-testid="download-all-sessions"
 						>
 							<button
 								aria-label={`Download all sessions as ${downloadFormat.toUpperCase()}`}
-								className="rounded-l-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:z-10 hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+								className="h-9 rounded-l-lg border border-line border-r-0 px-3 font-semibold text-slate-300 text-xs hover:z-10 hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 								disabled={transferring || total === 0}
 								onClick={() => downloadAllActivityFiles(downloadFormat)}
 								type="button"
 							>
 								{exporting ? 'Preparing…' : 'Download all'}
 							</button>
-							<select
-								aria-label="Download all format"
-								className="-ml-px rounded-r-lg border border-line bg-panel px-2 py-2 font-semibold text-slate-300 text-xs hover:z-10 hover:border-cyan-400/60 disabled:opacity-50"
+							<SelectMenu
+								align="end"
+								ariaLabel="Download all format"
 								disabled={transferring}
-								onChange={(event) => {
-									const format = event.currentTarget.value;
-									if (isActivityFileFormat(format)) {
-										setDownloadFormat(format);
-										saveSessionDownloadFormat(format);
-									}
+								onChange={(format) => {
+									setDownloadFormat(format);
+									saveSessionDownloadFormat(format);
 								}}
+								options={SESSION_DOWNLOAD_FORMAT_OPTIONS}
+								size="compact"
+								triggerClassName="border-l-0"
 								value={downloadFormat}
-							>
-								<option value={ACTIVITY_FILE_FORMAT.FIT}>FIT</option>
-								<option value={ACTIVITY_FILE_FORMAT.TCX}>TCX</option>
-							</select>
+								width="compact"
+							/>
 						</fieldset>
 						<button
 							aria-label="Show history keyboard controls"
-							className="absolute top-3 right-14 grid h-9 w-9 place-items-center rounded-lg font-bold text-slate-400 text-sm hover:bg-slate-700 hover:text-white sm:static"
+							className="absolute top-2 right-14 grid h-9 w-9 place-items-center rounded-lg font-bold text-slate-400 text-sm hover:bg-slate-700 hover:text-white sm:static"
 							onClick={() => {
 								setDeleteConfirmationOpen(false);
 								setHistoryHelpOpen(true);
@@ -396,7 +398,7 @@ export function SessionHistory({
 						</button>
 						<button
 							aria-label="Close session history"
-							className="absolute top-3 right-3 grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white sm:static"
+							className="absolute top-2 right-3 grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white sm:static"
 							onClick={onClose}
 							type="button"
 						>

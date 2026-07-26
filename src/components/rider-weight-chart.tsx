@@ -113,8 +113,8 @@ export function RiderWeightChart({
 	return (
 		<figure
 			aria-label={`Weight over time from ${first.date} to ${latest.date}`}
-			className={`min-w-0 overflow-hidden rounded-2xl border border-line bg-[#10151a] ${
-				compact ? 'mt-3 p-4' : 'mt-3 p-5'
+			className={`minimal-weight-chart min-w-0 overflow-hidden ${
+				compact ? 'mt-2 py-3' : 'mt-2 py-4'
 			}`}
 			data-testid="rider-weight-chart"
 			data-weight-chart-size={compact ? 'compact' : 'full'}
@@ -142,9 +142,7 @@ export function RiderWeightChart({
 			</div>
 			{points.length > 1 ? (
 				<div
-					className={`relative mt-5 overflow-hidden rounded-xl bg-slate-950/25 ${
-						compact ? 'h-28' : 'h-44'
-					}`}
+					className={`relative mt-5 overflow-hidden ${compact ? 'h-28' : 'h-44'}`}
 					data-weight-plot="true"
 				>
 					<svg
@@ -156,14 +154,14 @@ export function RiderWeightChart({
 						<path
 							d={weightAreaPath(points)}
 							data-weight-area="true"
-							fill="#86efac"
+							fill="var(--metric-gear)"
 							fillOpacity="0.08"
 						/>
 						<path
 							d={linePath}
 							data-weight-line="true"
 							fill="none"
-							stroke="#adf5bd"
+							stroke="var(--metric-gear)"
 							strokeLinecap="round"
 							strokeLinejoin="round"
 							strokeWidth="2"
@@ -188,7 +186,7 @@ export function RiderWeightChart({
 					))}
 				</div>
 			) : (
-				<div className="mt-5 grid min-h-24 place-items-center rounded-xl bg-slate-950/25 px-4 text-center">
+				<div className="mt-5 grid min-h-24 place-items-center px-4 text-center">
 					<p className="whitespace-nowrap text-slate-500 text-sm">
 						Save another weight to see your trend.
 					</p>

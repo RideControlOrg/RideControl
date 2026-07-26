@@ -13,7 +13,7 @@ function MetricSummary({
 	return (
 		<div className={rightAligned ? 'text-right' : undefined}>
 			<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">{label}</p>
-			<p className="mt-1 font-semibold text-4xl text-white tabular-nums tracking-tight">
+			<p className="mt-1 font-semibold text-2xl text-white tabular-nums tracking-tight sm:text-3xl">
 				{value}
 			</p>
 		</div>
@@ -38,7 +38,7 @@ export function Metric({
 	icon?: string;
 }) {
 	return (
-		<div className="rounded-2xl border border-line bg-panel p-4">
+		<div className="min-w-0 bg-ink p-3 sm:p-4">
 			<div className="flex items-center justify-between">
 				<span className="font-bold text-slate-500 text-xs tracking-[.14em]">{label}</span>
 				{icon ? (
@@ -46,14 +46,15 @@ export function Metric({
 				) : null}
 			</div>
 			<div className="mt-3 flex items-baseline gap-2">
-				<span className="font-semibold text-6xl tracking-tight">{value}</span>
+				<span className="font-semibold text-4xl tracking-[-.045em] sm:text-5xl xl:text-6xl">
+					{value}
+				</span>
 				<span className="text-slate-400 text-sm">{unit}</span>
 			</div>
-			<div className="mt-3 grid grid-cols-2 gap-3 border-line border-t pt-3">
+			<div className={`mt-3 grid grid-cols-2 gap-3 border-t pt-3 ${metricIconClass(accent)}`}>
 				<MetricSummary label="AVG" value={average} />
 				<MetricSummary label="MAX" rightAligned value={maximum} />
 			</div>
-			<div className={`mt-2 h-1 rounded-full ${metricAccentClass(accent)}`} />
 		</div>
 	);
 }
@@ -70,15 +71,21 @@ export function SmallMetric({
 	value: string;
 }) {
 	return (
-		<div className={large ? 'min-w-0 px-3 py-3 sm:px-5' : 'min-w-0 p-4 sm:p-5'}>
+		<div
+			className={
+				large
+					? 'flex h-full min-w-0 flex-col justify-center px-3 py-3 sm:px-5'
+					: 'min-w-0 p-4 sm:p-5'
+			}
+		>
 			<p className="font-bold text-[11px] text-slate-500 tracking-[.12em]">{label}</p>
 			<p
-				className={`mt-1 flex min-w-0 items-baseline gap-1.5 font-semibold tracking-tight sm:gap-2 ${large ? 'text-3xl sm:text-5xl min-[420px]:text-2xl' : 'text-lg sm:text-2xl'}`}
+				className={`mt-1 flex min-w-0 items-baseline gap-1 font-semibold tracking-[-.045em] sm:gap-2 ${large ? 'text-xl sm:text-4xl lg:text-5xl xl:text-6xl min-[420px]:text-2xl' : 'text-lg sm:text-2xl'}`}
 			>
 				<span className="min-w-0">{value}</span>
 				{unit ? (
 					<span
-						className={`shrink-0 font-medium text-slate-400 tracking-normal ${large ? 'text-sm sm:text-xl' : 'text-xs sm:text-sm'}`}
+						className={`shrink-0 font-medium text-slate-400 tracking-normal ${large ? 'text-xs sm:text-lg lg:text-xl' : 'text-xs sm:text-sm'}`}
 					>
 						{unit}
 					</span>
@@ -104,7 +111,7 @@ export function SessionMetric({
 	unit: string;
 }) {
 	return (
-		<div className="rounded-xl border border-line bg-[#12171d] p-4">
+		<div className="session-detail-metric min-w-0 p-3 sm:p-4">
 			<div className="flex items-center justify-between gap-2">
 				<p className="whitespace-nowrap font-bold text-[9px] text-slate-500 tracking-widest">
 					{label}
@@ -126,7 +133,7 @@ export function SessionMetric({
 					</span>
 				)}
 			</div>
-			<div className={`mt-3 h-1 rounded-full ${metricAccentClass(accent)}`} />
+			<div className={`mt-3 h-px ${metricAccentClass(accent)}`} />
 		</div>
 	);
 }

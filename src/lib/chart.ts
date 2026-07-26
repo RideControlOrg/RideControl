@@ -4,6 +4,9 @@ import { MAX_RESISTANCE } from './resistance';
 import { isFiniteNumber } from './type-guards';
 
 export const CHART_MODE_STORAGE_KEY = 'trainer-chart-mode';
+export const CHART_PLOT_TOP = 5;
+export const CHART_PLOT_MIDDLE = 50;
+export const CHART_PLOT_BOTTOM = 95;
 const RESISTANCE_CHART_INITIAL_MAXIMUM = 50;
 const RESISTANCE_CHART_EXPANSION_THRESHOLD = 0.9;
 const RESISTANCE_CHART_STEP = 10;
@@ -37,7 +40,7 @@ export function chartPath(
 				x = (((positions[index] ?? firstPosition) - firstPosition) / positionSpan) * 100;
 			}
 			const normalized = clamp((value - minimum) / span, 0, 1);
-			const y = 90 - normalized * 76;
+			const y = CHART_PLOT_BOTTOM - normalized * (CHART_PLOT_BOTTOM - CHART_PLOT_TOP);
 			const command = drawing ? 'L' : 'M';
 			drawing = true;
 			return `${command} ${x} ${y}`;

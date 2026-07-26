@@ -113,17 +113,18 @@ function WorkoutCourseCard({
 			onMove(1);
 		}
 	};
-	let emphasis = 'border-line';
+	let emphasis = 'border-transparent';
 	if (selected) {
-		emphasis = 'border-mint/50 shadow-[0_0_20px_rgba(173,245,189,.08)]';
+		emphasis = 'border-mint/30';
 	} else if (focused) {
-		emphasis = 'border-cyan-400/60 shadow-[0_0_20px_rgba(34,211,238,.08)]';
+		emphasis = 'border-cyan-400/30';
 	}
 
 	return (
 		<article
-			className={`relative overflow-hidden rounded-2xl border bg-[#12171d] transition-colors ${emphasis} ${dragged ? 'cursor-grabbing opacity-95 shadow-[0_20px_50px_rgba(0,0,0,.5)]' : ''}`}
+			className={`minimal-workout-card relative overflow-hidden border bg-[#12171d] px-4 py-3 transition-colors ${emphasis} ${dragged ? 'cursor-grabbing opacity-95 shadow-[0_20px_50px_rgba(0,0,0,.5)]' : ''}`}
 			data-focused={focused ? 'true' : undefined}
+			data-selected={selected ? 'true' : undefined}
 			id={`workout-${encodeURIComponent(course.id)}`}
 			onClickCapture={onFocus}
 			ref={setNodeRef}
@@ -133,7 +134,7 @@ function WorkoutCourseCard({
 				{...dragHandleAttributes}
 				{...dragHandleListeners}
 				aria-label={`Drag ${course.name} to reorder`}
-				className="absolute top-3 right-3 z-10 grid cursor-grab touch-none place-items-center rounded-lg border border-slate-600 bg-[#12171d]/95 p-2 text-slate-400 shadow-lg transition hover:border-cyan-400/70 hover:text-cyan-300 active:cursor-grabbing"
+				className="absolute top-3 right-3 z-10 grid h-8 w-8 cursor-grab touch-none place-items-center border border-line bg-[#12171d] text-slate-400 transition hover:border-cyan-400/70 hover:text-cyan-300 active:cursor-grabbing"
 				onKeyDown={moveWithKeyboard}
 				ref={setDragHandleRef}
 				title="Drag to reorder. Use the up and down arrow keys while focused."
@@ -141,118 +142,112 @@ function WorkoutCourseCard({
 			>
 				<Icon className="h-4 w-4" name="move-vertical" title="Move workout up or down" />
 			</button>
-			<div className="grid grid-cols-2 gap-px bg-line">
-				<div className="bg-[#10151a] px-4 py-2">
+			<header className="pr-11">
+				<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+					<h3 className="min-w-0 font-bold text-base">
+						{custom ? (
+							<button
+								aria-label={`Rename ${course.name}`}
+								className="text-left underline decoration-cyan-400/40 underline-offset-4 transition hover:text-cyan-300 hover:decoration-cyan-300"
+								onClick={onRename}
+								title="Rename imported workout"
+								type="button"
+							>
+								{course.name}
+							</button>
+						) : (
+							course.name
+						)}
+					</h3>
+					<div className="flex shrink-0 items-center gap-1.5">
+						{custom ? (
+							<span className="border border-cyan-400/30 px-1.5 py-0.5 font-bold text-[9px] text-cyan-300 uppercase tracking-wide">
+								Imported
+							</span>
+						) : null}
+						<span className="border border-slate-700 px-1.5 py-0.5 font-bold text-[9px] text-slate-400 uppercase tracking-wide">
+							{workoutDifficultyLabel(course.difficulty)}
+						</span>
+					</div>
+				</div>
+				<p className="mt-1 max-w-2xl text-slate-400 text-xs leading-relaxed">
+					{usesOpenStreetMapAttribution ? (
+						<button
+							className="text-left underline decoration-cyan-400/40 underline-offset-2 transition hover:text-cyan-300 hover:decoration-cyan-300"
+							onClick={onViewMap}
+							title="View the route map"
+							type="button"
+						>
+							{descriptionWithoutDistance(course.description)}
+						</button>
+					) : (
+						descriptionWithoutDistance(course.description)
+					)}
+				</p>
+			</header>
+			<div className="minimal-workout-visuals mt-2 grid grid-cols-2">
+				<div className="pr-4">
 					<WorkoutRouteVisualization
-						className="h-24"
+						className="h-20"
 						course={course}
 						view={WORKOUT_VIEW.MAP}
 					/>
 				</div>
-				<div className="bg-[#10151a] px-4 py-2">
+				<div className="minimal-workout-visual-pane pl-4">
 					<WorkoutRouteVisualization
-						className="h-24"
+						className="h-20"
 						course={course}
 						view={WORKOUT_VIEW.PROFILE}
 					/>
 				</div>
 			</div>
-			<div className="p-4">
-				<div className="flex items-start justify-between gap-4">
-					<div className="min-w-0">
-						<h3 className="font-bold text-base">
-							{custom ? (
-								<button
-									aria-label={`Rename ${course.name}`}
-									className="text-left underline decoration-cyan-400/40 underline-offset-4 transition hover:text-cyan-300 hover:decoration-cyan-300"
-									onClick={onRename}
-									title="Rename imported workout"
-									type="button"
-								>
-									{course.name}
-								</button>
-							) : (
-								course.name
-							)}
-						</h3>
-						<p className="mt-1 text-slate-400 text-xs leading-relaxed">
-							{usesOpenStreetMapAttribution ? (
-								<button
-									className="underline decoration-cyan-400/40 underline-offset-2 transition hover:text-cyan-300 hover:decoration-cyan-300"
-									onClick={onViewMap}
-									title="View the route map"
-									type="button"
-								>
-									{descriptionWithoutDistance(course.description)}
-								</button>
-							) : (
-								descriptionWithoutDistance(course.description)
-							)}
-						</p>
-					</div>
-					<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-						{custom ? (
-							<span className="rounded-full border border-cyan-400/30 bg-cyan-400/5 px-2 py-1 font-bold text-[9px] text-cyan-300 uppercase tracking-wide">
-								Imported
-							</span>
-						) : null}
-						<span className="rounded-full border border-slate-700 px-2 py-1 font-bold text-[9px] text-slate-400 uppercase tracking-wide">
-							{workoutDifficultyLabel(course.difficulty)}
-						</span>
-					</div>
-				</div>
-				<div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-slate-500 text-xs tabular-nums">
+			<footer className="mt-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500 text-xs tabular-nums">
 					<span>
 						{formatDistance(course.distance, speedUnit, 1)}{' '}
 						{workoutRouteLabel(course.routeType)}
 					</span>
 					<span>{formatElevation(course.elevationGain, speedUnit)} climbing</span>
 					<span>Up to +{workoutMaximumGrade(course).toFixed(1)}%</span>
-					<div
-						className={`${usesOpenStreetMapAttribution ? 'flex basis-full items-center gap-3 pt-1' : 'ml-auto'} font-semibold`}
-					>
-						{usesOpenStreetMapAttribution ? (
-							<a
-								className="font-normal text-[10px] text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-slate-300"
-								href={OPENSTREETMAP_ATTRIBUTION_URL}
-								rel="noreferrer"
-								target="_blank"
-							>
-								© OpenStreetMap contributors
-							</a>
-						) : null}
-						<div
-							className={`flex items-center gap-3 ${usesOpenStreetMapAttribution ? 'ml-auto' : ''}`}
-						>
-							<button
-								className="text-cyan-400 hover:text-cyan-200"
-								onClick={() => downloadWorkoutFile(course)}
-								type="button"
-							>
-								Download GPX
-							</button>
-							{custom ? (
-								<button
-									className="text-rose-400 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
-									disabled={disabled}
-									onClick={onRemove}
-									type="button"
-								>
-									Remove
-								</button>
-							) : null}
-						</div>
-					</div>
 				</div>
-				<button
-					className={`mt-4 h-10 w-full rounded-lg border font-bold text-xs transition ${selected ? 'border-mint/30 bg-mint/10 text-mint' : 'border-slate-700 bg-slate-800/70 text-slate-200 hover:border-slate-500 hover:bg-slate-700/70 hover:text-white'} disabled:cursor-not-allowed disabled:opacity-40`}
-					disabled={disabled}
-					onClick={onSelect}
-					type="button"
-				>
-					{selected ? 'Deselect workout' : 'Choose workout'}
-				</button>
-			</div>
+				<div className="ml-auto flex shrink-0 items-center gap-3 font-semibold text-xs">
+					{usesOpenStreetMapAttribution ? (
+						<a
+							className="font-normal text-[10px] text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-slate-300"
+							href={OPENSTREETMAP_ATTRIBUTION_URL}
+							rel="noreferrer"
+							target="_blank"
+						>
+							© OpenStreetMap contributors
+						</a>
+					) : null}
+					<button
+						className="text-cyan-400 hover:text-cyan-200"
+						onClick={() => downloadWorkoutFile(course)}
+						type="button"
+					>
+						Download GPX
+					</button>
+					{custom ? (
+						<button
+							className="text-rose-400 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+							disabled={disabled}
+							onClick={onRemove}
+							type="button"
+						>
+							Remove
+						</button>
+					) : null}
+					<button
+						className={`h-8 border px-3 font-bold transition ${selected ? 'border-mint/40 bg-mint/10 text-mint hover:bg-mint/15' : 'border-line text-slate-200 hover:border-mint/60 hover:text-mint'} disabled:cursor-not-allowed disabled:opacity-40`}
+						disabled={disabled}
+						onClick={onSelect}
+						type="button"
+					>
+						{selected ? 'Deselect workout' : 'Choose workout'}
+					</button>
+				</div>
+			</footer>
 		</article>
 	);
 }
@@ -299,6 +294,56 @@ function SortableWorkoutCourseCard(
 
 function WorkoutDropBoundary({ index }: { index: number }) {
 	return <div aria-hidden="true" className="h-4" data-workout-drop-index={index} />;
+}
+
+function WorkoutLibraryStatus({ error, status }: { error?: string; status: string }) {
+	const message = error || status;
+	if (!message) {
+		return null;
+	}
+	return (
+		<div
+			aria-live={error ? 'assertive' : 'polite'}
+			className={`flex min-h-9 flex-1 items-center rounded-lg border border-line bg-[#10151a] px-3 text-xs ${error ? 'text-rose-300' : 'text-cyan-300'}`}
+			data-testid="workout-status"
+			role={error ? 'alert' : 'status'}
+		>
+			{message}
+		</div>
+	);
+}
+
+function WorkoutPanelFooter({
+	activeCourse,
+	error,
+	onClear,
+	selectionLocked,
+	status,
+}: {
+	activeCourse?: WorkoutCourse;
+	error?: string;
+	onClear: () => void;
+	selectionLocked: boolean;
+	status: string;
+}) {
+	const canClear = Boolean(activeCourse) && !selectionLocked;
+	if (!(error || status || canClear)) {
+		return null;
+	}
+	return (
+		<footer className="flex items-center justify-end gap-3 border-line border-t p-4 sm:px-6">
+			<WorkoutLibraryStatus error={error} status={status} />
+			{canClear ? (
+				<button
+					className="min-h-9 shrink-0 rounded-lg border border-line px-3 py-2 font-semibold text-slate-400 text-xs hover:border-slate-500 hover:text-white"
+					onClick={onClear}
+					type="button"
+				>
+					Clear selected workout
+				</button>
+			) : null}
+		</footer>
+	);
 }
 
 export function WorkoutPanel({
@@ -361,8 +406,8 @@ export function WorkoutPanel({
 		})
 	);
 	const filteredCourses = useMemo(
-		() => courses.filter((course) => workoutMatchesSearch(course, searchQuery)),
-		[courses, searchQuery]
+		() => courses.filter((course) => workoutMatchesSearch(course, searchQuery, speedUnit)),
+		[courses, searchQuery, speedUnit]
 	);
 	const sortableCourseIds = useMemo(
 		() => filteredCourses.map((course) => course.id),
@@ -498,76 +543,74 @@ export function WorkoutPanel({
 							</div>
 						</div>
 					) : null}
-					<header className="flex items-start justify-between gap-4 border-line border-b px-5 py-4 sm:px-6">
-						<div className="min-w-0">
+					<header className="relative flex flex-col gap-3 px-4 py-3 pr-12 sm:flex-row sm:items-start sm:gap-4 sm:px-6 sm:py-4 sm:pr-16">
+						<div className="min-w-0 flex-1">
 							<h2 className="font-bold text-xl" id="workout-panel-title">
 								Terrain workouts
 							</h2>
-							<p className="mt-1 max-w-60 text-slate-400 text-sm leading-snug">
-								Resistance follows the climbs and descents while your position moves
-								along the route.
+							<p className="mt-1 max-w-md text-slate-400 text-sm leading-snug">
+								Choose a public route or import GPX. Resistance follows its climbs
+								and descents.
 							</p>
 						</div>
-						<div className="flex shrink-0 flex-col items-end gap-1.5">
-							<div className="flex items-center gap-1.5">
-								<input
-									accept=".gpx,application/gpx+xml,application/xml,text/xml"
-									className="hidden"
-									onChange={(event) => {
-										const file = event.currentTarget.files?.[0];
-										event.currentTarget.value = '';
-										if (file) {
-											importWorkout(file);
-										}
-									}}
-									ref={importInput}
-									type="file"
-								/>
-								<button
-									className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white"
-									onClick={onOpenGpx}
-									type="button"
-								>
-									Browse routes
-								</button>
-								<button
-									className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
-									disabled={importing}
-									onClick={() => importInput.current?.click()}
-									type="button"
-								>
-									{importing ? 'Importing…' : 'Import GPX'}
-								</button>
-								<button
-									aria-label="Close terrain workouts"
-									className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-800 hover:text-white"
-									onClick={closePanel}
-									type="button"
-								>
-									×
-								</button>
-							</div>
-							<p className="max-w-64 text-right text-[11px] text-slate-500 leading-snug">
-								Browse public route collections or drop a GPX anywhere in this tray.
-							</p>
+						<div className="flex shrink-0 items-center gap-1.5">
+							<input
+								accept=".gpx,application/gpx+xml,application/xml,text/xml"
+								className="hidden"
+								onChange={(event) => {
+									const file = event.currentTarget.files?.[0];
+									event.currentTarget.value = '';
+									if (file) {
+										importWorkout(file);
+									}
+								}}
+								ref={importInput}
+								type="file"
+							/>
+							<button
+								className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white"
+								onClick={onOpenGpx}
+								type="button"
+							>
+								Browse routes
+							</button>
+							<button
+								className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
+								disabled={importing}
+								onClick={() => importInput.current?.click()}
+								type="button"
+							>
+								{importing ? 'Importing…' : 'Import GPX'}
+							</button>
 						</div>
+						<button
+							aria-label="Close terrain workouts"
+							className="absolute top-3 right-3 grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-800 hover:text-white sm:top-4 sm:right-4"
+							onClick={closePanel}
+							type="button"
+						>
+							×
+						</button>
 					</header>
-					<div className="border-line border-b bg-[#10151a] px-5 py-3 text-xs leading-relaxed sm:px-6">
-						<div className="flex items-center gap-2">
+					<div className="px-5 pt-3 text-xs leading-relaxed sm:px-6">
+						<div
+							className="flex items-center gap-3 border-line border-b transition-colors focus-within:border-cyan-400/70"
+							data-testid="workout-search-bar"
+						>
 							<label className="sr-only" htmlFor="workout-search">
-								Search workouts by name or difficulty
+								Search workouts by name, difficulty, or distance
 							</label>
 							<input
-								className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-[#12171d] px-3 text-slate-100 text-sm outline-none placeholder:text-slate-600 focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/10"
+								className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 text-slate-100 text-sm outline-none placeholder:text-slate-600"
 								id="workout-search"
 								onChange={(event) => setSearchQuery(event.currentTarget.value)}
-								placeholder="Search by name or difficulty"
+								placeholder="Search by name, difficulty, or distance"
 								type="search"
 								value={searchQuery}
 							/>
 							{searchQuery ? (
 								<button
-									className="h-10 rounded-lg border border-line px-3 font-semibold text-slate-400 hover:border-slate-500 hover:text-white"
+									className="h-9 shrink-0 px-1 font-semibold text-slate-400 hover:text-white"
 									onClick={() => setSearchQuery('')}
 									type="button"
 								>
@@ -644,25 +687,13 @@ export function WorkoutPanel({
 							) : null}
 						</div>
 					</DndContext>
-					<footer className="flex items-center gap-3 border-line border-t p-4 sm:px-6">
-						<div
-							aria-live={importError ? 'assertive' : 'polite'}
-							className={`flex min-h-9 flex-1 items-center rounded-lg border border-line bg-[#10151a] px-3 text-xs ${importError ? 'text-rose-300' : 'text-cyan-300'}`}
-							data-testid="workout-status"
-							role={importError ? 'alert' : 'status'}
-						>
-							{importError || libraryStatus}
-						</div>
-						{activeCourse && !selectionLocked ? (
-							<button
-								className="min-h-9 shrink-0 rounded-lg border border-line px-3 py-2 font-semibold text-slate-400 text-xs hover:border-slate-500 hover:text-white"
-								onClick={() => onSelect(undefined)}
-								type="button"
-							>
-								Clear selected workout
-							</button>
-						) : null}
-					</footer>
+					<WorkoutPanelFooter
+						activeCourse={activeCourse}
+						error={importError}
+						onClear={() => onSelect(undefined)}
+						selectionLocked={selectionLocked}
+						status={libraryStatus}
+					/>
 				</div>
 			</SideTray>
 			{gpxBrowserOpen ? (

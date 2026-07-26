@@ -13,7 +13,9 @@ import {
 	parsedTeeth,
 	poundsForKilograms,
 	profileFromStoredValue,
+	profileIdentitiesMatch,
 	profileTotalMassKg,
+	recordProfileIdentity,
 	recordRiderWeight,
 	riderPhysicsProfileFromStoredValue,
 	sameRiderPhysicsProfile,
@@ -24,6 +26,7 @@ describe('rider profile', () => {
 	test('provides a neutral local profile with the existing 2×12 drivetrain', () => {
 		expect(DEFAULT_RIDER_PROFILE.name).toBe('');
 		expect(DEFAULT_RIDER_PROFILE.identity).toBe('');
+		expect(DEFAULT_RIDER_PROFILE.identityHistory).toEqual([]);
 		expect(activeProfileBike(DEFAULT_RIDER_PROFILE).name).toBe('My bike');
 		expect(profileTotalMassKg(DEFAULT_RIDER_PROFILE)).toBe(
 			DEFAULT_RIDER_WEIGHT_KG + DEFAULT_BIKE_WEIGHT_KG
@@ -112,6 +115,7 @@ describe('rider profile', () => {
 				},
 			],
 			identity: 'Non-binary',
+			identityHistory: [],
 			image,
 			name: 'Riley',
 			riderWeightKg: 68,
@@ -130,14 +134,37 @@ describe('rider profile', () => {
 		).toBeUndefined();
 	});
 
-	test('records only actual rider weight changes over time', () => {
+	test('coalesces rider weight corrections made within one hour', () => {
 		const first = recordRiderWeight([], 75, 1000);
 		expect(first).toEqual([{ recordedAt: 1000, weightKg: 75 }]);
 		expect(recordRiderWeight(first, 75, 2000)).toBe(first);
-		expect(recordRiderWeight(first, 74.5, 3000)).toEqual([
-			{ recordedAt: 1000, weightKg: 75 },
+
+		const corrected = recordRiderWeight(first, 74.5, 3000);
+		expect(corrected).toEqual([{ recordedAt: 3000, weightKg: 74.5 }]);
+		expect(recordRiderWeight(corrected, 74, 60 * 60 * 1000 + 3000)).toEqual([
 			{ recordedAt: 3000, weightKg: 74.5 },
+			{ recordedAt: 60 * 60 * 1000 + 3000, weightKg: 74 },
 		]);
+	});
+
+	test('records saved custom identities without duplicating standard suggestions', () => {
+		const first = recordProfileIdentity([], ' Smurf ');
+		expect(first).toEqual(['Smurf']);
+		expect(recordProfileIdentity(first, 'Woman')).toBe(first);
+		expect(recordProfileIdentity(first, 'smurf')).toEqual(['smurf']);
+		const second = recordProfileIdentity(first, 'Cyclist');
+		expect(second).toEqual(['Cyclist', 'Smurf']);
+		expect(profileIdentitiesMatch(' SMURF ', 'smurf')).toBeTrue();
+	});
+
+	test('migrates the current custom identity into history from a version 3 profile', () => {
+		const migrated = profileFromStoredValue({
+			...DEFAULT_RIDER_PROFILE,
+			identity: 'Smurf',
+			updatedAt: 1000,
+			version: 3,
+		});
+		expect(migrated?.identityHistory).toEqual(['Smurf']);
 	});
 
 	test('validates multiple bikes and derives the active session snapshot', () => {

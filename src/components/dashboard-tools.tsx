@@ -18,7 +18,7 @@ export function DashboardTools({
 	pairedDeviceCount: number;
 }) {
 	return (
-		<div className="flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
+		<div className="flex max-w-full flex-wrap items-center justify-end gap-2">
 			<button
 				className="h-10 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
 				onClick={onOpenHistory}
