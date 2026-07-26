@@ -1,7 +1,14 @@
 import { useSelector } from '@tanstack/react-store';
-import { Fragment, useCallback, useEffect, useMemo } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { evenlySample, valueRange } from '../lib/arrays';
-import { chartPath, resistanceChartMaximum, roundedChartMaximum } from '../lib/chart';
+import {
+	CHART_PLOT_BOTTOM,
+	CHART_PLOT_MIDDLE,
+	CHART_PLOT_TOP,
+	chartPath,
+	resistanceChartMaximum,
+	roundedChartMaximum,
+} from '../lib/chart';
 import { CHART_MODE } from '../lib/chart-mode';
 import { CONTROL_MODE } from '../lib/control-mode';
 import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
@@ -28,6 +35,14 @@ import type { ChartMode, ControlMode, MetricSample, RoutePoint, SpeedUnit } from
 
 const MAXIMUM_RENDERED_CHART_SAMPLES = 2000;
 
+function chartControlsEdgeBackground(
+	direction: 'left' | 'right',
+	sessionControls: boolean
+): string {
+	const surface = sessionControls ? 'panel' : 'ink';
+	return `linear-gradient(to ${direction}, var(--color-${surface}) 45%, transparent)`;
+}
+
 function maximumValue<T>(values: readonly T[], numericValue: (value: T) => number): number {
 	return values.reduce((maximum, value) => Math.max(maximum, numericValue(value)), 0);
 }
@@ -36,9 +51,11 @@ interface PlotProps {
 	color: string;
 	decimals: number;
 	heightClass: string;
+	label: string;
 	maximum: number;
 	minimum?: number;
 	positions: number[];
+	showLabel?: boolean;
 	title: string;
 	unit: string;
 	values: (number | undefined)[];
@@ -48,48 +65,66 @@ export function ChartPlot({
 	color,
 	decimals,
 	heightClass,
+	label,
 	maximum,
 	minimum = 0,
 	positions,
+	showLabel = false,
 	title,
 	unit,
 	values,
 }: PlotProps) {
 	const labels = [maximum, (maximum + minimum) / 2, minimum];
-	const labelPositions = [14, 52, 90];
+	const labelPositions = [12, CHART_PLOT_MIDDLE, 88];
 	return (
 		<div className={`flex w-full ${heightClass}`}>
-			<div className="pointer-events-none relative h-full w-12 shrink-0 font-medium text-[9px] text-slate-400 sm:w-15 sm:text-[10px]">
-				{labels.map((label, index) => (
+			<div className="pointer-events-none relative h-full w-16 shrink-0 font-semibold text-[11px] text-slate-300 sm:w-20 sm:text-xs">
+				{labels.map((scaleLabel, index) => (
 					<span
-						className="absolute right-1 -translate-y-1/2 whitespace-nowrap sm:right-2"
-						key={label}
+						className="absolute right-2 -translate-y-1/2 whitespace-nowrap leading-none"
+						key={scaleLabel}
 						style={{ top: `${labelPositions[index]}%` }}
 					>
-						{label.toFixed(decimals)} {unit}
+						{scaleLabel.toFixed(decimals)} {unit}
 					</span>
 				))}
 			</div>
-			<div className="h-full min-w-0 flex-1 overflow-hidden">
+			<div className="relative h-full min-w-0 flex-1 overflow-hidden">
+				{showLabel ? (
+					<span
+						className="pointer-events-none absolute top-[17%] right-2 z-10 font-semibold text-[10px] text-slate-300 leading-none sm:text-[11px]"
+						data-chart-series-label="true"
+					>
+						{label}
+					</span>
+				) : null}
 				<svg
 					className="block h-full w-full"
 					preserveAspectRatio="none"
 					viewBox="0 0 100 100"
 				>
 					<title>{title}</title>
+					<rect
+						data-chart-surface="true"
+						fill="var(--chart-surface)"
+						height={CHART_PLOT_BOTTOM - CHART_PLOT_TOP}
+						width="100"
+						x="0"
+						y={CHART_PLOT_TOP}
+					/>
 					<path
-						d="M0 14H100 M0 90H100"
+						d={`M0 ${CHART_PLOT_TOP}H100 M0 ${CHART_PLOT_BOTTOM}H100`}
 						fill="none"
-						stroke="#3a4654"
+						stroke="var(--chart-grid)"
 						strokeWidth=".75"
 						vectorEffect="non-scaling-stroke"
 					/>
 					<path
-						d="M0 52H100 M25 14V90 M50 14V90 M75 14V90"
+						d={`M0 ${CHART_PLOT_MIDDLE}H100 M25 ${CHART_PLOT_TOP}V${CHART_PLOT_BOTTOM} M50 ${CHART_PLOT_TOP}V${CHART_PLOT_BOTTOM} M75 ${CHART_PLOT_TOP}V${CHART_PLOT_BOTTOM}`}
 						fill="none"
-						stroke="#3a4654"
+						stroke="var(--chart-grid)"
 						strokeDasharray="2.5 2.5"
-						strokeWidth=".75"
+						strokeWidth="1"
 						vectorEffect="non-scaling-stroke"
 					/>
 					<path
@@ -141,7 +176,13 @@ export function SessionChart({
 	const series = useMemo(() => {
 		const speedValues = chartHistory.map((sample) => convertSpeed(sample.speed, speedUnit));
 		const routeElevations = route.map((point) => convertElevation(point.elevation, speedUnit));
-		const routeElevationRange = valueRange(routeElevations, (elevation) => elevation);
+		const recordedElevations = chartHistory.flatMap((sample) =>
+			sample.elevation === undefined ? [] : [convertElevation(sample.elevation, speedUnit)]
+		);
+		const elevationRange = valueRange(
+			[...routeElevations, ...recordedElevations],
+			(elevation) => elevation
+		);
 		const gradeValues = chartHistory.map((sample) => sample.grade);
 		const hasRecordedGear = history.some((sample) => sample.gear !== undefined);
 		const standardSeries = STANDARD_METRIC_KEYS.map((key) => {
@@ -209,15 +250,15 @@ export function SessionChart({
 					},
 				]
 			: [];
-		const elevationSeries = routeElevationRange
+		const elevationSeries = elevationRange
 			? [
 					{
-						chartMaximum: routeElevationRange.maximum,
+						chartMaximum: elevationRange.maximum,
 						color: ELEVATION_METRIC_PRESENTATION.chartColor,
 						decimals: 0,
 						key: CHART_MODE.ELEVATION,
 						label: ELEVATION_METRIC_PRESENTATION.label,
-						minimum: routeElevationRange.minimum,
+						minimum: elevationRange.minimum,
 						unit: elevationUnitLabel(speedUnit),
 						values: chartHistory.map((sample) =>
 							sample.elevation === undefined
@@ -268,12 +309,28 @@ export function SessionChart({
 	const historySeconds =
 		chartHistory.length > 1 ? (chartHistory.at(-1)?.elapsedSeconds ?? 0) - historyStart : 0;
 	const sessionControls = variant === 'session';
+	const containerSpacing = sessionControls ? 'mt-3' : '';
 	const controlsClassName = sessionControls
-		? 'grid w-full gap-1 rounded-lg bg-[#0d1217] p-1'
-		: 'scrollbar-hidden flex w-full gap-1 overflow-x-auto rounded-lg bg-[#0d1217] p-1';
+		? 'session-chart-controls scrollbar-hidden flex w-full gap-1 overflow-x-auto rounded-lg bg-inherit p-1'
+		: 'scrollbar-hidden flex w-full gap-1 overflow-x-auto rounded-lg bg-inherit p-1';
 	const controlClassName = sessionControls
-		? 'inline-flex min-w-0 w-full items-center justify-center gap-1 whitespace-nowrap rounded-md px-1 py-2 font-semibold text-[9px] transition sm:text-[11px] xl:text-[13px]'
+		? 'session-chart-control inline-flex min-w-max flex-none items-center justify-center gap-1 whitespace-nowrap rounded-md px-3 py-2 font-semibold text-[11px] transition'
 		: 'inline-flex min-w-max flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 py-2 font-semibold text-[11px] transition sm:text-[13px]';
+	const controlsRef = useRef<HTMLDivElement>(null);
+	const [controlOverflow, setControlOverflow] = useState({ left: false, right: false });
+	const updateControlOverflow = useCallback(() => {
+		const controls = controlsRef.current;
+		if (!controls) {
+			return;
+		}
+		const next = {
+			left: controls.scrollLeft > 2,
+			right: controls.scrollLeft + controls.clientWidth < controls.scrollWidth - 2,
+		};
+		setControlOverflow((current) =>
+			current.left === next.left && current.right === next.right ? current : next
+		);
+	}, []);
 
 	const selectMode = useCallback(
 		(mode: ChartMode) => (onSelectChartMode ?? preferencesStore.actions.selectChartMode)(mode),
@@ -309,75 +366,129 @@ export function SessionChart({
 		return () => window.removeEventListener('keydown', handleKeys);
 	}, [availableModes, effectiveMode, keyboardEnabled, selectMode]);
 
+	useEffect(() => {
+		const controls = controlsRef.current;
+		const selectedControl = controls?.querySelector<HTMLElement>(
+			`[data-chart-mode="${effectiveMode}"]`
+		);
+		if (!(controls && selectedControl)) {
+			return;
+		}
+		const controlStart = selectedControl.offsetLeft;
+		const controlEnd = controlStart + selectedControl.offsetWidth;
+		if (controlStart < controls.scrollLeft) {
+			controls.scrollLeft = controlStart;
+		} else if (controlEnd > controls.scrollLeft + controls.clientWidth) {
+			controls.scrollLeft = controlEnd - controls.clientWidth;
+		}
+		updateControlOverflow();
+	}, [effectiveMode, updateControlOverflow]);
+
+	useEffect(() => {
+		const controls = controlsRef.current;
+		if (!controls) {
+			return;
+		}
+		const frame = window.requestAnimationFrame(updateControlOverflow);
+		controls.addEventListener('scroll', updateControlOverflow, { passive: true });
+		window.addEventListener('resize', updateControlOverflow);
+		return () => {
+			window.cancelAnimationFrame(frame);
+			controls.removeEventListener('scroll', updateControlOverflow);
+			window.removeEventListener('resize', updateControlOverflow);
+		};
+	}, [updateControlOverflow]);
+
 	return (
-		<div className="mt-4 min-w-0 overflow-hidden rounded-xl border border-line bg-[#12171d] p-2 sm:mt-6 sm:p-4">
-			<div
-				className={controlsClassName}
-				style={
-					sessionControls
-						? {
-								gridTemplateColumns: `repeat(${availableModes.length}, minmax(0, 1fr))`,
-							}
-						: undefined
-				}
-			>
-				{availableModes.map((mode) => (
-					<button
-						className={`${controlClassName} ${effectiveMode === mode.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-200'}`}
-						key={mode.value}
-						onClick={() => selectMode(mode.value)}
-						type="button"
+		<div
+			className={`${containerSpacing} session-chart min-w-0 overflow-hidden rounded-xl p-2 sm:p-3`}
+			data-variant={variant}
+		>
+			<div className="relative">
+				<div
+					className={controlsClassName}
+					ref={controlsRef}
+					style={
+						sessionControls
+							? ({
+									'--session-chart-mode-count': availableModes.length,
+								} as CSSProperties)
+							: undefined
+					}
+				>
+					{availableModes.map((mode) => (
+						<button
+							className={`${controlClassName} ${effectiveMode === mode.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-200'}`}
+							data-chart-mode={mode.value}
+							key={mode.value}
+							onClick={() => selectMode(mode.value)}
+							onPointerUp={(event) => event.currentTarget.blur()}
+							type="button"
+						>
+							{mode.value === CHART_MODE.ALL ? null : (
+								<span
+									className="h-1.5 w-1.5 shrink-0 rounded-full"
+									style={{
+										backgroundColor:
+											series.find((item) => item.key === mode.value)?.color ??
+											'var(--metric-gear)',
+									}}
+								/>
+							)}
+							{mode.label}
+						</button>
+					))}
+				</div>
+				{controlOverflow.left ? (
+					<span
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-y-1 left-0 z-10 grid w-7 place-items-center font-bold text-base text-slate-300"
+						style={{
+							background: chartControlsEdgeBackground('right', sessionControls),
+						}}
 					>
-						{mode.value === CHART_MODE.ALL ? null : (
-							<span
-								className="h-1.5 w-1.5 shrink-0 rounded-full"
-								style={{
-									backgroundColor:
-										series.find((item) => item.key === mode.value)?.color ??
-										'#adf5bd',
-								}}
-							/>
-						)}
-						{mode.label}
-					</button>
-				))}
+						‹
+					</span>
+				) : null}
+				{controlOverflow.right ? (
+					<span
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-y-1 right-0 z-10 grid w-7 place-items-center font-bold text-base text-slate-300"
+						style={{
+							background: chartControlsEdgeBackground('left', sessionControls),
+						}}
+					>
+						›
+					</span>
+				) : null}
 			</div>
-			<div className="mt-4">
+			<div className="mt-3">
 				<div className="relative w-full">
-					{history.length === 0 ? (
-						<div className="absolute inset-0 z-20 grid place-items-center px-4 text-center text-slate-500 text-sm">
+					{history.length === 0 && !sessionControls ? (
+						<div className="absolute inset-y-0 right-0 left-16 z-20 grid place-items-center px-4 text-center text-slate-500 text-sm sm:left-20">
 							Connect and pedal to graph live session data
 						</div>
 					) : null}
-					{visibleSeries.map((item, index) => (
-						<Fragment key={item.key}>
-							<ChartPlot
-								color={item.color}
-								decimals={item.decimals}
-								heightClass={
-									effectiveMode === CHART_MODE.ALL
-										? 'h-20 sm:h-24'
-										: 'h-40 sm:h-52'
-								}
-								maximum={item.chartMaximum}
-								minimum={item.minimum}
-								positions={historyPositions}
-								title={`${item.label} over time`}
-								unit={item.unit}
-								values={item.values}
-							/>
-							{effectiveMode === CHART_MODE.ALL &&
-							index < visibleSeries.length - 1 ? (
-								<div
-									aria-hidden="true"
-									className="pointer-events-none relative -my-3 ml-12 h-6 bg-white/1.5 sm:ml-15"
-									data-chart-separator="true"
-								/>
-							) : null}
-						</Fragment>
+					{visibleSeries.map((item) => (
+						<ChartPlot
+							color={item.color}
+							decimals={item.decimals}
+							heightClass={
+								effectiveMode === CHART_MODE.ALL ? 'h-24 sm:h-28' : 'h-40 sm:h-52'
+							}
+							key={item.key}
+							label={item.label}
+							maximum={item.chartMaximum}
+							minimum={item.minimum}
+							positions={historyPositions}
+							showLabel
+							title={`${item.label} over time`}
+							unit={item.unit}
+							values={item.values}
+						/>
 					))}
 				</div>
-				<div className="mt-1 grid grid-cols-[3rem_minmax(0,1fr)] text-[9px] text-slate-500 sm:grid-cols-[3.75rem_minmax(0,1fr)] sm:text-[10px]">
+				<div className="mt-1 grid grid-cols-[4rem_minmax(0,1fr)] font-medium text-[10px] text-slate-400 sm:grid-cols-[5rem_minmax(0,1fr)] sm:text-xs">
 					<span aria-hidden="true" />
 					<div className="flex justify-between">
 						{[0, 0.25, 0.5, 0.75, 1].map((position) => (

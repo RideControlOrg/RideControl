@@ -75,13 +75,25 @@ export function formatDistanceProgress(
 	totalKilometers: number,
 	unit: SpeedUnit
 ): string {
+	return `${formatDistanceProgressValue(currentKilometers, totalKilometers, unit)} ${distanceUnitLabel(unit)}`;
+}
+
+export function formatDistanceProgressValue(
+	currentKilometers: number,
+	totalKilometers: number,
+	unit: SpeedUnit
+): string {
 	const current = formatDistanceValue(currentKilometers, unit, 2);
 	const total = formatDistanceValue(totalKilometers, unit, 2);
-	return `${current} / ${total} ${distanceUnitLabel(unit)}`;
+	return `${current} / ${total}`;
+}
+
+export function formatElevationValue(meters: number, unit: SpeedUnit, decimals = 0): string {
+	return convertElevation(meters, unit).toFixed(decimals);
 }
 
 export function formatElevation(meters: number, unit: SpeedUnit, decimals = 0): string {
-	return `${convertElevation(meters, unit).toFixed(decimals)} ${elevationUnitLabel(unit)}`;
+	return `${formatElevationValue(meters, unit, decimals)} ${elevationUnitLabel(unit)}`;
 }
 
 export function formatSpeed(kilometersPerHour: number, unit: SpeedUnit, decimals = 1): string {

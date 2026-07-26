@@ -11,6 +11,7 @@ import {
 	formatChartSeconds,
 	formatDuration,
 	formatGrade,
+	formatGradeValue,
 } from '../src/lib/format';
 
 describe('format utilities', () => {
@@ -36,22 +37,23 @@ describe('format utilities', () => {
 		expect(formatGrade(-0.04)).toBe('0%');
 		expect(formatGrade(3.14)).toBe('+3.1%');
 		expect(formatGrade(-2.96)).toBe('-3.0%');
+		expect(formatGradeValue(3.14)).toBe('+3.1');
 	});
 });
 
 describe('chart utilities', () => {
 	test('creates paths with evenly spaced positions', () => {
-		expect(chartPath([0, 50, 100], 0, 100)).toBe('M 0 90 L 50 52 L 100 14');
+		expect(chartPath([0, 50, 100], 0, 100)).toBe('M 0 95 L 50 50 L 100 5');
 	});
 
 	test('uses elapsed positions and clamps values', () => {
-		expect(chartPath([-10, 50, 120], 0, 100, [10, 20, 50])).toBe('M 0 90 L 25 52 L 100 14');
+		expect(chartPath([-10, 50, 120], 0, 100, [10, 20, 50])).toBe('M 0 95 L 25 50 L 100 5');
 		expect(chartPath([], 0, 1)).toBe('');
 	});
 
 	test('leaves gaps when a control metric is not recorded', () => {
 		expect(chartPath([10, undefined, 12], 1, 24, [1, 2, 3])).toBe(
-			'M 0 60.26086956521739 M 100 53.65217391304348'
+			'M 0 59.78260869565217 M 100 51.95652173913043'
 		);
 	});
 

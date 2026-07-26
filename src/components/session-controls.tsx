@@ -66,18 +66,22 @@ export function SessionControls({
 
 	let controlLabel = 'Auto paused';
 	let controlIcon = 'stop';
+	let sessionState = 'auto-paused';
 	if (isRiding) {
 		controlLabel = 'Pause';
 		controlIcon = 'pause';
+		sessionState = 'riding';
 	}
 	if (manuallyPaused) {
 		controlLabel = 'Resume';
 		controlIcon = 'play';
+		sessionState = 'paused';
 	}
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<button
-				className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 font-semibold text-xs transition ${isRiding ? 'border-mint/40 bg-mint/10 text-mint' : 'border-line bg-[#12171d] text-slate-400'}`}
+				className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 font-semibold text-xs transition ${isRiding ? 'border-mint/40 bg-mint/10 text-mint' : 'border-amber-300/50 bg-amber-300/10 text-amber-300 hover:bg-amber-300/15'}`}
+				data-session-state={sessionState}
 				onClick={onTogglePause}
 				type="button"
 			>

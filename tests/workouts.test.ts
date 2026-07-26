@@ -94,11 +94,27 @@ describe('terrain workouts', () => {
 		if (!(prairie && granite)) {
 			throw new Error('Expected Prairie Roll and Granite Switchbacks');
 		}
-		expect(workoutMatchesSearch(prairie, 'prairie')).toBeTrue();
-		expect(workoutMatchesSearch(prairie, 'GENTLE')).toBeTrue();
-		expect(workoutMatchesSearch(granite, 'granite challenging')).toBeTrue();
-		expect(workoutMatchesSearch(granite, 'gentle')).toBeFalse();
-		expect(workoutMatchesSearch(granite, '   ')).toBeTrue();
+		expect(workoutMatchesSearch(prairie, 'prairie', 'mph')).toBeTrue();
+		expect(workoutMatchesSearch(prairie, 'GENTLE', 'mph')).toBeTrue();
+		expect(workoutMatchesSearch(granite, 'granite challenging', 'mph')).toBeTrue();
+		expect(workoutMatchesSearch(granite, 'gentle', 'mph')).toBeFalse();
+		expect(workoutMatchesSearch(granite, '   ', 'mph')).toBeTrue();
+	});
+
+	test('filters workouts near a distance in the selected display units', () => {
+		const cedar = WORKOUT_COURSES.find((workout) => workout.id === 'cedar-circuit');
+		const granite = WORKOUT_COURSES.find((workout) => workout.id === 'granite-switchbacks');
+		const timeTrial = WORKOUT_COURSES.find((workout) => workout.id === 'ridgeline-time-trial');
+		if (!(cedar && granite && timeTrial)) {
+			throw new Error(
+				'Expected Cedar Circuit, Granite Switchbacks, and Ridgeline Time Trial'
+			);
+		}
+		expect(workoutMatchesSearch(timeTrial, '10', 'mph')).toBeTrue();
+		expect(workoutMatchesSearch(granite, '10', 'mph')).toBeFalse();
+		expect(workoutMatchesSearch(cedar, '10', 'kmh')).toBeTrue();
+		expect(workoutMatchesSearch(timeTrial, '10', 'kmh')).toBeFalse();
+		expect(workoutMatchesSearch(granite, 'granite 11', 'mph')).toBeTrue();
 	});
 
 	test('offers a ten-mile time trial with a mirrored five-mile hillclimb', () => {

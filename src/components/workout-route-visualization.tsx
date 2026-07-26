@@ -33,7 +33,7 @@ function WorkoutRouteMarker({
 				<circle
 					cx={marker.x}
 					cy={marker.y}
-					fill="#adf5bd"
+					fill="var(--color-mint)"
 					r="2.25"
 					stroke="#12171d"
 					strokeWidth="1.25"
@@ -123,7 +123,7 @@ export function WorkoutRouteVisualization({
 						d={progressPath}
 						data-route-progress="true"
 						fill="none"
-						stroke="#adf5bd"
+						stroke="var(--color-mint)"
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						strokeWidth={isMap ? 5 : 2.5}

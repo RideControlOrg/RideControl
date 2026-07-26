@@ -21,6 +21,7 @@ import {
 	useAutoDismissSessionRecoveryNotice,
 } from './components/session-recovery-notice';
 import { SessionSaveDialog } from './components/session-save-dialog';
+import { SessionSummary } from './components/session-summary';
 import { TrainingControl } from './components/training-control';
 import { DeploymentVersionUpdateNotice } from './components/version-update-notice';
 import { WelcomeDialog } from './components/welcome-dialog';
@@ -393,6 +394,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	);
 	const { connected } = trainer;
 	const speedUnit = useSelector(preferencesStore, (preferences) => preferences.speedUnit);
+	const theme = useSelector(preferencesStore, (preferences) => preferences.theme);
 	const workoutLibrary = useWorkoutLibrary();
 	const virtualShiftingReady = virtualShiftingConnectionReady({
 		trainerConnected: trainer.connected,
@@ -720,7 +722,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	);
 
 	return (
-		<main className="flex min-h-dvh min-w-0 flex-col overflow-x-clip bg-ink selection:bg-mint/30">
+		<main className="app-shell flex min-h-dvh min-w-0 flex-col overflow-x-clip bg-ink selection:bg-mint/30">
 			<Dashboard>
 				<DashboardToolbar>
 					<SessionControls
@@ -750,35 +752,24 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				{showRestoredSessionNotice ? (
 					<SessionRecoveryNotice onDismiss={dismissRestoredSessionNotice} />
 				) : null}
-				<RideMetrics
-					aggregates={session.aggregates}
-					elapsedSeconds={session.elapsedSeconds}
-					liveMetrics={liveMetrics}
-					maximums={session.maximums}
-					rideDistance={session.rideDistance}
-					speedUnit={speedUnit}
-				/>
-				{dashboardWorkout.workout && workoutTerrain ? (
-					<WorkoutProgress
-						elevationTotals={dashboardWorkout.elevationTotals}
-						isRiding={session.isRiding}
-						speedUnit={speedUnit}
-						targetResistance={workoutResistance}
-						terrain={workoutTerrain}
-						workout={dashboardWorkout.workout}
-					/>
-				) : null}
-				<DashboardWorkspace>
-					<SessionOverview
-						controlMode={activeControlMode}
+				<section className="dashboard-data-grid grid gap-px bg-line min-[1120px]:grid-cols-4">
+					<RideMetrics
+						aggregates={session.aggregates}
 						elapsedSeconds={session.elapsedSeconds}
-						history={session.history}
-						keyboardEnabled={dashboardKeyboardEnabled}
-						rideCalories={session.rideCalories}
+						liveMetrics={liveMetrics}
+						maximums={session.maximums}
 						rideDistance={session.rideDistance}
 						speedUnit={speedUnit}
-						workout={session.workout}
 					/>
+					<div className="dashboard-session-summary grid min-w-0 grid-cols-3 gap-px bg-line">
+						<SessionSummary
+							calories={session.rideCalories}
+							distance={session.rideDistance}
+							elapsedSeconds={session.elapsedSeconds}
+							large
+							speedUnit={speedUnit}
+						/>
+					</div>
 					<TrainingControl
 						connected={virtualShiftingActive ? virtualShiftingReady : connected}
 						control={
@@ -800,13 +791,34 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 									}
 						}
 					/>
+				</section>
+				{dashboardWorkout.workout && workoutTerrain ? (
+					<WorkoutProgress
+						elevationTotals={dashboardWorkout.elevationTotals}
+						isRiding={session.isRiding}
+						speedUnit={speedUnit}
+						targetResistance={workoutResistance}
+						terrain={workoutTerrain}
+						workout={dashboardWorkout.workout}
+					/>
+				) : null}
+				<DashboardWorkspace>
+					<SessionOverview
+						controlMode={activeControlMode}
+						history={session.history}
+						keyboardEnabled={dashboardKeyboardEnabled}
+						speedUnit={speedUnit}
+						workout={dashboardWorkout.workout}
+					/>
 				</DashboardWorkspace>
 			</Dashboard>
 			<AppFooter
+				onChangeTheme={preferencesStore.actions.selectTheme}
 				onOpenPrivacy={() => setActiveOverlay(APP_OVERLAY.PRIVACY)}
 				onOpenTerms={() => setActiveOverlay(APP_OVERLAY.TERMS)}
 				onOpenVersion={() => setActiveOverlay(APP_OVERLAY.BUILD)}
 				onOpenWelcome={() => setActiveOverlay(APP_OVERLAY.WELCOME)}
+				theme={theme}
 			/>
 			<Notification
 				connected={connected}

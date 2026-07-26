@@ -202,6 +202,10 @@ export function SessionHistoryList({
 		}
 	}, [rowVirtualizer, selectedId, selectedRowIndex]);
 
+	if (summaries.length === 0 && total === 0 && !error) {
+		return null;
+	}
+
 	return (
 		<aside
 			className="max-h-64 min-w-0 shrink-0 overflow-y-auto overflow-x-hidden border-line border-b bg-[#12171d] p-3 md:max-h-none md:w-80 md:border-r md:border-b-0"
@@ -210,14 +214,6 @@ export function SessionHistoryList({
 			ref={setSessionListRef}
 		>
 			{error ? <p className="p-3 text-rose-300 text-sm">{error}</p> : null}
-			{summaries.length === 0 && !error ? (
-				<div className="p-6 text-center">
-					<p className="font-semibold">No saved sessions yet</p>
-					<p className="mt-1 text-slate-500 text-sm">
-						End a session or import a FIT or TCX file to add it here.
-					</p>
-				</div>
-			) : null}
 			{rows.length > 0 ? (
 				<div
 					className="relative w-full"

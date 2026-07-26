@@ -9,6 +9,7 @@ import {
 	gpxGroupFilterLabel,
 	gpxPreviewRoute,
 	gpxRouteAssetUrl,
+	gpxRouteGroupLabel,
 	gpxRouteMatchesQuery,
 	isBikeGpxProvider,
 	restoreGpxCatalog,
@@ -98,6 +99,12 @@ describe('GPX provider backend client', () => {
 		expect(gpxGroupFilterLabel('grand-tours')).toBe('All groups');
 		expect(isBikeGpxProvider('bikegpx')).toBe(true);
 		expect(isBikeGpxProvider('grand-tours')).toBe(false);
+	});
+
+	test('hides route groups that merely repeat the selected collection', () => {
+		expect(gpxRouteGroupLabel('Tour de France 2026', 'Tour de France 2026')).toBeUndefined();
+		expect(gpxRouteGroupLabel(' tour de france 2026 ', 'Tour de France 2026')).toBeUndefined();
+		expect(gpxRouteGroupLabel('Aland Islands', 'Public routes')).toBe('Aland Islands');
 	});
 
 	test('formats prepared collection distance and climbing totals', () => {

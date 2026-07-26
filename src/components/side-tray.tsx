@@ -187,7 +187,7 @@ export function SideTray({
 
 	return (
 		<div
-			className={`fixed inset-0 z-40 flex justify-end bg-black/65 backdrop-blur-sm transition-opacity duration-200 ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+			className={`fixed inset-0 z-40 flex justify-end bg-black/55 transition-opacity duration-200 ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
 			data-side-tray="true"
 		>
 			<button
@@ -199,7 +199,7 @@ export function SideTray({
 			<section
 				aria-labelledby={labelledBy}
 				aria-modal="true"
-				className={`relative z-10 ml-auto h-full w-full min-w-0 border-line border-l bg-panel shadow-2xl shadow-black/60 transition-transform duration-200 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'} ${panelClassName}`}
+				className={`minimal-surface-scope relative z-10 ml-auto h-full w-full min-w-0 border-line border-l bg-panel transition-transform duration-200 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'} ${panelClassName}`}
 				data-side-tray-width={panelWidth}
 				ref={panel}
 				role="dialog"
@@ -222,7 +222,7 @@ export function SideTray({
 				/>
 				<span
 					aria-hidden="true"
-					className="pointer-events-none absolute top-1/2 left-0 z-30 hidden h-16 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-500/70 shadow-sm sm:block"
+					className="pointer-events-none absolute top-1/2 left-0 z-30 hidden h-16 w-px -translate-x-1/2 -translate-y-1/2 bg-slate-500 sm:block"
 				/>
 				{children}
 			</section>

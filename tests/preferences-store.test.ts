@@ -12,15 +12,21 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 describe('preferences store', () => {
 	test('restores and persists shared display preferences', () => {
-		const storage = memoryStorage({ 'speed-unit': 'kmh', 'trainer-chart-mode': 'power' });
+		const storage = memoryStorage({
+			'ride-control-theme': 'light',
+			'speed-unit': 'kmh',
+			'trainer-chart-mode': 'power',
+		});
 		const store = createPreferencesStore(storage);
 
-		expect(store.get()).toEqual({ chartMode: 'power', speedUnit: 'kmh' });
+		expect(store.get()).toEqual({ chartMode: 'power', speedUnit: 'kmh', theme: 'light' });
 
 		store.actions.selectChartMode('cadence');
 		store.actions.selectSpeedUnit('mph');
+		store.actions.selectTheme('dark');
 
-		expect(store.get()).toEqual({ chartMode: 'cadence', speedUnit: 'mph' });
+		expect(store.get()).toEqual({ chartMode: 'cadence', speedUnit: 'mph', theme: 'dark' });
+		expect(storage.values.get('ride-control-theme')).toBe('dark');
 		expect(storage.values.get('trainer-chart-mode')).toBe('cadence');
 		expect(storage.values.get('speed-unit')).toBe('mph');
 	});

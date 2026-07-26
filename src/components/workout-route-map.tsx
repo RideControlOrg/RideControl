@@ -1,5 +1,4 @@
 import {
-	circleMarker,
 	map as createLeafletMap,
 	divIcon,
 	type LatLngExpression,
@@ -9,6 +8,7 @@ import {
 } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { type ReactNode, useEffect, useRef } from 'react';
+import { ICON_PATHS } from '../lib/icon-paths';
 import { workoutRouteCoordinateAtProgress } from '../lib/workout-map';
 import type { WorkoutCourse } from '../types';
 
@@ -17,12 +17,20 @@ const MAP_ATTRIBUTION =
 	'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const ROUTE_COLOR = '#67e8f9';
 const ROUTE_OUTLINE_COLOR = '#071018';
-const START_COLOR = '#adf5bd';
-const FINISH_COLOR = '#fbbf24';
 const ENDPOINT_EPSILON = 0.000_001;
+const ENDPOINT_MARKER_SIZE = 14;
 const BIKE_ROUTE_DURATION_MS = 30_000;
-const BIKE_MARKER_HTML =
-	'<span class="ride-control-bike-marker__body" aria-hidden="true">🚲</span>';
+const BIKE_MARKER_SIZE = 36;
+const BIKE_MARKER_HTML = `<span class="ride-control-bike-marker__body" aria-hidden="true"><svg class="ride-control-bike-marker__icon" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="${ICON_PATHS.bike}"></path></svg></span>`;
+
+function endpointMarkerIcon(type: 'finish' | 'shared' | 'start') {
+	return divIcon({
+		className: 'ride-control-route-endpoint-marker',
+		html: `<span class="ride-control-route-endpoint ride-control-route-endpoint--${type}" aria-hidden="true"></span>`,
+		iconAnchor: [ENDPOINT_MARKER_SIZE / 2, ENDPOINT_MARKER_SIZE / 2],
+		iconSize: [ENDPOINT_MARKER_SIZE, ENDPOINT_MARKER_SIZE],
+	});
+}
 
 function routeCoordinates(course: WorkoutCourse): LatLngExpression[] {
 	return course.points.map((point) => [point.latitude, point.longitude]);
@@ -84,22 +92,20 @@ export function WorkoutRouteMap({
 		}).addTo(routeMap);
 
 		const sharedEndpoint = endpointsOverlap(course);
-		circleMarker(start, {
-			color: ROUTE_OUTLINE_COLOR,
-			fillColor: START_COLOR,
-			fillOpacity: 1,
-			radius: 7,
-			weight: 3,
+		marker(start, {
+			icon: endpointMarkerIcon(sharedEndpoint ? 'shared' : 'start'),
+			keyboard: false,
+			title: sharedEndpoint ? 'Start and finish' : 'Start',
+			zIndexOffset: 900,
 		})
 			.bindTooltip(sharedEndpoint ? 'Start and finish' : 'Start')
 			.addTo(routeMap);
 		if (finish && !sharedEndpoint) {
-			circleMarker(finish, {
-				color: ROUTE_OUTLINE_COLOR,
-				fillColor: FINISH_COLOR,
-				fillOpacity: 1,
-				radius: 7,
-				weight: 3,
+			marker(finish, {
+				icon: endpointMarkerIcon('finish'),
+				keyboard: false,
+				title: 'Finish',
+				zIndexOffset: 900,
 			})
 				.bindTooltip('Finish')
 				.addTo(routeMap);
@@ -112,8 +118,8 @@ export function WorkoutRouteMap({
 				icon: divIcon({
 					className: 'ride-control-bike-marker',
 					html: BIKE_MARKER_HTML,
-					iconAnchor: [17, 17],
-					iconSize: [34, 34],
+					iconAnchor: [BIKE_MARKER_SIZE / 2, BIKE_MARKER_SIZE / 2],
+					iconSize: [BIKE_MARKER_SIZE, BIKE_MARKER_SIZE],
 				}),
 				interactive: false,
 				keyboard: false,
@@ -154,12 +160,22 @@ export function WorkoutRouteMap({
 			<div className="pointer-events-none absolute top-4 right-4 z-500 flex w-[calc(100%-2rem)] flex-col items-end gap-2">
 				<div className="rounded-xl border border-slate-600/70 bg-[#10151a]/90 px-3 py-2 text-[11px] text-slate-300 shadow-xl backdrop-blur-sm">
 					<div className="flex items-center gap-2">
-						<span className="h-2.5 w-2.5 rounded-full bg-mint" />
+						<span
+							aria-hidden="true"
+							className={`ride-control-route-endpoint ${
+								endpointsOverlap(course)
+									? 'ride-control-route-endpoint--shared'
+									: 'ride-control-route-endpoint--start'
+							}`}
+						/>
 						<span>{endpointsOverlap(course) ? 'Start and finish' : 'Start'}</span>
 					</div>
 					{endpointsOverlap(course) ? null : (
 						<div className="mt-1.5 flex items-center gap-2">
-							<span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+							<span
+								aria-hidden="true"
+								className="ride-control-route-endpoint ride-control-route-endpoint--finish"
+							/>
 							<span>Finish</span>
 						</div>
 					)}

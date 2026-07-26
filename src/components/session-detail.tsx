@@ -5,6 +5,7 @@ import { CONTROL_MODE } from '../lib/control-mode';
 import { downloadSessionFit } from '../lib/fit';
 import { aggregateMaximum, formatAggregateAverage, formatWholeNumber } from '../lib/format';
 import { METRIC_PRESENTATION, STANDARD_METRIC_KEYS } from '../lib/metric-presentation';
+import { poundsForKilograms } from '../lib/profile';
 import {
 	feelingLabel,
 	formatSessionDateRange,
@@ -20,6 +21,58 @@ import { SessionMetric } from './metrics';
 import { SessionChart } from './session-chart';
 import { SessionSummary } from './session-summary';
 import { WorkoutProgress } from './workout-progress';
+
+function SessionMetadataDetails({
+	session,
+	speedUnit,
+}: {
+	session: SavedSession;
+	speedUnit: SpeedUnit;
+}) {
+	const recordedRiderWeight = session.profileSnapshot
+		? {
+				unit: speedUnit === 'mph' ? 'lb' : 'kg',
+				value: (speedUnit === 'mph'
+					? poundsForKilograms(session.profileSnapshot.riderWeightKg)
+					: session.profileSnapshot.riderWeightKg
+				).toFixed(1),
+			}
+		: undefined;
+
+	return (
+		<div
+			className={`session-metadata-grid mt-3 grid gap-3 ${
+				recordedRiderWeight ? 'session-metadata-grid-with-weight' : ''
+			}`}
+		>
+			{recordedRiderWeight ? (
+				<div className="session-metadata-item session-metadata-weight px-2 py-3 sm:px-3">
+					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">
+						RIDER WEIGHT
+					</p>
+					<p className="mt-1 flex items-baseline gap-1 font-semibold text-slate-300 text-xl tabular-nums">
+						{recordedRiderWeight.value}
+						<span className="font-medium text-slate-400 text-xs">
+							{recordedRiderWeight.unit}
+						</span>
+					</p>
+				</div>
+			) : null}
+			<div className="session-metadata-item session-metadata-feeling px-2 py-3 sm:px-3">
+				<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">FELT</p>
+				<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
+					{feelingLabel(session.feeling)}
+				</p>
+			</div>
+			<div className="session-metadata-description session-metadata-item px-2 py-3 sm:px-3">
+				<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">DESCRIPTION</p>
+				<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
+					{session.comments || 'No description'}
+				</p>
+			</div>
+		</div>
+	);
+}
 
 export function DeleteSessionDialog({
 	deleting,
@@ -68,7 +121,7 @@ export function DeleteSessionDialog({
 					Cancel
 				</button>
 				<button
-					className="rounded-lg bg-rose-400 px-3 py-2 font-bold text-ink text-xs hover:bg-rose-300 disabled:opacity-50"
+					className="rounded-lg bg-rose-700 px-3 py-2 font-bold text-white text-xs hover:bg-rose-600 disabled:opacity-50"
 					disabled={deleting}
 					onClick={onConfirm}
 					ref={confirmButton}
@@ -148,10 +201,9 @@ export function SessionDetail({
 			unit: presentation.unit,
 		};
 	});
-
 	return (
 		<div
-			className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6"
+			className="session-detail-container min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-3 sm:px-6 sm:pb-6"
 			data-testid="session-detail"
 			onScroll={detailScroll.onScroll}
 			ref={detailScroll.ref}
@@ -178,10 +230,13 @@ export function SessionDetail({
 						{formatSessionTimeRange(session)}
 					</h3>
 				</div>
-				<div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-line border-t pt-4">
-					<div className="flex flex-wrap gap-2" data-session-file-downloads="true">
+				<div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
+					<div
+						className="contents sm:flex sm:flex-wrap sm:gap-2"
+						data-session-file-downloads="true"
+					>
 						<button
-							className="rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+							className="w-full rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
 							disabled={session.history.length === 0}
 							onClick={() => downloadSessionFit(session)}
 							title={
@@ -194,7 +249,7 @@ export function SessionDetail({
 							Download FIT
 						</button>
 						<button
-							className="rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+							className="w-full rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
 							disabled={session.history.length === 0}
 							onClick={() => downloadSessionTcx(session)}
 							title={
@@ -209,12 +264,12 @@ export function SessionDetail({
 					</div>
 					{onStartNew || onDelete ? (
 						<div
-							className="ml-auto flex flex-wrap justify-end gap-2"
+							className="contents sm:ml-auto sm:flex sm:flex-wrap sm:justify-end sm:gap-2"
 							data-session-actions="true"
 						>
 							{onStartNew ? (
 								<button
-									className="rounded-lg border border-mint/30 px-3 py-2 font-semibold text-mint text-xs transition hover:border-mint/60 hover:bg-mint/5"
+									className="w-full rounded-lg border border-mint/30 px-3 py-2 font-semibold text-mint text-xs transition hover:border-mint/60 hover:bg-mint/5 sm:w-auto"
 									onClick={onStartNew}
 									type="button"
 								>
@@ -223,7 +278,7 @@ export function SessionDetail({
 							) : null}
 							{onDelete ? (
 								<button
-									className="rounded-lg border border-rose-400/30 px-3 py-2 font-semibold text-rose-300 text-xs transition hover:border-rose-400/60 hover:bg-rose-400/5"
+									className="w-full rounded-lg border border-rose-400/30 px-3 py-2 font-semibold text-rose-300 text-xs transition hover:border-rose-400/60 hover:bg-rose-400/5 sm:w-auto"
 									onClick={onDelete}
 									type="button"
 								>
@@ -242,7 +297,7 @@ export function SessionDetail({
 					/>
 				) : null}
 			</div>
-			<div className="mt-5 grid grid-cols-3 divide-x divide-line rounded-xl bg-[#12171d] ring-1 ring-line ring-inset">
+			<div className="minimal-summary-grid mt-3 grid">
 				<SessionSummary
 					calories={session.calories}
 					distance={session.distance}
@@ -251,7 +306,7 @@ export function SessionDetail({
 					timeLabel="RECORDED"
 				/>
 			</div>
-			<div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+			<div className="minimal-session-metric-grid mt-2 grid gap-x-5 gap-y-1">
 				{[...standardMetrics, ...controlMetrics].map((metric) => (
 					<SessionMetric key={metric.label} {...metric} />
 				))}
@@ -266,22 +321,7 @@ export function SessionDetail({
 					workout={session.workout}
 				/>
 			) : null}
-			<div className="mt-5 grid gap-4 sm:grid-cols-[.35fr_.65fr]">
-				<div className="rounded-xl border border-line bg-[#12171d] p-4">
-					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">FELT</p>
-					<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
-						{feelingLabel(session.feeling)}
-					</p>
-				</div>
-				<div className="rounded-xl border border-line bg-[#12171d] p-4">
-					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">
-						DESCRIPTION
-					</p>
-					<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
-						{session.comments || 'No description'}
-					</p>
-				</div>
-			</div>
+			<SessionMetadataDetails session={session} speedUnit={speedUnit} />
 			<SessionChart
 				controlMode={session.controlMode}
 				history={session.history}

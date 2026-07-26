@@ -28,6 +28,7 @@ import {
 	gpxGroupFilterLabel,
 	gpxPreviewRoute,
 	gpxRouteAssetUrl,
+	gpxRouteGroupLabel,
 	gpxRouteKey,
 	isBikeGpxProvider,
 	shouldShowGpxCollectionSelector,
@@ -41,6 +42,7 @@ import {
 } from '../lib/workout-schema';
 import { workoutDifficultyLabel } from '../lib/workouts';
 import type { SpeedUnit, WorkoutCourse } from '../types';
+import { SelectMenu } from './select-menu';
 import { WorkoutRouteMap } from './workout-route-map';
 import { WorkoutRouteVisualization } from './workout-route-visualization';
 
@@ -77,22 +79,27 @@ function requestRouteCourse(route: GpxRouteSummary, useCache = true): Promise<Gp
 
 function RouteListItem({
 	analysis,
+	collectionName,
 	onSelect,
 	route,
 	selected,
 	speedUnit,
 }: {
 	analysis: GpxRouteAnalysis;
+	collectionName?: string;
 	onSelect: () => void;
 	route: GpxRouteSummary;
 	selected: boolean;
 	speedUnit: SpeedUnit;
 }) {
 	const difficulty = workoutDifficultyLabel(analysis.difficulty);
+	const groupLabel = gpxRouteGroupLabel(route.group, collectionName);
+	const primaryContext = groupLabel ?? route.location;
+	const showSeparateLocation = Boolean(groupLabel && route.location);
 	return (
 		<button
 			aria-pressed={selected}
-			className={`w-full border-line border-b px-4 py-3 text-left transition ${selected ? 'bg-cyan-400/10 shadow-[inset_3px_0_0_#67e8f9]' : 'hover:bg-slate-800/60'}`}
+			className={`w-full px-4 py-3 text-left transition ${selected ? 'bg-cyan-400/5 shadow-[inset_2px_0_0_var(--color-cyan-400)]' : 'hover:bg-slate-800/35'}`}
 			onClick={onSelect}
 			type="button"
 		>
@@ -102,15 +109,19 @@ function RouteListItem({
 				{route.name}
 			</span>
 			<span className="mt-1 flex items-center justify-between gap-2 text-[11px]">
-				<span className="truncate text-slate-500">{route.group}</span>
+				{primaryContext ? (
+					<span className="truncate text-slate-500">{primaryContext}</span>
+				) : (
+					<span aria-hidden="true" />
+				)}
 				<span
-					className="shrink-0 rounded-full border border-violet-400/25 bg-violet-400/5 px-1.5 py-0.5 font-semibold text-[9px] text-violet-300 uppercase tracking-wide"
+					className="shrink-0 font-semibold text-[9px] text-violet-300 uppercase tracking-wide"
 					title="Difficulty calculated from distance, climbing, and maximum grade"
 				>
 					{difficulty}
 				</span>
 			</span>
-			{route.location ? (
+			{showSeparateLocation ? (
 				<span className="mt-1 block text-[11px] text-slate-400 leading-relaxed">
 					{route.location}
 				</span>
@@ -128,6 +139,7 @@ function RouteSidebar({
 	catalog,
 	catalogError,
 	catalogLoading,
+	collectionName,
 	group,
 	groups,
 	difficulty,
@@ -151,6 +163,7 @@ function RouteSidebar({
 	catalog?: GpxCatalog;
 	catalogError: string;
 	catalogLoading: boolean;
+	collectionName?: string;
 	group: string;
 	groups: string[];
 	difficulty?: WorkoutDifficulty;
@@ -202,8 +215,8 @@ function RouteSidebar({
 	const distanceUnit = distanceUnitLabel(speedUnit);
 
 	return (
-		<aside className="flex h-80 shrink-0 flex-col border-line border-b bg-[#10151a] lg:h-auto lg:w-72 lg:border-r lg:border-b-0">
-			<div className="space-y-2 border-line border-b p-3">
+		<aside className="flex h-80 shrink-0 flex-col border-line border-b bg-panel lg:h-auto lg:w-72 lg:border-r lg:border-b-0">
+			<div className="space-y-2 p-3">
 				<label className="sr-only" htmlFor="gpx-search">
 					Search GPX routes
 				</label>
@@ -216,41 +229,38 @@ function RouteSidebar({
 					value={query}
 				/>
 				<div className="grid grid-cols-2 gap-2">
-					<label className="sr-only" htmlFor="gpx-group">
-						Filter GPX routes by group
-					</label>
-					<select
-						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-300 text-xs outline-none focus:border-cyan-400/70"
-						id="gpx-group"
-						onChange={(event) => onGroupChange(event.currentTarget.value)}
+					<SelectMenu
+						ariaLabel="Filter GPX routes by group"
+						onChange={onGroupChange}
+						options={[
+							{ label: allGroupsLabel, value: '' },
+							...groups.map((groupName) => ({
+								label: groupName,
+								value: groupName,
+							})),
+						]}
+						size="compact"
 						value={group}
-					>
-						<option value="">{allGroupsLabel}</option>
-						{groups.map((groupName) => (
-							<option key={groupName} value={groupName}>
-								{groupName}
-							</option>
-						))}
-					</select>
-					<label className="sr-only" htmlFor="gpx-difficulty">
-						Filter GPX routes by estimated difficulty
-					</label>
-					<select
-						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-300 text-xs outline-none focus:border-cyan-400/70"
-						id="gpx-difficulty"
-						onChange={(event) => {
-							const { value } = event.currentTarget;
-							onDifficultyChange(isWorkoutDifficulty(value) ? value : undefined);
+						width="full"
+					/>
+					<SelectMenu
+						ariaLabel="Filter GPX routes by estimated difficulty"
+						onChange={(nextDifficulty) => {
+							onDifficultyChange(
+								isWorkoutDifficulty(nextDifficulty) ? nextDifficulty : undefined
+							);
 						}}
+						options={[
+							{ label: 'Any difficulty', value: '' },
+							...Object.values(WORKOUT_DIFFICULTY).map((option) => ({
+								label: workoutDifficultyLabel(option),
+								value: option,
+							})),
+						]}
+						size="compact"
 						value={difficulty ?? ''}
-					>
-						<option value="">Any difficulty</option>
-						{Object.values(WORKOUT_DIFFICULTY).map((option) => (
-							<option key={option} value={option}>
-								{workoutDifficultyLabel(option)}
-							</option>
-						))}
-					</select>
+						width="full"
+					/>
 				</div>
 				<div className="grid grid-cols-2 gap-2">
 					<label className="sr-only" htmlFor="gpx-minimum-distance">
@@ -313,6 +323,7 @@ function RouteSidebar({
 								>
 									<RouteListItem
 										analysis={analysis}
+										collectionName={collectionName}
 										onSelect={() => onSelectRoute(route)}
 										route={route}
 										selected={route.id === selectedRouteId}
@@ -407,6 +418,7 @@ function importButtonLabel(alreadyImported: boolean, importing: boolean): string
 function RoutePreviewDetails({
 	alreadyImported,
 	analysis,
+	collectionName,
 	course,
 	importError,
 	importing,
@@ -416,6 +428,7 @@ function RoutePreviewDetails({
 }: {
 	alreadyImported: boolean;
 	analysis?: GpxRouteAnalysis;
+	collectionName?: string;
 	course?: WorkoutCourse;
 	importError: string;
 	importing: boolean;
@@ -423,15 +436,18 @@ function RoutePreviewDetails({
 	route: GpxRouteSummary;
 	speedUnit: SpeedUnit;
 }) {
+	const groupLabel = gpxRouteGroupLabel(route.group, collectionName);
+	const routeContext = [groupLabel, route.location].filter(Boolean).join(' · ');
 	return (
 		<div className="absolute bottom-3 left-3 z-500 w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-slate-600/50 bg-[#10151a]/88 p-3 shadow-black/30 shadow-lg backdrop-blur-sm">
 			<div className="flex items-start gap-3">
 				<div className="min-w-0 flex-1">
 					<h3 className="truncate font-bold text-sm">{route.name}</h3>
-					<p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400 leading-relaxed">
-						{route.group}
-						{route.location ? ` · ${route.location}` : ''}
-					</p>
+					{routeContext ? (
+						<p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400 leading-relaxed">
+							{routeContext}
+						</p>
+					) : null}
 					<p className="mt-1 text-[11px] text-slate-300 tabular-nums">
 						{formatGpxRouteStats(route, analysis, speedUnit)}
 					</p>
@@ -486,6 +502,7 @@ function RoutePreviewDetails({
 
 function RoutePreview({
 	analysis,
+	collectionName,
 	customCourseIds,
 	onExpandImage,
 	onImportCourse,
@@ -493,6 +510,7 @@ function RoutePreview({
 	speedUnit,
 }: {
 	analysis?: GpxRouteAnalysis;
+	collectionName?: string;
 	customCourseIds: ReadonlySet<string>;
 	onExpandImage: (route: GpxRouteSummary) => void;
 	onImportCourse: (course: WorkoutCourse) => Promise<WorkoutCourse>;
@@ -570,6 +588,7 @@ function RoutePreview({
 				<RoutePreviewDetails
 					alreadyImported={alreadyImported}
 					analysis={analysis}
+					collectionName={collectionName}
 					course={preview.course}
 					importError={visibleFeedback?.error ?? ''}
 					importing={importing}
@@ -850,102 +869,69 @@ export function GpxBrowserDialog({
 				className="absolute inset-4 z-10 flex flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
 				role="dialog"
 			>
-				<header className="flex items-start gap-4 border-line border-b bg-[#12171d] px-5 py-4 sm:px-6">
-					<div className="mr-auto min-w-0">
-						<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-							<h2 className="font-bold text-xl" id="gpx-browser-title">
-								<a
-									className="underline decoration-cyan-400/50 underline-offset-4 transition hover:text-cyan-300 hover:decoration-cyan-300"
-									href={
-										selectedCollection?.sourceUrl ?? selectedProvider?.sourceUrl
-									}
-									rel="noreferrer"
-									target="_blank"
-								>
-									Browse {selectedCollection?.name ?? 'GPX routes'}
-								</a>
-							</h2>
-							{catalog ? (
-								<span className="font-bold text-cyan-300 text-sm tabular-nums">
-									{filteredRoutes.length.toLocaleString()} routes
-								</span>
-							) : null}
-						</div>
-						<div className="mt-2 flex flex-wrap items-center gap-2">
-							<label className="sr-only" htmlFor="gpx-provider">
-								Route provider
-							</label>
-							<select
-								className="h-8 rounded-lg border border-line bg-[#0e141a] px-2 text-slate-200 text-xs outline-none focus:border-cyan-400/70"
-								id="gpx-provider"
-								onChange={(event) => changeProvider(event.currentTarget.value)}
-								value={providerId}
-							>
-								{providers.map((provider) => (
-									<option key={provider.id} value={provider.id}>
-										{provider.name}
-									</option>
-								))}
-							</select>
-							{selectedProvider &&
-							shouldShowGpxCollectionSelector(selectedProvider) ? (
+				<header className="flex items-start gap-2 bg-transparent px-4 py-2">
+					<div className="mr-auto flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2">
+						<h2 className="sr-only" id="gpx-browser-title">
+							Browse GPX routes
+						</h2>
+						<SelectMenu
+							ariaLabel="Route provider"
+							disabled={providers.length === 0}
+							onChange={changeProvider}
+							options={providers.map((provider) => ({
+								label: provider.name,
+								value: provider.id,
+							}))}
+							size="compact"
+							value={providerId}
+							width="content"
+						/>
+						{selectedProvider && shouldShowGpxCollectionSelector(selectedProvider) ? (
+							<SelectMenu
+								ariaLabel="Route collection"
+								onChange={changeCollection}
+								options={selectedProvider.collections.map((collection) => ({
+									label: collection.name,
+									value: collection.id,
+								}))}
+								size="compact"
+								value={collectionId}
+								width="content"
+							/>
+						) : null}
+						{catalog ? (
+							<span className="font-bold text-cyan-300 text-sm tabular-nums">
+								{filteredRoutes.length.toLocaleString()} routes
+							</span>
+						) : null}
+						<p className="text-slate-500 text-xs">
+							{catalog &&
+							selectedProvider?.id === catalog.provider.id &&
+							shouldShowGpxCollectionSelector(selectedProvider)
+								? formatGpxCatalogStats(catalog, speedUnit)
+								: (selectedCollection?.description ??
+									'Choose a provider and route collection.')}
+							{selectedProvider && isBikeGpxProvider(selectedProvider.id) ? (
 								<>
-									<label className="sr-only" htmlFor="gpx-collection">
-										Route collection
-									</label>
-									<select
-										className="h-8 rounded-lg border border-line bg-[#0e141a] px-2 text-slate-200 text-xs outline-none focus:border-cyan-400/70"
-										id="gpx-collection"
-										onChange={(event) =>
-											changeCollection(event.currentTarget.value)
-										}
-										value={collectionId}
+									{' '}
+									Thanks to{' '}
+									<a
+										className="text-cyan-300 underline decoration-cyan-400/50 underline-offset-2 hover:text-cyan-200"
+										href={selectedProvider.sourceUrl}
+										rel="noreferrer"
+										target="_blank"
 									>
-										{selectedProvider?.collections.map((collection) => {
-											const routeCount =
-												catalog?.provider.id === collection.providerId &&
-												catalog.collection.id === collection.id
-													? catalog.routes.length
-													: collection.routeCount;
-											return (
-												<option key={collection.id} value={collection.id}>
-													{collection.name} ({routeCount.toLocaleString()}
-													)
-												</option>
-											);
-										})}
-									</select>
+										BikeGPX
+									</a>{' '}
+									for the original route data, which Ride Control heavily
+									processes and cleans.
 								</>
 							) : null}
-							<p className="text-slate-500 text-xs">
-								{catalog &&
-								selectedProvider?.id === catalog.provider.id &&
-								shouldShowGpxCollectionSelector(selectedProvider)
-									? formatGpxCatalogStats(catalog, speedUnit)
-									: (selectedCollection?.description ??
-										'Choose a provider and route collection.')}
-								{selectedProvider && isBikeGpxProvider(selectedProvider.id) ? (
-									<>
-										{' '}
-										Thanks to{' '}
-										<a
-											className="text-cyan-300 underline decoration-cyan-400/50 underline-offset-2 hover:text-cyan-200"
-											href={selectedProvider.sourceUrl}
-											rel="noreferrer"
-											target="_blank"
-										>
-											BikeGPX
-										</a>{' '}
-										for the original route data, which Ride Control heavily
-										processes and cleans.
-									</>
-								) : null}
-							</p>
-						</div>
+						</p>
 					</div>
 					<button
 						aria-label="Close GPX browser"
-						className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
+						className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
 						onClick={onClose}
 						ref={closeButtonRef}
 						type="button"
@@ -960,6 +946,7 @@ export function GpxBrowserDialog({
 						catalog={catalog}
 						catalogError={catalogError}
 						catalogLoading={catalogLoading}
+						collectionName={catalog?.collection.name}
 						difficulty={difficulty}
 						group={group}
 						groups={groups}
@@ -1018,6 +1005,7 @@ export function GpxBrowserDialog({
 					/>
 					<RoutePreview
 						analysis={selectedRoute ? analyses[selectedRoute.id] : undefined}
+						collectionName={catalog?.collection.name}
 						customCourseIds={customCourseIds}
 						onExpandImage={(route) => setExpandedImageRouteKey(gpxRouteKey(route))}
 						onImportCourse={onImportCourse}

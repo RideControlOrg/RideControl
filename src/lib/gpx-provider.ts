@@ -88,6 +88,16 @@ export function gpxGroupFilterLabel(providerId: string): string {
 	return isBikeGpxProvider(providerId) ? 'All countries' : 'All groups';
 }
 
+export function gpxRouteGroupLabel(
+	routeGroup: string,
+	collectionName?: string
+): string | undefined {
+	const group = routeGroup.trim();
+	return group && group.toLocaleLowerCase() !== collectionName?.trim().toLocaleLowerCase()
+		? group
+		: undefined;
+}
+
 export function formatGpxCatalogStats(catalog: GpxCatalog, unit: SpeedUnit): string {
 	const totals = catalog.routes.reduce(
 		(result, route) => {

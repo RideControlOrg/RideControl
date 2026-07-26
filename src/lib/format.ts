@@ -33,7 +33,11 @@ export function formatWholeNumber(value: number): string {
 	return String(Math.round(value));
 }
 
-export function formatGrade(grade: number): string {
+export function formatGradeValue(grade: number): string {
 	const rounded = Number(grade.toFixed(1));
-	return rounded === 0 ? '0%' : `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}%`;
+	return rounded === 0 ? '0' : `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}`;
+}
+
+export function formatGrade(grade: number): string {
+	return `${formatGradeValue(grade)}%`;
 }

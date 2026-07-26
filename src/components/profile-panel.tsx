@@ -19,6 +19,7 @@ import {
 	PROFILE_IDENTITY_SUGGESTIONS,
 	PROFILE_IMAGE_ACCEPT,
 	parsedTeeth,
+	profileIdentitiesMatch,
 	type RiderProfile,
 	type RiderWeightEntry,
 } from '../lib/profile';
@@ -41,6 +42,7 @@ import type { SpeedUnit } from '../types';
 import { FormFieldError } from './form-field-error';
 import { Icon } from './icon';
 import { RiderWeightChart } from './rider-weight-chart';
+import { SuggestionInput } from './select-menu';
 import { SideTray } from './side-tray';
 import { Tabs } from './tabs';
 
@@ -236,7 +238,7 @@ export function RemoveBikeDialog({
 						Cancel
 					</button>
 					<button
-						className="rounded-lg bg-rose-400 px-3 py-2 font-bold text-ink text-sm hover:bg-rose-300"
+						className="rounded-lg bg-rose-700 px-3 py-2 font-bold text-sm text-white hover:bg-rose-600"
 						onClick={onConfirm}
 						ref={confirmButtonRef}
 						type="button"
@@ -312,7 +314,7 @@ export function RemoveImageDialog({
 						Cancel
 					</button>
 					<button
-						className="inline-flex items-center gap-2 rounded-lg bg-rose-400 px-3 py-2 font-bold text-ink text-sm hover:bg-rose-300"
+						className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 font-bold text-sm text-white hover:bg-rose-600"
 						onClick={onConfirm}
 						ref={confirmButtonRef}
 						type="button"
@@ -481,6 +483,16 @@ export function ProfilePanel({
 		form.setFieldValue('speedUnit', unit);
 	};
 
+	const removeCustomIdentity = (identity: string) => {
+		form.setFieldValue(
+			'identityHistory',
+			values.identityHistory.filter((entry) => !profileIdentitiesMatch(entry, identity))
+		);
+		if (profileIdentitiesMatch(values.identity, identity)) {
+			form.setFieldValue('identity', '');
+		}
+	};
+
 	const selectProfileImage = async (
 		file: File,
 		onPrepared: (image: Blob | undefined) => void
@@ -637,12 +649,12 @@ export function ProfilePanel({
 			panelClassName="flex max-w-3xl flex-col overflow-hidden sm:w-[min(48rem,calc(100vw-2rem))]"
 			tray={APP_OVERLAY.PROFILE}
 		>
-			<header className="flex shrink-0 items-center justify-between gap-4 border-line border-b px-5 py-3 sm:px-6">
+			<header className="flex shrink-0 items-center justify-between gap-4 px-5 py-3 sm:px-6">
 				<div className="flex min-w-0 items-baseline gap-3">
 					<h2 className="shrink-0 font-bold text-xl" id="profile-title">
 						Profile
 					</h2>
-					<p className="truncate text-slate-400 text-sm">
+					<p className="hidden truncate text-slate-400 text-sm sm:block">
 						Manage your rider details and bikes.
 					</p>
 				</div>
@@ -763,30 +775,28 @@ export function ProfilePanel({
 							</form.Field>
 							<form.Field name="identity">
 								{(field) => (
-									<label className={labelClass} htmlFor="profile-identity">
-										Sex or gender identity{' '}
-										<span className="font-normal text-slate-500">
-											(optional)
-										</span>
-										<input
+									<div>
+										<label className={labelClass} htmlFor="profile-identity">
+											Sex or gender identity{' '}
+											<span className="font-normal text-slate-500">
+												(optional)
+											</span>
+										</label>
+										<SuggestionInput
+											ariaLabel="Sex or gender identity suggestions"
 											className={fieldClass}
+											customSuggestions={values.identityHistory}
 											id="profile-identity"
-											list="profile-identity-suggestions"
 											maxLength={MAXIMUM_PROFILE_IDENTITY_LENGTH}
 											onBlur={field.handleBlur}
-											onChange={(event) =>
-												field.handleChange(event.target.value)
-											}
+											onChange={field.handleChange}
+											onRemoveCustomSuggestion={removeCustomIdentity}
 											placeholder="Choose or describe your own"
+											suggestions={PROFILE_IDENTITY_SUGGESTIONS}
 											value={field.state.value}
 										/>
-										<datalist id="profile-identity-suggestions">
-											{PROFILE_IDENTITY_SUGGESTIONS.map((suggestion) => (
-												<option key={suggestion} value={suggestion} />
-											))}
-										</datalist>
 										<FormFieldError field={field} />
-									</label>
+									</div>
 								)}
 							</form.Field>
 							<fieldset>
@@ -795,7 +805,7 @@ export function ProfilePanel({
 									{SPEED_UNIT_OPTIONS.map((option) => (
 										<button
 											aria-pressed={values.speedUnit === option.value}
-											className={`rounded px-3 py-1 font-bold text-xs ${values.speedUnit === option.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+											className={`px-3 py-1 font-bold text-xs ${values.speedUnit === option.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
 											key={option.value}
 											onClick={() => selectSpeedUnit(option.value)}
 											type="button"
@@ -913,7 +923,7 @@ export function ProfilePanel({
 						</form.Field>
 
 						{activeBike && activeBikeIndex >= 0 ? (
-							<div className="mt-5 rounded-2xl border border-line bg-[#12171d] p-4 sm:p-5">
+							<div className="minimal-profile-section mt-5 py-2">
 								<div className="flex items-center justify-between gap-4">
 									<h4 className="font-bold">Active bike settings</h4>
 									<button
@@ -938,7 +948,7 @@ export function ProfilePanel({
 								</div>
 								<form.Field name={`bikes[${activeBikeIndex}].image`}>
 									{(field) => (
-										<div className="mt-4 flex flex-col gap-4 rounded-xl border border-line bg-[#10151a] p-3 sm:flex-row sm:items-center">
+										<div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
 											<div className="grid aspect-3/2 w-full shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-slate-900 text-slate-600 text-xs uppercase tracking-[.16em] sm:w-40">
 												{bikeImageUrl ? (
 													<img

@@ -7,7 +7,9 @@ const PROFILE_ID = 'current';
 const PROFILE_STORE = 'profile';
 const SINGLE_BIKE_PROFILE_VERSION = 1;
 const MULTI_BIKE_PROFILE_VERSION = 2;
-const PROFILE_VERSION = 3;
+const WEIGHT_HISTORY_PROFILE_VERSION = 3;
+const PROFILE_VERSION = 4;
+const WEIGHT_CORRECTION_WINDOW_MS = 60 * 60 * 1000;
 const BIKE_PURCHASE_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
 const TEETH_SEPARATOR = /[\s,/]+/u;
 
@@ -80,6 +82,7 @@ export interface RiderProfile {
 	activeBikeId: string;
 	bikes: readonly ProfileBike[];
 	identity: string;
+	identityHistory: readonly string[];
 	image?: Blob;
 	name: string;
 	riderWeightKg: number;
@@ -104,6 +107,7 @@ export const DEFAULT_RIDER_PROFILE: RiderProfile = {
 	activeBikeId: DEFAULT_PROFILE_BIKE.id,
 	bikes: [DEFAULT_PROFILE_BIKE],
 	identity: '',
+	identityHistory: [],
 	name: '',
 	riderWeightKg: DEFAULT_RIDER_WEIGHT_KG,
 	weightHistory: [],
@@ -200,13 +204,80 @@ function migratedRiderWeightHistory(
 		: [];
 }
 
+function profileIdentityKey(identity: string): string {
+	return identity.trim().toLocaleLowerCase();
+}
+
+export function profileIdentitiesMatch(left: string, right: string): boolean {
+	return profileIdentityKey(left) === profileIdentityKey(right);
+}
+
+function isSuggestedProfileIdentity(identity: string): boolean {
+	const identityKey = profileIdentityKey(identity);
+	return PROFILE_IDENTITY_SUGGESTIONS.some(
+		(suggestion) => profileIdentityKey(suggestion) === identityKey
+	);
+}
+
+export function recordProfileIdentity(
+	history: readonly string[],
+	identity: string
+): readonly string[] {
+	const trimmedIdentity = identity.trim();
+	if (!trimmedIdentity || isSuggestedProfileIdentity(trimmedIdentity)) {
+		return history;
+	}
+	return [
+		trimmedIdentity,
+		...history.filter((entry) => !profileIdentitiesMatch(entry, trimmedIdentity)),
+	];
+}
+
+function profileIdentityHistoryFromStoredValue(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) {
+		return;
+	}
+	const history: string[] = [];
+	const keys = new Set<string>();
+	for (const entry of value) {
+		if (
+			!isString(entry) ||
+			entry.length === 0 ||
+			entry.length > MAXIMUM_PROFILE_IDENTITY_LENGTH ||
+			entry !== entry.trim() ||
+			isSuggestedProfileIdentity(entry)
+		) {
+			return;
+		}
+		const key = profileIdentityKey(entry);
+		if (keys.has(key)) {
+			return;
+		}
+		keys.add(key);
+		history.push(entry);
+	}
+	return history;
+}
+
+function migratedProfileIdentityHistory(identity: string): readonly string[] {
+	return recordProfileIdentity([], identity);
+}
+
 export function recordRiderWeight(
 	history: readonly RiderWeightEntry[],
 	weightKg: number,
 	recordedAt: number
 ): readonly RiderWeightEntry[] {
-	if (history.at(-1)?.weightKg === weightKg) {
+	const latest = history.at(-1);
+	if (latest?.weightKg === weightKg) {
 		return history;
+	}
+	if (
+		latest &&
+		recordedAt >= latest.recordedAt &&
+		recordedAt - latest.recordedAt < WEIGHT_CORRECTION_WINDOW_MS
+	) {
+		return [...history.slice(0, -1), { recordedAt, weightKg }];
 	}
 	return [...history, { recordedAt, weightKg }];
 }
@@ -367,18 +438,31 @@ export function profileFromStoredValue(value: unknown): RiderProfile | undefined
 			activeBikeId: migratedBike.id,
 			bikes: [migratedBike],
 			identity: value.identity,
+			identityHistory: migratedProfileIdentityHistory(value.identity),
 			image,
 			name: value.name,
 			riderWeightKg: legacyPhysicsProfile.riderWeightKg,
 			weightHistory: migratedRiderWeightHistory(value, legacyPhysicsProfile.riderWeightKg),
 		};
 	}
-	if (!(value.version === MULTI_BIKE_PROFILE_VERSION || value.version === PROFILE_VERSION)) {
+	if (
+		!(
+			value.version === MULTI_BIKE_PROFILE_VERSION ||
+			value.version === WEIGHT_HISTORY_PROFILE_VERSION ||
+			value.version === PROFILE_VERSION
+		)
+	) {
 		return;
 	}
 	const bikes = Array.isArray(value.bikes)
 		? value.bikes.map(profileBikeFromStoredValue)
 		: undefined;
+	let identityHistory: readonly string[] | undefined;
+	if (value.version === PROFILE_VERSION) {
+		identityHistory = profileIdentityHistoryFromStoredValue(value.identityHistory);
+	} else if (isString(value.identity)) {
+		identityHistory = migratedProfileIdentityHistory(value.identity);
+	}
 	if (
 		!(
 			bikes &&
@@ -394,7 +478,8 @@ export function profileFromStoredValue(value: unknown): RiderProfile | undefined
 			isString(value.name) &&
 			isString(value.identity) &&
 			value.name.length <= MAXIMUM_PROFILE_NAME_LENGTH &&
-			value.identity.length <= MAXIMUM_PROFILE_IDENTITY_LENGTH
+			value.identity.length <= MAXIMUM_PROFILE_IDENTITY_LENGTH &&
+			identityHistory
 		)
 	) {
 		return;
@@ -404,11 +489,12 @@ export function profileFromStoredValue(value: unknown): RiderProfile | undefined
 		activeBikeId: value.activeBikeId,
 		bikes,
 		identity: value.identity,
+		identityHistory,
 		image,
 		name: value.name,
 		riderWeightKg: value.riderWeightKg,
 		weightHistory:
-			value.version === PROFILE_VERSION
+			value.version === WEIGHT_HISTORY_PROFILE_VERSION || value.version === PROFILE_VERSION
 				? riderWeightHistoryFromStoredValue(value.weightHistory)
 				: migratedRiderWeightHistory(value, value.riderWeightKg),
 	};
@@ -426,7 +512,8 @@ export async function loadRiderProfile(): Promise<RiderProfile> {
 	if (
 		isRecord(value) &&
 		(value.version === SINGLE_BIKE_PROFILE_VERSION ||
-			value.version === MULTI_BIKE_PROFILE_VERSION)
+			value.version === MULTI_BIKE_PROFILE_VERSION ||
+			value.version === WEIGHT_HISTORY_PROFILE_VERSION)
 	) {
 		return saveRiderProfile(profile);
 	}
@@ -448,6 +535,7 @@ export async function saveRiderProfile(
 		profile.riderWeightKg,
 		updatedAt
 	);
+	const identityHistory = recordProfileIdentity(profile.identityHistory, profile.identity);
 	const candidate = {
 		...profile,
 		bikes: profile.bikes.map((bike) => ({
@@ -456,6 +544,7 @@ export async function saveRiderProfile(
 			rearCassetteTeeth: [...bike.rearCassetteTeeth],
 		})),
 		id: PROFILE_ID,
+		identityHistory,
 		updatedAt,
 		version: PROFILE_VERSION,
 		weightHistory,

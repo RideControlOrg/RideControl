@@ -52,17 +52,15 @@ export function Tabs<T extends string>({
 	return (
 		<div
 			aria-label={ariaLabel}
-			className="scrollbar-hidden flex shrink-0 items-end gap-5 overflow-x-auto overflow-y-hidden border-line border-b bg-[#12171d] px-3 sm:px-5"
+			className="scrollbar-hidden flex shrink-0 items-end gap-6 overflow-x-auto overflow-y-hidden bg-panel px-3 sm:px-5"
 			role="tablist"
 		>
 			{options.map((option) => (
 				<button
 					aria-controls={`${idPrefix}-panel-${option.value}`}
 					aria-selected={value === option.value}
-					className={`-mb-px shrink-0 border-b-2 px-1 py-3 font-semibold text-sm transition ${
-						value === option.value
-							? 'border-cyan-400 text-white'
-							: 'border-transparent text-slate-400 hover:border-slate-600 hover:text-white'
+					className={`group relative shrink-0 px-1 py-3 font-semibold text-sm outline-none transition-colors ${
+						value === option.value ? 'text-white' : 'text-slate-400 hover:text-white'
 					}`}
 					id={`${idPrefix}-tab-${option.value}`}
 					key={option.value}
@@ -73,6 +71,15 @@ export function Tabs<T extends string>({
 					type="button"
 				>
 					{option.label}
+					<span
+						aria-hidden="true"
+						className={`absolute inset-x-0 bottom-0 h-0.5 transition-colors ${
+							value === option.value
+								? 'bg-cyan-400'
+								: 'bg-transparent group-hover:bg-slate-600'
+						}`}
+						data-tab-indicator={value === option.value ? 'active' : 'inactive'}
+					/>
 				</button>
 			))}
 		</div>

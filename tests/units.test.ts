@@ -8,8 +8,10 @@ import {
 	formatDescriptionDistance,
 	formatDistance,
 	formatDistanceProgress,
+	formatDistanceProgressValue,
 	formatDistanceValue,
 	formatElevation,
+	formatElevationValue,
 	kilometersForMeters,
 	kilometersTraveled,
 	metersForKilometers,
@@ -28,9 +30,11 @@ describe('unit conversions', () => {
 		expect(formatDistance(16.093_44, 'kmh')).toBe('16.09 km');
 		expect(formatDistanceProgress(5.793_638_4, 9.656_064, 'mph')).toBe('3.60 / 6.00 mi');
 		expect(formatDistanceProgress(3.6, 6, 'kmh')).toBe('3.60 / 6.00 km');
+		expect(formatDistanceProgressValue(5.793_638_4, 9.656_064, 'mph')).toBe('3.60 / 6.00');
 		expect(formatDistanceValue(16.093_44, 'mph')).toBe('10.00');
 		expect(formatElevation(304.8, 'mph')).toBe('1000 ft');
 		expect(formatElevation(304.8, 'kmh')).toBe('305 m');
+		expect(formatElevationValue(304.8, 'mph')).toBe('1000');
 	});
 
 	test('formats a route description distance in the selected dashboard unit', () => {

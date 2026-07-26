@@ -13,6 +13,7 @@ import { Notification } from '../src/components/notification';
 import { ProfilePanel, RemoveBikeDialog, RemoveImageDialog } from '../src/components/profile-panel';
 import { RenameWorkoutDialog } from '../src/components/rename-workout-dialog';
 import { ResistanceControl } from '../src/components/resistance-control';
+import { SelectMenu, SuggestionInput } from '../src/components/select-menu';
 import { SessionCalendar } from '../src/components/session-calendar';
 import { SessionChart } from '../src/components/session-chart';
 import { SessionControls } from '../src/components/session-controls';
@@ -36,7 +37,7 @@ import {
 	emptyMetrics,
 	emptySession,
 } from '../src/constants';
-import { formatGrade } from '../src/lib/format';
+import { formatGradeValue } from '../src/lib/format';
 import { DEFAULT_VIRTUAL_DRIVETRAIN } from '../src/lib/gears';
 import { historyKeyboardShortcuts } from '../src/lib/keyboard';
 import { metricAccentClass, metricIconClass } from '../src/lib/metric-presentation';
@@ -66,9 +67,8 @@ const renderApp = async (initialSession?: StoredSession) => {
 };
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
 const solidChartBoundaries =
-	/d="M0 14H100 M0 90H100"[^>]*stroke="#3a4654"(?![^>]*stroke-dasharray)/;
-const dashedChartGuides =
-	/d="M0 52H100 M25 14V90 M50 14V90 M75 14V90"[^>]*stroke-dasharray="2.5 2.5"/;
+	/d="M0 5H100 M0 95H100"[^>]*stroke="var\(--chart-grid\)"(?![^>]*stroke-dasharray)/;
+const dashedChartGuides = /d="M0 50H100 M25 5V95 M50 5V95 M75 5V95"[^>]*stroke-dasharray="2.5 2.5"/;
 const gearProgressStyle = /style="width:([^"]+)"/;
 const noCustomWorkoutIds = new Set<string>();
 
@@ -87,6 +87,51 @@ describe('view components', () => {
 		expect(html).toContain('>Reload now</button>');
 	});
 
+	test('renders the shared dropdown without native or rounded controls', () => {
+		const html = render(
+			<SelectMenu
+				ariaLabel="Example dropdown"
+				onChange={() => undefined}
+				options={[
+					{ label: 'First', value: 'first' },
+					{ label: 'Second', value: 'second' },
+				]}
+				value="first"
+			/>
+		);
+		expect(html).toContain('data-select-menu="true"');
+		expect(html).toContain('aria-haspopup="listbox"');
+		expect(html).toContain('role="listbox"');
+		expect(html).toContain('data-select-menu-chevron="true"');
+		expect(html).toContain('h-4 w-4 shrink-0');
+		expect(html).not.toContain('<select');
+		expect(html).not.toContain('rounded');
+
+		const suggestionsHtml = render(
+			<SuggestionInput
+				ariaLabel="Example suggestions"
+				className="field"
+				customSuggestions={['Custom']}
+				id="example-suggestions"
+				maxLength={100}
+				onBlur={() => undefined}
+				onChange={() => undefined}
+				onRemoveCustomSuggestion={() => undefined}
+				placeholder="Choose or describe your own"
+				suggestions={['First', 'Second']}
+				value=""
+			/>
+		);
+		expect(suggestionsHtml).toContain('data-suggestion-input="true"');
+		expect(suggestionsHtml).toContain('aria-autocomplete="list"');
+		expect(suggestionsHtml).toContain('autoComplete="off"');
+		expect(suggestionsHtml).toContain('aria-label="Custom entries"');
+		expect(suggestionsHtml).toContain('aria-label="Standard options"');
+		expect(suggestionsHtml).toContain('Remove Custom from custom identities');
+		expect(suggestionsHtml).not.toContain('<datalist');
+		expect(suggestionsHtml).not.toContain('rounded');
+	});
+
 	test('renders metric values and accent classes', () => {
 		const html = render(
 			<Metric
@@ -100,11 +145,12 @@ describe('view components', () => {
 		);
 		expect(html).toContain('POWER');
 		expect(html).toContain('200');
-		expect(html).toContain('rounded-2xl border border-line bg-panel p-4');
+		expect(html).toContain('min-w-0 bg-ink p-3 sm:p-4');
 		expect(html).toContain('mt-3 flex items-baseline gap-2');
-		expect(html).toContain('grid grid-cols-2 gap-3 border-line border-t pt-3');
-		expect(html).toContain('font-semibold text-6xl tracking-tight');
-		expect(html).toContain('font-semibold text-4xl text-white tabular-nums tracking-tight');
+		expect(html).toContain('grid grid-cols-2 gap-3 border-t pt-3 text-yellow-400');
+		expect(html).not.toContain('mt-2 h-px bg-yellow-400');
+		expect(html).toContain('font-semibold text-4xl tracking-[-.045em]');
+		expect(html).toContain('font-semibold text-2xl text-white tabular-nums tracking-tight');
 		expect(html).toContain('>180</p>');
 		expect(html).toContain('>300</p>');
 		expect(html.match(/watts/g)).toHaveLength(1);
@@ -117,12 +163,14 @@ describe('view components', () => {
 	test('renders a compact session metric', () => {
 		expect(render(<SmallMetric label="TIME" value="01:02:03" />)).toContain('01:02:03');
 		const largeMetric = render(<SmallMetric label="TIME" large value="01:02:03" />);
-		expect(largeMetric).toContain('min-w-0 px-3 py-3 sm:px-5');
-		expect(largeMetric).toContain('text-3xl sm:text-5xl min-[420px]:text-2xl');
+		expect(largeMetric).toContain('flex h-full min-w-0 flex-col justify-center');
+		expect(largeMetric).toContain(
+			'text-xl sm:text-4xl lg:text-5xl xl:text-6xl min-[420px]:text-2xl'
+		);
 		const distance = render(<SmallMetric label="DISTANCE" large unit="mi" value="10.00" />);
 		expect(distance).toContain('>10.00</span>');
 		expect(distance).toContain('shrink-0 font-medium');
-		expect(distance).toContain('text-sm sm:text-xl');
+		expect(distance).toContain('text-xs sm:text-lg lg:text-xl');
 		expect(distance).toContain('>mi</span>');
 		const html = render(
 			<SessionMetric
@@ -385,6 +433,7 @@ describe('view components', () => {
 		expect(panel).toContain('Smart trainer');
 		expect(panel).toContain('Heart rate');
 		expect(panel).toContain('Zwift Click V2');
+		expect(panel.match(/data-device-actions="true"/g)).toHaveLength(3);
 		expect(panel).not.toContain('Reconnecting…');
 		expect(panel).not.toContain('Waiting for controllers…');
 		expect(panel).not.toContain('Retry');
@@ -393,7 +442,7 @@ describe('view components', () => {
 		expect(panel).not.toContain('>Reconnect</button>');
 		expect(panel.match(/<span class="sr-only">Connecting\.\.\.<\/span>/g)).toHaveLength(1);
 		expect(panel.match(/connecting-dot/g)).toHaveLength(3);
-		expect(panel.match(/connection-status-pulse/g)).toHaveLength(2);
+		expect(panel.match(/connection-status-pulse/g)).toHaveLength(1);
 		expect(panel).toContain('shadow-[0_0_16px_rgba(56,189,248,.95)]');
 		expect(panel).toContain('Automatic reconnect in Chrome');
 		expect(panel).toContain('Chrome needs persistent Bluetooth permissions');
@@ -413,7 +462,8 @@ describe('view components', () => {
 			'https://support.zwift.com/updating-your-zwift-click-firmware-B1IdjkGW6'
 		);
 		expect(panel).toContain('connection-status-pulse');
-		expect(panel).toContain('bg-mint/10');
+		expect(panel).not.toContain('border-line border-b');
+		expect(panel).not.toContain('bg-mint/10');
 		expect(panel).not.toContain('shadow-[inset_0_0_18px');
 		expect(panel).not.toContain('divide-y');
 		const pairingPanel = render(
@@ -654,12 +704,13 @@ describe('view components', () => {
 		expect(panel).toContain('Harbor Ring elevation profile');
 		expect(panel).toContain('Import GPX');
 		expect(panel).toContain('Browse routes');
-		expect(panel).toContain('Browse public route collections');
+		expect(panel).toContain('Choose a public route or import GPX');
 		expect(panel).toContain('data-gpx-drop-target="true"');
 		expect(panel).toContain('data-testid="workout-list"');
-		expect(panel).toContain('placeholder="Search by name or difficulty"');
-		expect(panel).toContain('data-testid="workout-status"');
-		expect(panel).toContain('role="status"');
+		expect(panel).toContain('data-testid="workout-search-bar"');
+		expect(panel).toContain('focus-within:border-cyan-400/70');
+		expect(panel).toContain('placeholder="Search by name, difficulty, or distance"');
+		expect(panel).not.toContain('data-testid="workout-status"');
 		expect(panel).not.toContain('Ride without a workout');
 		expect(panel).not.toContain(
 			'Choose a workout for your next session, then start it when you are ready.'
@@ -671,7 +722,6 @@ describe('view components', () => {
 		expect(panel).toContain('49 ft climbing');
 		expect(panel).not.toContain('15 m climbing');
 		expect(panel).toContain('stroke="#64748b"');
-		expect(panel).toContain('bg-slate-800/70');
 		expect(panel).not.toContain('bg-lime text-ink');
 		expect(panel).not.toContain('aria-label="Rename Harbor Ring"');
 		expect(panel).toContain('aria-label="Drag Harbor Ring to reorder"');
@@ -759,7 +809,7 @@ describe('view components', () => {
 				speedUnit="mph"
 			/>
 		);
-		expect(lockedPanel).toContain('placeholder="Search by name or difficulty"');
+		expect(lockedPanel).toContain('placeholder="Search by name, difficulty, or distance"');
 		expect(lockedPanel.match(/disabled=""/g)).toHaveLength(6);
 		expect(lockedPanel).not.toContain('Clear selected workout');
 		const selectedPanel = render(
@@ -796,34 +846,45 @@ describe('view components', () => {
 		);
 		expect(progress).not.toContain('Terrain workout');
 		expect(progress).not.toContain('Current lap');
-		expect(progress).toContain('Laps completed');
+		expect(progress).not.toContain('<header');
+		expect(progress).toContain('Laps');
 		expect(progress).toContain('aria-label="2 laps completed"');
-		expect(progress).toContain('Course map');
-		expect(progress).toContain('1.24 / 3.98 mi');
-		expect(progress).toContain('Elevation profile');
+		expect(progress).toContain(`aria-label="${course.name} course map"`);
+		expect(progress).toContain('Distance');
+		expect(progress).toContain('1.24 / 3.98');
+		expect(progress).toContain('>mi<');
+		expect(progress).not.toContain('<h3');
 		expect(progress).toContain('Course climb');
-		expect(progress).toContain('49 ft');
+		expect(progress).toContain('>49<');
 		expect(progress).toContain('Climbed');
-		expect(progress).toContain('98 ft');
+		expect(progress).toContain('>98<');
 		expect(progress).toContain('Downhill');
-		expect(progress).toContain('39 ft');
+		expect(progress).toContain('>39<');
+		expect(progress).toContain('>ft<');
 		expect(progress).toContain('Progress');
-		expect(progress).toContain(`${Math.round(terrain.progress * 100)}%`);
+		expect(progress).toContain(`>${Math.round(terrain.progress * 100)}<`);
+		expect(progress).toContain('>%<');
 		expect(progress).toContain('Grade');
-		expect(progress).toContain(formatGrade(terrain.grade));
-		expect(progress).toContain('style="color:#e879f9"');
+		expect(progress).toContain(formatGradeValue(terrain.grade));
+		expect(progress).toContain('style="color:var(--metric-grade)"');
 		expect(progress).not.toContain('Resistance');
-		expect(progress).not.toContain('style="color:#2dd4bf"');
+		expect(progress).not.toContain('style="color:var(--metric-resistance)"');
 		expect(progress).not.toContain('sm:text-4xl');
-		expect(progress.match(/sm:text-2xl/g)).toHaveLength(5);
-		expect(progress.match(/min-h-6 items-start justify-between/g)).toHaveLength(2);
-		expect(progress.match(/mt-3 min-h-16/g)).toHaveLength(2);
+		expect(progress.match(/sm:text-2xl/g)).toHaveLength(7);
+		expect(progress).toContain('workout-map-pane flex flex-col');
+		expect(progress).toContain('workout-map-summary grid workout-map-summary-session');
+		expect(progress).toContain('mt-3 overflow-hidden bg-transparent');
+		expect(progress).not.toContain('bg-[#12171d]');
+		expect(progress).not.toContain('bg-panel');
+		expect(progress).not.toContain('mt-3 min-h-16');
 		expect(progress).toContain('grid-cols-2');
 		expect(progress).toContain('grid-cols-3');
-		expect(progress.match(/text-\[9px\]/g)).toHaveLength(6);
-		expect(progress.match(/px-4 pt-4 pb-2 sm:px-5 sm:pt-5/g)).toHaveLength(2);
-		expect(progress.match(/mt-1 h-36/g)).toHaveLength(2);
-		expect(progress).toContain('Ridden this lap');
+		expect(progress).toContain('workout-distance-laps-stats');
+		expect(progress.match(/text-\[9px\]/g)).toHaveLength(7);
+		expect(progress.match(/px-3 pt-3 pb-1\.5 sm:px-5 sm:pt-5 sm:pb-2/g)).toHaveLength(2);
+		expect(progress).toContain('mt-1 h-36 sm:h-44');
+		expect(progress).toContain('mt-auto h-36 sm:h-44');
+		expect(progress).not.toContain('Ridden this lap');
 		expect(progress.match(/functional-status-pulse/g)).toHaveLength(2);
 		expect(progress).toContain('data-profile-marker="true"');
 		expect(progress).not.toContain('rgba(173, 245, 189, .2)');
@@ -841,15 +902,19 @@ describe('view components', () => {
 			/>
 		);
 		expect(dashboardProgress).toContain('Resistance');
-		expect(dashboardProgress).toContain('42%');
-		expect(dashboardProgress).toContain('style="color:#2dd4bf"');
-		expect(dashboardProgress.match(/sm:text-4xl/g)).toHaveLength(3);
-		expect(dashboardProgress.match(/grid grid-cols-3 gap-5/g)).toHaveLength(2);
-		expect(dashboardProgress).not.toContain('grid w-full gap-2');
-		expect(dashboardProgress).not.toContain('min-h-6 items-start justify-between');
+		expect(dashboardProgress).toContain('>42<');
+		expect(dashboardProgress).toContain('style="color:var(--metric-resistance)"');
+		expect(dashboardProgress.match(/sm:text-4xl/g)).toHaveLength(8);
+		expect(
+			dashboardProgress.match(/grid w-full gap-2 text-center tabular-nums lg:gap-5/g)
+		).toHaveLength(3);
+		expect(dashboardProgress).toContain('workout-distance-laps-stats');
 		expect(dashboardProgress).toContain(
-			'flex min-h-14 flex-wrap items-start justify-between gap-3'
+			'workout-map-summary grid workout-map-summary-dashboard'
 		);
+		expect(dashboardProgress).toContain('mt-3 overflow-hidden bg-ink');
+		expect(dashboardProgress).not.toContain('mt-3 min-h-16');
+		expect(dashboardProgress).not.toContain('flex min-h-14 flex-wrap');
 		const metricProgress = render(
 			<WorkoutProgress
 				elevationTotals={{ ascent: 30, descent: 12 }}
@@ -859,9 +924,10 @@ describe('view components', () => {
 				workout={{ course }}
 			/>
 		);
-		expect(metricProgress).toContain('15 m');
-		expect(metricProgress).toContain('30 m');
-		expect(metricProgress).toContain('12 m');
+		expect(metricProgress).toContain('>15<');
+		expect(metricProgress).toContain('>30<');
+		expect(metricProgress).toContain('>12<');
+		expect(metricProgress).toContain('>m<');
 		expect(metricProgress).not.toContain('functional-status-pulse');
 		const pointToPointProgress = render(
 			<WorkoutProgress
@@ -872,9 +938,9 @@ describe('view components', () => {
 				workout={{ course: importedCourse }}
 			/>
 		);
-		expect(pointToPointProgress).toContain('Route completed');
-		expect(pointToPointProgress).toContain('Ridden this route');
-		expect(pointToPointProgress).toContain('aria-label="2 routes completed"');
+		expect(pointToPointProgress).toContain('Laps');
+		expect(pointToPointProgress).not.toContain('Ridden this route');
+		expect(pointToPointProgress).toContain('aria-label="2 laps completed"');
 	});
 
 	test('hides empty notifications and expands setup guidance', () => {
@@ -928,7 +994,7 @@ describe('view components', () => {
 		);
 		expect(html).not.toContain('WELCOME TO');
 		expect(html).toContain('show again');
-		expect(html).toContain('border-slate-700/70 border-t');
+		expect(html).toContain('border-line border-t');
 		expect(html).toContain('text-slate-500 text-xs');
 		expect(html).toContain('type="button">Ride Control</button>');
 		expect(html).toContain('type="button">Profile</button>');
@@ -939,17 +1005,51 @@ describe('view components', () => {
 			html.indexOf('aria-label="Show keyboard controls"')
 		);
 		expect(html.slice(html.indexOf('<footer')).includes('>Profile</button>')).toBeFalse();
-		expect(html).toContain('mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 py-3');
-		expect(html).toContain('mb-4 flex flex-wrap items-center justify-between gap-3');
-		expect(html).toContain('mt-4 grid min-w-0 gap-4 *:min-w-0');
+		expect(html).toContain('mx-auto w-full min-w-0 max-w-[1600px] flex-1 px-3 py-3');
+		expect(html).toContain('mb-3 flex flex-wrap items-center justify-between gap-2');
+		expect(html).toContain('mt-3 grid min-w-0 gap-3 *:min-w-0');
 		expect(html).toContain('pb-[max(0.75rem,env(safe-area-inset-bottom))]');
 		expect(html).not.toContain('fixed right-4 bottom-3 left-4');
-		expect(html).toContain('rounded-2xl border border-line bg-panel p-4');
-		expect(html).toContain('xl:grid-cols-[1.45fr_.55fr]');
+		expect(html).toContain('grid gap-px bg-line min-[1120px]:grid-cols-4');
+		expect(html).toContain(
+			'dashboard-primary-metrics grid grid-cols-2 gap-px bg-line sm:grid-cols-4'
+		);
+		expect(html).toContain('dashboard-session-summary grid min-w-0 grid-cols-3 gap-px bg-line');
+		expect(html).not.toContain('xl:grid-cols-[1.45fr_.55fr]');
+		expect(html).toContain('aria-label="Use light mode"');
 		expect(html).not.toContain('>Metric</button>');
 		expect(html).not.toContain('>Imperial</button>');
 		expect(html).not.toContain('Your ride data is safe and has been restored');
 		expect(html).toMatch(enabledEndSessionButton);
+	});
+
+	test('scales dashboard elevation to the complete previewed route', async () => {
+		const [completedCourse, plannedCourseSource] = WORKOUT_COURSES;
+		if (!(completedCourse && plannedCourseSource)) {
+			throw new Error('Expected built-in workout courses');
+		}
+		const finalPointIndex = plannedCourseSource.points.length - 1;
+		const plannedCourse = {
+			...plannedCourseSource,
+			elevationGain: 400,
+			id: 'planned-elevation-scale',
+			name: 'Planned elevation scale',
+			points: plannedCourseSource.points.map((point, index) => ({
+				...point,
+				elevation: index === finalPointIndex ? 400 : 0,
+			})),
+		};
+		const html = await renderApp({
+			...emptySession,
+			ended: true,
+			plannedWorkout: { course: plannedCourse },
+			workout: { course: completedCourse },
+		});
+		const elevationChartIndex = html.indexOf('<title>Elevation over time</title>');
+		expect(elevationChartIndex).toBeGreaterThan(0);
+		expect(html.slice(Math.max(0, elevationChartIndex - 1200), elevationChartIndex)).toContain(
+			'>1312 ft</span>'
+		);
 	});
 
 	test('explains active session recovery after a reload', async () => {
@@ -1083,6 +1183,7 @@ describe('view components', () => {
 				},
 			],
 			identity: '',
+			identityHistory: ['Smurf'],
 			image: new Blob(['profile'], { type: 'image/webp' }),
 			name: 'Riley',
 			riderWeightKg: 75,
@@ -1126,7 +1227,7 @@ describe('view components', () => {
 		expect(html).toContain('truncate text-slate-400 text-sm');
 		expect(html).toContain('aria-label="Profile sections"');
 		expect(html).toContain(
-			'scrollbar-hidden flex shrink-0 items-end gap-5 overflow-x-auto overflow-y-hidden'
+			'scrollbar-hidden flex shrink-0 items-end gap-6 overflow-x-auto overflow-y-hidden'
 		);
 		expect(html.match(/role="tab"/g)).toHaveLength(2);
 		expect(html.match(/role="tabpanel"/g)).toHaveLength(2);
@@ -1136,7 +1237,7 @@ describe('view components', () => {
 		expect(html).toContain('aria-controls="profile-panel-bikes"');
 		expect(html).toContain('id="profile-tab-bikes"');
 		expect(html).toContain('id="profile-panel-bikes"');
-		expect(html).toContain('>Personal details</button>');
+		expect(html).toContain('>Personal details<span');
 		expect(html).toContain('hidden=""');
 		expect(html.match(/Change image/g)).toHaveLength(2);
 		expect(html.match(/<title>upload<\/title>/g)).toHaveLength(2);
@@ -1144,12 +1245,18 @@ describe('view components', () => {
 		expect(html.match(/aria-controls="remove-image-dialog"/g)).toHaveLength(2);
 		expect(html).not.toContain('Resized and compressed in this browser before storage.');
 		expect(html).toContain('Sex or gender identity');
-		expect(html).toContain('value="Non-binary"');
-		expect(html).toContain('value="Two-Spirit"');
+		expect(html).toContain('>Non-binary</button>');
+		expect(html).toContain('>Two-Spirit</button>');
+		expect(html).toContain('>Smurf</button>');
+		expect(html).toContain('aria-label="Custom entries"');
+		expect(html).toContain('Remove Smurf from custom identities');
+		expect(html).toContain('data-suggestion-input="true"');
+		expect(html).not.toContain('<datalist');
 		expect(html).toContain('Display units');
 		expect(html).toContain('aria-pressed="true"');
 		expect(html).toContain('>Metric</button>');
 		expect(html).toContain('>Imperial</button>');
+		expect(html).not.toContain('class="rounded px-3 py-1');
 		expect(html).toContain('Your weight (lb)');
 		expect(html).toContain('Weight history');
 		expect(html).toContain('data-weight-history="true"');
@@ -1157,6 +1264,7 @@ describe('view components', () => {
 		expect(html).not.toContain('Previous weight month');
 		expect(html).toContain('data-weight-chart-size="compact"');
 		expect(html).toContain('data-weight-plot="true"');
+		expect(html).not.toContain('bg-slate-950/25');
 		expect(html.match(/data-weight-point="true"/g)).toHaveLength(2);
 		expect(html).toContain('data-weight-line="true"');
 		expect(html).toContain('data-weight-area="true"');
@@ -1347,19 +1455,12 @@ describe('view components', () => {
 		expect(html).toContain('open-source GPLv3 application');
 		expect(html).toContain('source code on GitHub');
 		expect(html).toContain('href="https://github.com/RideControlOrg/RideControl"');
-		expect(html).toContain('all ride data stays in your browser');
-		expect(html).toContain('We don&#x27;t upload it anywhere');
-		expect(html).toContain('optional paid premium');
-		expect(html).toContain('storing and synchronizing your data in the cloud');
-		expect(html).toContain(
-			'From the history, you can download your rides as Strava-compatible FIT files'
-		);
-		expect(html).toContain('only tested with Google Chrome');
+		expect(html).toContain('only tested with the latest version of Google Chrome');
 		expect(html).toContain('may not work correctly in');
 		expect(html.match(/Chrome/g)).toHaveLength(1);
 		expect(html).toContain('href="https://www.google.com/chrome/"');
 		expect(html).toContain('>Download it</a>');
-		expect(html.indexOf('only tested with Google Chrome')).toBeLessThan(
+		expect(html.indexOf('only tested with the latest version of Google Chrome')).toBeLessThan(
 			html.indexOf('Pair your trainer')
 		);
 		expect(
@@ -1429,30 +1530,27 @@ describe('view components', () => {
 		expect(html).toContain('Resistance</button>');
 		expect(html).not.toContain('Gear over time');
 		expect(html).not.toContain('Gear</button>');
-		expect(html).toContain('grid-cols-[3rem_minmax(0,1fr)]');
-		expect(html).toContain('absolute right-1 -translate-y-1/2 whitespace-nowrap sm:right-2');
-		expect(html).toContain('pointer-events-none relative h-full w-12 shrink-0');
+		expect(html).toContain('grid-cols-[4rem_minmax(0,1fr)]');
+		expect(html).toContain('absolute right-2 -translate-y-1/2 whitespace-nowrap leading-none');
+		expect(html).toContain('pointer-events-none relative h-full w-16 shrink-0');
 		expect(html).toContain('h-full min-w-0 flex-1 overflow-hidden');
 		expect(html).toContain('class="block h-full w-full"');
-		expect(html).toContain(
-			'scrollbar-hidden flex w-full gap-1 overflow-x-auto rounded-lg bg-[#0d1217]'
-		);
+		expect(html).toContain('data-chart-surface="true"');
+		expect(html).toContain('absolute top-[17%] right-2');
+		expect(html).not.toContain('bg-[#12171d]/90');
 		expect(html).toContain('min-w-max flex-1');
 		expect(html).toContain('h-1.5 w-1.5 shrink-0 rounded-full');
 		expect(html).toContain('text-[11px] transition sm:text-[13px]');
-		expect(html).toContain(
-			'mt-4 min-w-0 overflow-hidden rounded-xl border border-line bg-[#12171d] p-2 sm:mt-6 sm:p-4'
-		);
+		expect(html).toContain('session-chart min-w-0 overflow-hidden rounded-xl p-2 sm:p-3');
 		expect(html).toMatch(solidChartBoundaries);
 		expect(html).toMatch(dashedChartGuides);
-		expect(html.match(/data-chart-separator="true"/g)).toHaveLength(4);
-		expect(html.match(/-my-3 ml-12 h-6 bg-white\/1\.5 sm:ml-15/g)).toHaveLength(4);
 		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
 		const gearModeWithoutSamples = render(
 			<SessionChart controlMode="gear" history={[]} route={[]} speedUnit="kmh" />
 		);
 		expect(gearModeWithoutSamples).toContain('Gear over time');
 		expect(gearModeWithoutSamples).toContain('Gear</button>');
+		expect(gearModeWithoutSamples).toContain('Connect and pedal to graph live session data');
 	});
 
 	test('supports a chart selection scoped outside the shared dashboard preference', () => {
@@ -1504,19 +1602,46 @@ describe('view components', () => {
 				variant="session"
 			/>
 		);
-		expect(html).toContain('grid w-full gap-1 rounded-lg bg-[#0d1217]');
-		expect(html).toContain('grid-template-columns:repeat(8, minmax(0, 1fr))');
-		expect(html).toContain('min-w-0 w-full');
-		expect(html).toContain('text-[9px] transition sm:text-[11px] xl:text-[13px]');
+		expect(html).toContain(
+			'session-chart-controls scrollbar-hidden flex w-full gap-1 overflow-x-auto'
+		);
+		expect(html).toContain('rounded-lg bg-inherit p-1');
+		expect(html).not.toContain(
+			'session-chart-controls scrollbar-hidden flex w-full gap-1 overflow-x-auto rounded-lg bg-[#0d1217]'
+		);
+		expect(html).toContain('style="--session-chart-mode-count:8"');
+		expect(html).toContain('session-chart-control inline-flex min-w-max flex-none');
+		expect(html).toContain('data-chart-mode="elevation"');
 		expect(html).toContain('Elevation over time');
 		expect(html).toContain('Elevation</button>');
 		expect(html).toContain('28 m');
-		expect(html).toContain('stroke="#fb923c"');
+		expect(html).toContain('stroke="var(--metric-elevation)"');
 		expect(html).toContain('Grade over time');
 		expect(html).toContain('Grade</button>');
-		expect(html).toContain('stroke="#e879f9"');
-		expect(html).toContain('stroke="#2dd4bf"');
-		expect(html.match(/data-chart-separator="true"/g)).toHaveLength(6);
+		expect(html).toContain('stroke="var(--metric-grade)"');
+		expect(html).toContain('stroke="var(--metric-resistance)"');
+		expect(html.match(/data-chart-series-label="true"/g)).toHaveLength(7);
+		expect(html).not.toContain('data-chart-separator');
+		const elevationDetailHtml = render(
+			<SessionChart
+				history={[
+					{
+						cadence: 85,
+						elapsedSeconds: 1,
+						elevation: 24,
+						heartRate: 140,
+						power: 180,
+						speed: 30,
+					},
+				]}
+				route={course.points}
+				selectedChartMode="elevation"
+				speedUnit="kmh"
+				variant="session"
+			/>
+		);
+		expect(elevationDetailHtml.match(/data-chart-series-label="true"/g)).toHaveLength(1);
+		expect(elevationDetailHtml).toContain('>Elevation</span>');
 		const imperialHtml = render(
 			<SessionChart
 				history={[
@@ -1657,6 +1782,40 @@ describe('view components', () => {
 		expect(html.indexOf('Start new session')).toBeLessThan(html.indexOf('Workouts'));
 	});
 
+	test('distinguishes riding, paused, and auto-paused session controls', () => {
+		const controls = (isRiding: boolean, manuallyPaused: boolean) =>
+			render(
+				<SessionControls
+					ended={false}
+					isRiding={isRiding}
+					manuallyPaused={manuallyPaused}
+					onEnd={() => undefined}
+					onOpenWorkouts={() => undefined}
+					onRequestNew={() => undefined}
+					onSave={() => undefined}
+					onTogglePause={() => undefined}
+					saveResolved
+					workoutSelectionLocked={false}
+				/>
+			);
+		const riding = controls(true, false);
+		const paused = controls(false, true);
+		const autoPaused = controls(false, false);
+
+		expect(riding).toContain('data-session-state="riding"');
+		expect(riding).toContain('border-mint/40 bg-mint/10 text-mint');
+		expect(paused).toContain('data-session-state="paused"');
+		expect(paused).toContain('>Resume</button>');
+		expect(paused).toContain(
+			'border-amber-300/50 bg-amber-300/10 text-amber-300 hover:bg-amber-300/15'
+		);
+		expect(autoPaused).toContain('data-session-state="auto-paused"');
+		expect(autoPaused).toContain('>Auto paused</button>');
+		expect(autoPaused).toContain(
+			'border-amber-300/50 bg-amber-300/10 text-amber-300 hover:bg-amber-300/15'
+		);
+	});
+
 	test('renders an empty session history', () => {
 		const html = render(
 			<SessionHistory
@@ -1677,27 +1836,40 @@ describe('view components', () => {
 		expect(html).toContain('Calendar');
 		expect(html).toContain('List');
 		expect(html).toContain('Statistics');
+		expect(html).toContain('aria-label="0 sessions"');
+		expect(html).not.toContain('>0 sessions<');
 		expect(html).toContain('role="tablist"');
 		expect(html).toContain(
-			'scrollbar-hidden flex shrink-0 items-end gap-5 overflow-x-auto overflow-y-hidden'
+			'scrollbar-hidden flex shrink-0 items-end gap-6 overflow-x-auto overflow-y-hidden'
 		);
 		expect(html.match(/role="tab"/g)).toHaveLength(3);
+		expect(html.match(/outline-none transition-colors/g)).toHaveLength(3);
 		expect(html).toContain('aria-selected="true"');
 		expect(html).toContain('role="tabpanel"');
-		expect(html).toContain('border-cyan-400 text-white');
+		expect(html).toContain('data-tab-indicator="active"');
+		expect(html).toContain('bg-cyan-400');
+		expect(html).toContain('data-tab-indicator="inactive"');
 		expect(html).toContain('min-h-0 min-w-0 flex-1 flex-col overflow-hidden');
 		expect(html).toContain('overflow-y-auto overflow-x-hidden');
 		expect(html).toContain('Import FIT/TCX');
 		expect(html).toContain('data-testid="download-all-sessions"');
 		expect(html).toContain('aria-label="Download all sessions as TCX"');
 		expect(html).toContain('aria-label="Download all format"');
+		expect(html).toContain('aria-haspopup="listbox"');
+		expect(html).not.toContain('<select');
 		expect(html).toContain('Download all');
+		expect(html).toContain('h-9 rounded-lg border border-line px-3');
+		expect(html).toContain('h-9 rounded-l-lg border border-line border-r-0 px-3');
+		expect(html).toContain('w-16 shrink-0');
+		expect(html).toContain('h-9 gap-2 px-2');
+		expect(html).toContain('border-l-0');
 		expect(html).toContain('.tcx,.zip');
 		expect(html).toContain('ml-auto');
 		expect(html).toContain('translate-x-0');
 		expect(html).toContain('Show history keyboard controls');
-		expect(html).toContain('absolute top-3 right-14 grid h-9 w-9');
-		expect(html).toContain('absolute top-3 right-3 grid h-9 w-9');
+		expect(html).toContain('pt-2 pr-24 pb-0 pl-5');
+		expect(html).toContain('absolute top-2 right-14 grid h-9 w-9');
+		expect(html).toContain('absolute top-2 right-3 grid h-9 w-9');
 		expect(html.match(/hover:text-white sm:static/g)).toHaveLength(2);
 	});
 
@@ -1768,11 +1940,19 @@ describe('view components', () => {
 
 		expect(html).toContain('All-time totals');
 		expect(html).toContain('data-testid="all-time-totals"');
+		expect(html).toContain('data-testid="personal-bests"');
+		expect(html).toContain('<section data-testid="all-time-totals">');
+		expect(html).toContain('<section class="mt-6" data-testid="personal-bests">');
+		expect(html).toContain('session-statistics-content mx-auto w-full max-w-5xl');
+		expect(html).toContain(
+			'session-statistics min-w-0 flex-1 overflow-y-auto overflow-x-hidden'
+		);
 		expect(html).not.toContain(
 			'Updated locally whenever a session is saved, imported, changed, or deleted.'
 		);
 		expect(html).toContain('Personal bests');
 		expect(html).toContain('Trends');
+		expect(html.match(/<h3 class="font-bold text-xl">/g)).toHaveLength(4);
 		expect(html).toContain('Distance');
 		expect(html).toContain('Ride time');
 		expect(html).toContain('Climbing');
@@ -1785,7 +1965,11 @@ describe('view components', () => {
 		expect(html).toContain('Open this session');
 		expect(html).toContain('data-testid="session-statistics"');
 		expect(html).toContain('aria-label="Trend metric"');
-		expect(html).toContain('value="all">All</option>');
+		expect(html).toContain('aria-haspopup="listbox"');
+		expect(html).toContain('aria-expanded="false"');
+		expect(html).toContain('data-select-menu="true"');
+		expect(html).toContain('isolate inline-flex h-10');
+		expect(html).not.toContain('<select');
 		expect(html.match(/>All</g)).toHaveLength(2);
 		expect(html.match(/data-analytics-bar="value"/g)).toHaveLength(1);
 		expect(html.match(/data-analytics-bar="empty"/g)).toHaveLength(11);
@@ -1794,13 +1978,16 @@ describe('view components', () => {
 		expect(html).toContain('Weight over time');
 		expect(html).toContain('data-weight-chart-size="full"');
 		expect(html.match(/data-testid="rider-weight-chart"/g)).toHaveLength(1);
+		expect(html).not.toContain('bg-slate-950/25');
 		expect(html.match(/data-weight-point="true"/g)).toHaveLength(2);
 		expect(html.match(/sm:text-5xl/g)).toHaveLength(18);
 		expect(html.match(/sm:text-2xl/g)).toHaveLength(9);
-		expect(html).toContain('mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3');
-		expect(html).toContain('mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3');
-		expect(html).toContain('mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3');
-		expect(html).toContain('mt-3 p-5');
+		expect(html).toContain('minimal-stat-grid');
+		expect(html.match(/minimal-stat-card/g)).toHaveLength(18);
+		expect(html).toContain('minimal-peak-grid');
+		expect(html.match(/minimal-peak-card/g)).toHaveLength(9);
+		expect(html).toContain('minimal-weight-chart');
+		expect(html).toContain('minimal-chart-panel');
 		expect(html).not.toContain('mt-2 truncate font-bold text-4xl');
 		expect(html).toContain('<span class="whitespace-nowrap">');
 		expect(html).toContain('max-w-12');
@@ -1840,6 +2027,7 @@ describe('view components', () => {
 			/>
 		);
 		expect(overview).toContain('data-testid="trend-overview"');
+		expect(overview).toContain('statistics-trend-overview-grid');
 		expect(overview).toContain('All trends');
 		expect(overview).toContain('12 metrics');
 		expect(overview).toContain('Complete ride history');
@@ -1920,6 +2108,7 @@ describe('view components', () => {
 		expect(list).not.toContain('ring-cyan-400/70');
 		const detail = render(<SessionDetail session={importedSession} speedUnit="kmh" />);
 		expect(detail).toContain('data-testid="session-detail"');
+		expect(detail).toContain('px-3 pt-0 pb-3 sm:px-6 sm:pb-6');
 		expect(detail).toContain('overflow-y-auto overflow-x-hidden');
 		expect(detail).toContain('>Imported<');
 		expect(detail).not.toContain('Imported TCX');
@@ -2013,10 +2202,30 @@ describe('view components', () => {
 				speedUnit="mph"
 			/>
 		);
-		expect(html).toContain('Course map');
+		const courseMapLabel = `aria-label="${course.name} course map"`;
+		expect(html).toContain(courseMapLabel);
 		expect(html).toContain('RECORDED');
 		expect(html.indexOf('RECORDED')).toBeLessThan(html.indexOf('POWER'));
-		expect(html.indexOf('POWER')).toBeLessThan(html.indexOf('Course map'));
+		expect(html.indexOf('POWER')).toBeLessThan(html.indexOf(courseMapLabel));
+	});
+
+	test('shows the rider weight captured with the session in the selected units', () => {
+		const imperial = render(<SessionDetail session={savedSessionFixture} speedUnit="mph" />);
+		expect(imperial).toContain('RIDER WEIGHT');
+		expect(imperial).toContain('165.3');
+		expect(imperial).toContain('lb');
+
+		const metric = render(<SessionDetail session={savedSessionFixture} speedUnit="kmh" />);
+		expect(metric).toContain('75.0');
+		expect(metric).toContain('kg');
+
+		const legacy = render(
+			<SessionDetail
+				session={{ ...savedSessionFixture, profileSnapshot: undefined }}
+				speedUnit="mph"
+			/>
+		);
+		expect(legacy).not.toContain('RIDER WEIGHT');
 	});
 
 	test('styles an unrecorded feeling like the comments value', () => {
@@ -2051,8 +2260,21 @@ describe('view components', () => {
 		expect(html).toContain('Download FIT');
 		expect(html).toContain('data-session-file-downloads="true"');
 		expect(html).toContain('data-session-actions="true"');
-		expect(html).toContain('gap-x-4 gap-y-2 border-line border-t pt-4');
-		expect(html).toContain('ml-auto flex flex-wrap justify-end gap-2');
+		expect(html).not.toContain('Connect and pedal to graph live session data');
+		expect(html).toContain('mt-3 grid grid-cols-2 gap-2');
+		expect(html).toContain('minimal-summary-grid mt-3 grid');
+		expect(html).toContain('minimal-session-metric-grid');
+		expect(html).toContain('session-metadata-grid mt-3 grid gap-3');
+		expect(html).toContain('session-metadata-item session-metadata-feeling px-2 py-3 sm:px-3');
+		expect(html).toContain(
+			'session-metadata-description session-metadata-item px-2 py-3 sm:px-3'
+		);
+		expect(html).toContain('mt-3 session-chart');
+		expect(html).not.toContain('mt-5 grid');
+		expect(html).not.toContain('mt-4 sm:mt-6');
+		expect(html).not.toContain('gap-2 border-line border-t pt-4');
+		expect(html).toContain('contents sm:flex sm:flex-wrap sm:gap-2');
+		expect(html).toContain('contents sm:ml-auto sm:flex sm:flex-wrap sm:justify-end sm:gap-2');
 		expect(html).toContain('No recorded samples to export');
 		expect(html).toContain('role="alertdialog"');
 		expect(html).not.toContain('until');
@@ -2089,6 +2311,6 @@ describe('view components', () => {
 		expect(html).toContain('MAX</strong>14');
 		expect(html).toContain('RESISTANCE');
 		expect(html).toContain('MAX</strong>42');
-		expect(html).toContain('xl:grid-cols-5');
+		expect(html).toContain('minimal-session-metric-grid');
 	});
 });

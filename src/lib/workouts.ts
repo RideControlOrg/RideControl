@@ -4,6 +4,7 @@ import type {
 	GeographicRoutePoint,
 	RoutePoint,
 	SessionWorkout,
+	SpeedUnit,
 	WorkoutCourse,
 	WorkoutRoutePoint,
 	WorkoutTerrain,
@@ -20,6 +21,7 @@ import { distanceBetween } from './gpx';
 import { clamp, nonNegativeNumber } from './numbers';
 import { clampResistance } from './resistance';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
+import { convertDistance } from './units';
 import {
 	isWorkoutDescriptionAttribution,
 	type WorkoutDescriptionAttribution,
@@ -53,6 +55,9 @@ const LOW_CLIMB_ELEVATION_GAIN_METERS = 50;
 const MODERATE_CLIMB_ELEVATION_GAIN_METERS = 150;
 const PROFILE_REFERENCE_ELEVATION_SPAN_METERS = 200;
 const SEARCH_WHITESPACE = /\s+/;
+const SEARCH_DISTANCE = /^\d+(?:[.,]\d+)?$/;
+const DISTANCE_SEARCH_TOLERANCE_RATIO = 0.1;
+const MINIMUM_DISTANCE_SEARCH_TOLERANCE = 0.5;
 export const WORKOUT_SHORT_FLAT_START_DISTANCE = 0.4;
 export const WORKOUT_MODERATE_FLAT_START_DISTANCE = 0.8;
 export const WORKOUT_FLAT_START_DISTANCE = 1.5;
@@ -1111,12 +1116,30 @@ export function workoutDifficultyLabel(difficulty: WorkoutDifficulty): string {
 	}
 }
 
-export function workoutMatchesSearch(course: WorkoutCourse, query: string): boolean {
+export function workoutMatchesSearch(
+	course: WorkoutCourse,
+	query: string,
+	speedUnit: SpeedUnit
+): boolean {
 	const terms = query.trim().toLocaleLowerCase().split(SEARCH_WHITESPACE).filter(Boolean);
 	if (terms.length === 0) {
 		return true;
 	}
 	const searchable =
 		`${course.name} ${workoutDifficultyLabel(course.difficulty)}`.toLocaleLowerCase();
-	return terms.every((term) => searchable.includes(term));
+	const displayedDistance = convertDistance(course.distance, speedUnit);
+	return terms.every((term) => {
+		if (searchable.includes(term)) {
+			return true;
+		}
+		if (!SEARCH_DISTANCE.test(term)) {
+			return false;
+		}
+		const requestedDistance = Number(term.replace(',', '.'));
+		const tolerance = Math.max(
+			MINIMUM_DISTANCE_SEARCH_TOLERANCE,
+			requestedDistance * DISTANCE_SEARCH_TOLERANCE_RATIO
+		);
+		return Math.abs(displayedDistance - requestedDistance) <= tolerance;
+	});
 }
