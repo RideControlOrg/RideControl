@@ -3,6 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { applyUiTheme, isUiTheme, storedUiTheme, UI_THEME_STORAGE_KEY } from '../src/lib/theme';
 
 const stylesheet = await readFile(new URL('../src/style.css', import.meta.url), 'utf8');
+const routeMapSource = await readFile(
+	new URL('../src/components/workout-route-map.tsx', import.meta.url),
+	'utf8'
+);
 
 function cssBlock(selector: string): string {
 	const start = stylesheet.indexOf(`${selector} {`);
@@ -191,16 +195,19 @@ describe('interface theme', () => {
 		expect(endpoint).toContain('width: 14px');
 		expect(endpoint).toContain('height: 14px');
 		expect(endpoint).toContain('border: 3px solid #071018');
-		expect(endpoint).toContain('border-radius: 0');
+		expect(cssBlock('.ride-control-route-endpoint--start')).toContain('border-radius: 50%');
 		expect(cssBlock('.ride-control-route-endpoint--finish')).toContain(
 			'background: var(--color-amber-400)'
 		);
+		expect(cssBlock('.ride-control-route-endpoint--finish')).toContain('border-radius: 0');
 		expect(cssBlock('.ride-control-route-endpoint--shared')).toContain(
 			'var(--color-mint) 0 50%'
 		);
-		expect(bike).toContain('color: #071018');
-		expect(bike).toContain('background: #f4f7f5');
-		expect(bike).toContain('border: 3px solid #071018');
-		expect(bike).toContain('box-shadow: 0 0 0 2px rgb(103 232 249 / 90%)');
+		expect(bike).toContain('background: #071018');
+		expect(bike).toContain('border: 2px solid #071018');
+		expect(bike).toContain('0 0 0 2px #f4f7f5');
+		expect(bike).toContain('0 0 0 4px rgb(103 232 249 / 95%)');
+		expect(cssBlock('.ride-control-bike-marker__image')).toContain('object-fit: cover');
+		expect(routeMapSource).toContain('src="/favicon.png"');
 	});
 });
