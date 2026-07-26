@@ -8,7 +8,6 @@ import {
 } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ICON_PATHS } from '../lib/icon-paths';
 import { workoutRouteCoordinateAtProgress } from '../lib/workout-map';
 import type { WorkoutCourse } from '../types';
 
@@ -21,7 +20,8 @@ const ENDPOINT_EPSILON = 0.000_001;
 const ENDPOINT_MARKER_SIZE = 14;
 const BIKE_ROUTE_DURATION_MS = 30_000;
 const BIKE_MARKER_SIZE = 36;
-const BIKE_MARKER_HTML = `<span class="ride-control-bike-marker__body" aria-hidden="true"><svg class="ride-control-bike-marker__icon" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="${ICON_PATHS.bike}"></path></svg></span>`;
+const BIKE_MARKER_HTML =
+	'<span class="ride-control-bike-marker__body" aria-hidden="true"><img alt="" class="ride-control-bike-marker__image" src="/favicon.png"></span>';
 
 function endpointMarkerIcon(type: 'finish' | 'shared' | 'start') {
 	return divIcon({
@@ -80,14 +80,14 @@ export function WorkoutRouteMap({
 
 		const routeOutline = polyline(coordinates, {
 			color: ROUTE_OUTLINE_COLOR,
-			opacity: 0.75,
+			opacity: 0.9,
 			weight: 9,
 		}).addTo(routeMap);
 		polyline(coordinates, {
 			color: ROUTE_COLOR,
 			lineCap: 'round',
 			lineJoin: 'round',
-			opacity: 0.95,
+			opacity: 1,
 			weight: 5,
 		}).addTo(routeMap);
 

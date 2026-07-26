@@ -99,7 +99,7 @@ function RouteListItem({
 	return (
 		<button
 			aria-pressed={selected}
-			className={`w-full px-4 py-3 text-left transition ${selected ? 'bg-cyan-400/5 shadow-[inset_2px_0_0_var(--color-cyan-400)]' : 'hover:bg-slate-800/35'}`}
+			className={`w-full px-4 py-3 text-left outline-none transition ${selected ? 'bg-cyan-400/5 shadow-[inset_2px_0_0_var(--color-cyan-400)]' : 'hover:bg-slate-800/35'}`}
 			onClick={onSelect}
 			type="button"
 		>
@@ -110,7 +110,7 @@ function RouteListItem({
 			</span>
 			<span className="mt-1 flex items-center justify-between gap-2 text-[11px]">
 				{primaryContext ? (
-					<span className="truncate text-slate-500">{primaryContext}</span>
+					<span className="truncate text-slate-400">{primaryContext}</span>
 				) : (
 					<span aria-hidden="true" />
 				)}
@@ -221,7 +221,7 @@ function RouteSidebar({
 					Search GPX routes
 				</label>
 				<input
-					className="h-10 w-full rounded-lg border border-line bg-[#12171d] px-3 text-slate-100 text-sm outline-none placeholder:text-slate-600 focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/10"
+					className="h-10 w-full rounded-lg border border-line bg-[#12171d] px-3 text-slate-100 text-sm outline-none placeholder:text-slate-400 focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/10"
 					id="gpx-search"
 					onChange={(event) => onQueryChange(event.currentTarget.value)}
 					placeholder="Name, place, distance, or difficulty"
@@ -267,7 +267,7 @@ function RouteSidebar({
 						Minimum route distance in {distanceUnit}
 					</label>
 					<input
-						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-200 text-xs outline-none placeholder:text-slate-600 focus:border-cyan-400/70"
+						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-200 text-xs outline-none placeholder:text-slate-400 focus:border-cyan-400/70"
 						id="gpx-minimum-distance"
 						min="0"
 						onChange={(event) => onMinimumDistanceChange(event.currentTarget.value)}
@@ -280,7 +280,7 @@ function RouteSidebar({
 						Maximum route distance in {distanceUnit}
 					</label>
 					<input
-						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-200 text-xs outline-none placeholder:text-slate-600 focus:border-cyan-400/70"
+						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-200 text-xs outline-none placeholder:text-slate-400 focus:border-cyan-400/70"
 						id="gpx-maximum-distance"
 						min="0"
 						onChange={(event) => onMaximumDistanceChange(event.currentTarget.value)}
@@ -290,7 +290,7 @@ function RouteSidebar({
 						value={maximumDistance}
 					/>
 				</div>
-				<p className="text-[10px] text-slate-600">
+				<p className="text-[10px] text-slate-500">
 					Difficulty uses the route's prepared distance, climbing, and maximum grade.
 				</p>
 				{catalogError && catalog ? (
@@ -904,7 +904,7 @@ export function GpxBrowserDialog({
 								{filteredRoutes.length.toLocaleString()} routes
 							</span>
 						) : null}
-						<p className="text-slate-500 text-xs">
+						<p className="text-slate-400 text-xs">
 							{catalog &&
 							selectedProvider?.id === catalog.provider.id &&
 							shouldShowGpxCollectionSelector(selectedProvider)
