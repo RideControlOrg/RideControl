@@ -335,15 +335,11 @@ function loopDistance(courseDistance: number, totalDistance: number): number {
 	if (courseDistance <= 0) {
 		return 0;
 	}
-	const distance = nonNegativeNumber(totalDistance);
-	const position = distance % courseDistance;
-	return distance > 0 && position <= ROUTE_VALUE_EPSILON ? courseDistance : position;
+	return nonNegativeNumber(totalDistance) % courseDistance;
 }
 
 function coursePosition(course: WorkoutCourse, totalDistance: number): number {
-	return course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT
-		? clamp(nonNegativeNumber(totalDistance), 0, course.distance)
-		: loopDistance(course.distance, totalDistance);
+	return loopDistance(course.distance, totalDistance);
 }
 
 function segmentAtDistance(course: WorkoutCourse, distance: number): CourseSegment {
@@ -409,21 +405,12 @@ export function workoutSelectionLocked({
 }
 
 export function workoutLap(course: WorkoutCourse, totalDistance: number): number {
-	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
-		return 1;
-	}
-	const completedLaps = workoutCompletedLaps(course, totalDistance);
-	return coursePosition(course, totalDistance) === course.distance
-		? Math.max(1, completedLaps)
-		: completedLaps + 1;
+	return workoutCompletedLaps(course, totalDistance) + 1;
 }
 
 export function workoutCompletedLaps(course: WorkoutCourse, totalDistance: number): number {
 	if (course.distance <= 0) {
 		return 0;
-	}
-	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
-		return nonNegativeNumber(totalDistance) >= course.distance ? 1 : 0;
 	}
 	return Math.floor(nonNegativeNumber(totalDistance) / course.distance);
 }
@@ -438,11 +425,7 @@ export function workoutElevationTotalsAtDistance(
 	const totalsByPoint = courseElevationTotals(course);
 	const totalsAtLeft = totalsByPoint[segment.leftIndex] ?? emptyElevationTotals;
 	const partialLap = addElevationChange(totalsAtLeft, segment.left.elevation, current.elevation);
-	if (course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT) {
-		return partialLap;
-	}
-	const completedLaps =
-		workoutCompletedLaps(course, totalDistance) - (position === course.distance ? 1 : 0);
+	const completedLaps = workoutCompletedLaps(course, totalDistance);
 	const fullLap = totalsByPoint.at(-1) ?? emptyElevationTotals;
 	return {
 		ascent: fullLap.ascent * completedLaps + partialLap.ascent,
