@@ -146,6 +146,9 @@ function activityWorkout(activity: Element): SessionWorkout | undefined {
 			x: numberValue(child(point, 'X')),
 			y: numberValue(child(point, 'Y')),
 		}));
+	const providerId = text(child(workout, 'PublicProviderId')).trim();
+	const collectionId = text(child(workout, 'PublicCollectionId')).trim();
+	const routeId = text(child(workout, 'PublicRouteId')).trim();
 	return restoreSessionWorkout({
 		course: {
 			description: text(child(workout, 'Description')),
@@ -154,6 +157,10 @@ function activityWorkout(activity: Element): SessionWorkout | undefined {
 			id: text(child(workout, 'CourseId')),
 			name: text(child(workout, 'Name')),
 			points,
+			publicSource:
+				providerId && collectionId && routeId
+					? { collectionId, providerId, routeId }
+					: undefined,
 			routeType: text(child(workout, 'CourseType')) || undefined,
 		},
 	});

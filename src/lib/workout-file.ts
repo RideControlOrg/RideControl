@@ -141,6 +141,7 @@ function workoutMetadata(
 	descriptionAttribution?: WorkoutCourse['descriptionAttribution'];
 	difficulty: WorkoutDifficulty;
 	id: string;
+	publicSource?: WorkoutCourse['publicSource'];
 	routeType?: WorkoutRouteType;
 	startingLocation?: string;
 } {
@@ -148,6 +149,9 @@ function workoutMetadata(
 	const descriptionAttributionValue = xmlText(xmlDescendant(container, 'DescriptionAttribution'));
 	const routeTypeValue = xmlText(xmlDescendant(container, 'CourseType'));
 	const startingLocation = xmlText(xmlDescendant(container, 'StartingLocation')).trim();
+	const providerId = xmlText(xmlDescendant(container, 'PublicProviderId')).trim();
+	const collectionId = xmlText(xmlDescendant(container, 'PublicCollectionId')).trim();
+	const routeId = xmlText(xmlDescendant(container, 'PublicRouteId')).trim();
 	return {
 		descriptionAttribution: isWorkoutDescriptionAttribution(descriptionAttributionValue)
 			? descriptionAttributionValue
@@ -156,6 +160,10 @@ function workoutMetadata(
 			? difficultyValue
 			: WORKOUT_DIFFICULTY.MODERATE,
 		id: xmlText(xmlDescendant(container, 'WorkoutId')) || routeFingerprint(points),
+		publicSource:
+			providerId && collectionId && routeId
+				? { collectionId, providerId, routeId }
+				: undefined,
 		routeType: isWorkoutRouteType(routeTypeValue) ? routeTypeValue : undefined,
 		startingLocation: startingLocation || undefined,
 	};
@@ -206,6 +214,13 @@ export function workoutFileContents(course: WorkoutCourse): string {
 			<rc:WorkoutId>${xmlEscape(course.id)}</rc:WorkoutId>
 			<rc:Difficulty>${course.difficulty}</rc:Difficulty>
 			<rc:CourseType>${course.routeType}</rc:CourseType>
+			${
+				course.publicSource
+					? `<rc:PublicProviderId>${xmlEscape(course.publicSource.providerId)}</rc:PublicProviderId>
+			<rc:PublicCollectionId>${xmlEscape(course.publicSource.collectionId)}</rc:PublicCollectionId>
+			<rc:PublicRouteId>${xmlEscape(course.publicSource.routeId)}</rc:PublicRouteId>`
+					: ''
+			}
 			${course.descriptionAttribution ? `<rc:DescriptionAttribution>${course.descriptionAttribution}</rc:DescriptionAttribution>` : ''}
 			${course.startingLocation ? `<rc:StartingLocation>${xmlEscape(course.startingLocation)}</rc:StartingLocation>` : ''}
 		</extensions>
@@ -257,6 +272,7 @@ export function parseWorkoutFile(
 		id: metadata.id,
 		name: parsed.name || fallbackName,
 		points,
+		publicSource: metadata.publicSource,
 		routeType,
 		startingLocation: metadata.startingLocation,
 	});

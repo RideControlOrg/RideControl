@@ -91,6 +91,13 @@ function workoutSummaryXml(workout?: SessionWorkout): string {
 							<rc:Description>${xmlEscape(course.description)}</rc:Description>
 							<rc:Difficulty>${course.difficulty}</rc:Difficulty>
 							<rc:CourseType>${course.routeType}</rc:CourseType>
+							${
+								course.publicSource
+									? `<rc:PublicProviderId>${xmlEscape(course.publicSource.providerId)}</rc:PublicProviderId>
+							<rc:PublicCollectionId>${xmlEscape(course.publicSource.collectionId)}</rc:PublicCollectionId>
+							<rc:PublicRouteId>${xmlEscape(course.publicSource.routeId)}</rc:PublicRouteId>`
+									: ''
+							}
 							<rc:Distance>${course.distance.toFixed(3)}</rc:Distance>${points}
 						</rc:Workout>`;
 }

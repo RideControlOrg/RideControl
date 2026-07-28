@@ -87,7 +87,14 @@ function largePointToPointGpx(pointCount: number): string {
 
 describe('workout GPX files', () => {
 	test('round trips geographic workout source data through standard GPX', async () => {
-		const workout = customWorkout();
+		const workout = {
+			...customWorkout(),
+			publicSource: {
+				collectionId: 'tour-de-france-2026',
+				providerId: 'grand-tours',
+				routeId: '4',
+			},
+		};
 		const contents = workoutFileContents(workout);
 		expect(contents).toStartWith('<?xml version="1.0" encoding="UTF-8"?>');
 		expect(contents).toContain('<gpx version="1.1"');
@@ -110,6 +117,7 @@ describe('workout GPX files', () => {
 			distance: workout.distance,
 			id: workout.id,
 			name: workout.name,
+			publicSource: workout.publicSource,
 			routeType: WORKOUT_ROUTE_TYPE.LOOP,
 			startingLocation: 'Santa Cruz',
 		});

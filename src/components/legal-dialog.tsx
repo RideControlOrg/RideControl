@@ -92,9 +92,9 @@ export function PrivacyPolicyDialog({ onClose, open }: { onClose: () => void; op
 				<p>
 					Ride details, workouts, comments, profile details and image, device identifiers,
 					preferences, and recovery data are stored in your browser using IndexedDB or
-					local storage. Ride Control does not create an account or upload your profile or
-					recorded ride history. Bluetooth access is controlled by your browser and
-					operating system.
+					local storage. Ride Control does not create an account or upload your profile,
+					raw samples, comments, or recorded ride history. Bluetooth access is controlled
+					by your browser and operating system.
 				</p>
 			</section>
 
@@ -123,6 +123,12 @@ export function PrivacyPolicyDialog({ onClose, open }: { onClose: () => void; op
 			<section className={sectionClass}>
 				<h3 className={headingClass}>Optional features and external services</h3>
 				<ul className="list-disc space-y-1 pl-5">
+					<li>
+						If you choose Share on X, Ride Control creates a public link containing only
+						the displayed summary stats and workout preview. The card image is generated
+						from that link on demand. It does not include raw ride samples, comments,
+						your profile name, or profile images.
+					</li>
 					<li>
 						Browsing public route collections sends catalog and route requests to the
 						Ride Control service. Search and filter input stays in this browser, and it
@@ -233,7 +239,9 @@ export function TermsOfServiceDialog({ onClose, open }: { onClose: () => void; o
 				<p>
 					Ride data is generally stored in your browser. You are responsible for exporting
 					any records you want to preserve. Clearing site data, changing browsers, or
-					device failure may permanently remove unexported data.
+					device failure may permanently remove unexported data. Workout cards you
+					explicitly share are public, may be cached by the service or X, and may be
+					copied by anyone with the link.
 				</p>
 			</section>
 

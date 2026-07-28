@@ -1036,6 +1036,7 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		id,
 		name,
 		points,
+		publicSource,
 		routeType,
 		startingLocation,
 	} = value;
@@ -1077,7 +1078,7 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 	) {
 		return;
 	}
-	return createGeographicCourse(
+	const course = createGeographicCourse(
 		id,
 		name,
 		description,
@@ -1088,6 +1089,25 @@ export function restoreWorkoutCourse(value: unknown): WorkoutCourse | undefined 
 		descriptionAttribution,
 		startingLocation?.trim()
 	);
+	if (
+		isRecord(publicSource) &&
+		isString(publicSource.collectionId) &&
+		isString(publicSource.providerId) &&
+		isString(publicSource.routeId) &&
+		publicSource.collectionId.trim().length > 0 &&
+		publicSource.providerId.trim().length > 0 &&
+		publicSource.routeId.trim().length > 0
+	) {
+		return {
+			...course,
+			publicSource: {
+				collectionId: publicSource.collectionId.trim(),
+				providerId: publicSource.providerId.trim(),
+				routeId: publicSource.routeId.trim(),
+			},
+		};
+	}
+	return course;
 }
 
 export function restoreSessionWorkout(value: unknown): SessionWorkout | undefined {

@@ -1,4 +1,5 @@
 import type { SpeedUnit, WorkoutCourse, WorkoutRoutePoint } from '../types';
+import { API_ROOT, apiUrl } from './api';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
 import {
 	convertDistance,
@@ -12,9 +13,7 @@ import {
 import { isWorkoutDifficulty, type WorkoutDifficulty } from './workout-schema';
 
 const SEARCH_WHITESPACE = /\s+/u;
-const PREPARED_ROUTE_VERSION = 5;
-const CONFIGURED_API_ROOT = import.meta.env.VITE_RIDECONTROL_API_URL || '/api';
-const API_ROOT = CONFIGURED_API_ROOT.replace(/\/$/u, '');
+const PREPARED_ROUTE_VERSION = 7;
 const COLLECTION_DISTANCE_FORMATTER = new Intl.NumberFormat(undefined, {
 	maximumFractionDigits: 1,
 });
@@ -143,7 +142,7 @@ export function gpxRouteAssetUrl(
 	asset: 'gpx' | 'image'
 ): string {
 	const path = `/gpx/providers/${encodeURIComponent(route.providerId)}/collections/${encodeURIComponent(route.collectionId)}/routes/${encodeURIComponent(route.id)}/${asset}`;
-	return `${API_ROOT}${path}`;
+	return apiUrl(path);
 }
 
 export function gpxRouteMatchesQuery(
@@ -434,6 +433,18 @@ function routeCourse(value: unknown): WorkoutCourse | undefined {
 	if (points.length !== value.points.length || points.length < 3) {
 		return;
 	}
+	const publicSourceValue = value.publicSource;
+	const publicSource =
+		isRecord(publicSourceValue) &&
+		isString(publicSourceValue.collectionId) &&
+		isString(publicSourceValue.providerId) &&
+		isString(publicSourceValue.routeId)
+			? {
+					collectionId: publicSourceValue.collectionId,
+					providerId: publicSourceValue.providerId,
+					routeId: publicSourceValue.routeId,
+				}
+			: undefined;
 	return {
 		description: value.description,
 		difficulty: value.difficulty,
@@ -442,6 +453,7 @@ function routeCourse(value: unknown): WorkoutCourse | undefined {
 		id: value.id,
 		name: value.name,
 		points,
+		...(publicSource ? { publicSource } : {}),
 		routeType: value.routeType,
 	};
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EMPTY_ROUTE } from '../constants';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { CONTROL_MODE } from '../lib/control-mode';
@@ -14,6 +14,7 @@ import {
 	isImportedSession,
 } from '../lib/saved-sessions';
 import { sessionDetailScrollPositionStorageKey } from '../lib/session-history-preferences';
+import { shareSessionOnX } from '../lib/session-sharing';
 import { downloadSessionTcx } from '../lib/tcx';
 import { workoutTerrainAtDistance } from '../lib/workouts';
 import type { ChartMode, SavedSession, SpeedUnit } from '../types';
@@ -159,6 +160,8 @@ export function SessionDetail({
 	session: SavedSession;
 	speedUnit: SpeedUnit;
 }) {
+	const [shareError, setShareError] = useState('');
+	const [sharing, setSharing] = useState(false);
 	const detailScroll = usePersistentScrollPosition(
 		sessionDetailScrollPositionStorageKey(session.id),
 		true
@@ -201,6 +204,21 @@ export function SessionDetail({
 			unit: presentation.unit,
 		};
 	});
+	const shareOnX = async () => {
+		setShareError('');
+		setSharing(true);
+		try {
+			await shareSessionOnX(session, speedUnit);
+		} catch (error) {
+			setShareError(
+				error instanceof Error
+					? error.message
+					: 'Ride Control could not share this workout. Please try again.'
+			);
+		} finally {
+			setSharing(false);
+		}
+	};
 	return (
 		<div
 			className="session-detail-container min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-3 sm:px-6 sm:pb-6"
@@ -261,6 +279,15 @@ export function SessionDetail({
 						>
 							Download TCX
 						</button>
+						<button
+							className="w-full rounded-lg border border-cyan-500/40 px-3 py-2 font-semibold text-cyan-300 text-xs transition hover:border-cyan-400 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-50 sm:w-auto"
+							disabled={sharing}
+							onClick={shareOnX}
+							title="Create a public workout card and share it on X"
+							type="button"
+						>
+							{sharing ? 'Preparing…' : 'Share on X'}
+						</button>
 					</div>
 					{onStartNew || onDelete ? (
 						<div
@@ -288,6 +315,11 @@ export function SessionDetail({
 						</div>
 					) : null}
 				</div>
+				{shareError ? (
+					<p className="mt-2 text-rose-300 text-xs" role="alert">
+						{shareError}
+					</p>
+				) : null}
 				{onCancelDelete && onConfirmDelete ? (
 					<DeleteSessionDialog
 						deleting={deleting}

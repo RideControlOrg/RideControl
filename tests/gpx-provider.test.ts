@@ -83,6 +83,11 @@ const course: WorkoutCourse = {
 			y: 8,
 		},
 	],
+	publicSource: {
+		collectionId: collection.id,
+		providerId: provider.id,
+		routeId: route.id,
+	},
 	routeType: 'point-to-point',
 };
 const originalFetch = globalThis.fetch;
@@ -171,7 +176,7 @@ describe('GPX provider backend client', () => {
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		expect(await fetchGpxRoute(route)).toEqual(result);
 		expect(fetchMock).toHaveBeenCalledWith(
-			'/api/gpx/providers/bikegpx/collections/public-routes/routes/2635?prepared-route-version=5',
+			'/api/gpx/providers/bikegpx/collections/public-routes/routes/2635?prepared-route-version=7',
 			{ cache: undefined, signal: undefined }
 		);
 
