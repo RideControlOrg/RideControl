@@ -102,7 +102,10 @@ export function WelcomeDialog({
 					.
 				</p>
 				<p className="mt-3 text-lg text-slate-400 leading-8">
-					Ride Control runs locally, and your ride data stays in your browser. In the
+					Ride Control runs locally, and your ride history stays in your browser unless
+					you explicitly create a public workout card. Its public link contains only the
+					displayed summary stats and workout preview, which are used to generate the card
+					image on demand—not raw ride samples, comments, or profile details. In the
 					future, we plan to offer optional paid cloud storage and synchronization.
 				</p>
 				<p className="mt-3 text-lg text-slate-400 leading-8">

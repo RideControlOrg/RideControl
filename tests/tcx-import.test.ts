@@ -98,6 +98,16 @@ describe('TCX import', () => {
 		if (!course) {
 			return;
 		}
+		const publicSource = {
+			collectionId: 'tour-de-france-2026',
+			providerId: 'grand-tours',
+			routeId: '4',
+		};
+		const publicCourse = {
+			...course,
+			id: 'tdf-2026-stage-4',
+			publicSource,
+		};
 		const workoutSession: SavedSession = {
 			...session,
 			elevationTotals: { ascent: 205.5, descent: 91.25 },
@@ -111,7 +121,7 @@ describe('TCX import', () => {
 					workoutLap: terrain.lap,
 				};
 			}),
-			workout: { course },
+			workout: { course: publicCourse },
 		};
 		const [imported] = parseTcxSessions(sessionToTcx(workoutSession));
 		expect(imported?.workout).toBeDefined();
@@ -119,12 +129,13 @@ describe('TCX import', () => {
 			return;
 		}
 		expect(imported.workout.course).toMatchObject({
-			description: course.description,
-			difficulty: course.difficulty,
-			distance: course.distance,
-			id: course.id,
-			name: course.name,
-			routeType: course.routeType,
+			description: publicCourse.description,
+			difficulty: publicCourse.difficulty,
+			distance: publicCourse.distance,
+			id: publicCourse.id,
+			name: publicCourse.name,
+			publicSource,
+			routeType: publicCourse.routeType,
 		});
 		expect(imported.workout.course.points).toHaveLength(course.points.length);
 		const importedPoint = imported.workout.course.points.at(1);

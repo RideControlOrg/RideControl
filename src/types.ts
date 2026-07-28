@@ -30,6 +30,12 @@ export interface WorkoutRoutePoint extends GeographicRoutePoint {
 	y: number;
 }
 
+export interface PublicWorkoutSource {
+	collectionId: string;
+	providerId: string;
+	routeId: string;
+}
+
 export interface WorkoutCourse {
 	description: string;
 	descriptionAttribution?: WorkoutDescriptionAttribution;
@@ -39,6 +45,7 @@ export interface WorkoutCourse {
 	id: string;
 	name: string;
 	points: WorkoutRoutePoint[];
+	publicSource?: PublicWorkoutSource;
 	routeType: WorkoutRouteType;
 	startingLocation?: string;
 }

@@ -198,9 +198,9 @@ describe('terrain workouts', () => {
 		expect(workoutCompletedLaps(outAndBack, distance)).toBe(1);
 		expect(workoutTerrainAtDistance(outAndBack, distance)).toMatchObject({
 			completedLaps: 1,
-			distance,
-			lap: 1,
-			progress: 1,
+			distance: 0,
+			lap: 2,
+			progress: 0,
 		});
 		expect(workoutTerrainAtDistance(outAndBack, distance + 0.01)).toMatchObject({
 			completedLaps: 1,
@@ -210,7 +210,7 @@ describe('terrain workouts', () => {
 		expect(workoutMapPath(outAndBack)).toStartWith('M ');
 	});
 
-	test('finishes point-to-point courses without wrapping back to the start', () => {
+	test('starts point-to-point courses over for the next lap', () => {
 		if (!course) {
 			throw new Error('Expected a built-in workout course');
 		}
@@ -227,16 +227,29 @@ describe('terrain workouts', () => {
 			throw new Error('Expected a valid point-to-point workout course');
 		}
 		const finish = workoutTerrainAtDistance(pointToPoint, distance);
-		const beyondFinish = workoutTerrainAtDistance(pointToPoint, distance * 2);
-		expect(finish).toMatchObject({ completedLaps: 1, distance, grade: 0, lap: 1, progress: 1 });
-		expect(beyondFinish).toEqual(finish);
-		expect(workoutLap(pointToPoint, distance * 2)).toBe(1);
-		expect(workoutCompletedLaps(pointToPoint, distance * 2)).toBe(1);
-		expect(workoutProgress(pointToPoint, distance * 2)).toBe(1);
-		expect(workoutElevationTotalsAtDistance(pointToPoint, distance * 2)).toEqual(
-			workoutElevationTotalsAtDistance(pointToPoint, distance)
-		);
-		expect(workoutMapProgressPath(pointToPoint, finish)).toBe(workoutMapPath(pointToPoint));
+		const nextLap = workoutTerrainAtDistance(pointToPoint, distance + 0.01);
+		expect(finish).toMatchObject({
+			completedLaps: 1,
+			distance: 0,
+			lap: 2,
+			progress: 0,
+			x: pointToPoint.points[0]?.x,
+			y: pointToPoint.points[0]?.y,
+		});
+		expect(nextLap).toMatchObject({
+			completedLaps: 1,
+			distance: expect.closeTo(0.01),
+			lap: 2,
+		});
+		expect(workoutLap(pointToPoint, distance * 2)).toBe(3);
+		expect(workoutCompletedLaps(pointToPoint, distance * 2)).toBe(2);
+		expect(workoutProgress(pointToPoint, distance * 2)).toBe(0);
+		const oneLapElevation = workoutElevationTotalsAtDistance(pointToPoint, distance);
+		expect(workoutElevationTotalsAtDistance(pointToPoint, distance * 2)).toEqual({
+			ascent: oneLapElevation.ascent * 2,
+			descent: oneLapElevation.descent * 2,
+		});
+		expect(workoutMapProgressPath(pointToPoint, finish)).not.toContain('C ');
 	});
 
 	test('offers a fifteen-mile course whose rollers use the universal grade load', () => {
@@ -321,8 +334,13 @@ describe('terrain workouts', () => {
 		expect(workoutCompletedLaps(course, course.distance - 0.01)).toBe(0);
 		expect(workoutLap(course, course.distance - 0.01)).toBe(1);
 		expect(workoutCompletedLaps(course, course.distance)).toBe(1);
-		expect(workoutLap(course, course.distance)).toBe(1);
-		expect(workoutProgress(course, course.distance)).toBe(1);
+		expect(workoutLap(course, course.distance)).toBe(2);
+		expect(workoutProgress(course, course.distance)).toBe(0);
+		expect(workoutTerrainAtDistance(course, course.distance)).toMatchObject({
+			distance: 0,
+			x: course.points[0]?.x,
+			y: course.points[0]?.y,
+		});
 		expect(workoutCompletedLaps(course, course.distance * 2.25)).toBe(2);
 		expect(workoutProgress(course, course.distance * 2.25)).toBeCloseTo(0.25);
 	});
