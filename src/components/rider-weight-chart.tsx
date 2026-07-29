@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { poundsForKilograms, type RiderWeightEntry } from '../lib/profile';
 import { profileWeightUnit } from '../lib/profile-form';
 import type { SpeedUnit } from '../types';
+import { InteractiveLineChart, type InteractiveLineDatum } from './interactive-chart';
 
 const WEIGHT_FORMATTER = new Intl.NumberFormat(undefined, {
 	maximumFractionDigits: 1,
@@ -11,74 +13,50 @@ const WEIGHT_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
 	month: 'short',
 	year: 'numeric',
 });
-const CHART_LEFT = 4;
-const CHART_RIGHT = 96;
-const CHART_TOP = 5;
-const CHART_BOTTOM = 49;
-const CHART_HEIGHT = 54;
-
-interface WeightChartPoint {
+const WEIGHT_CHART_VARIANTS = {
+	compact: { className: 'h-28', height: 112 },
+	full: { className: 'h-44', height: 176 },
+} as const;
+interface WeightChartDatum extends InteractiveLineDatum {
 	date: string;
 	recordedAt: number;
 	value: number;
-	x: number;
-	y: number;
 }
 
 function displayedWeight(weightKg: number, speedUnit: SpeedUnit): number {
 	return speedUnit === 'mph' ? poundsForKilograms(weightKg) : weightKg;
 }
 
-function weightChartPoints(
+function weightChartData(
 	entries: readonly RiderWeightEntry[],
 	speedUnit: SpeedUnit
-): WeightChartPoint[] {
+): { maximum: number; minimum: number; rows: WeightChartDatum[] } | undefined {
 	const sorted = [...entries].sort((left, right) => left.recordedAt - right.recordedAt);
 	if (sorted.length === 0) {
-		return [];
+		return;
 	}
 	const values = sorted.map((entry) => displayedWeight(entry.weightKg, speedUnit));
-	const minimumTime = sorted[0]?.recordedAt ?? 0;
-	const maximumTime = sorted.at(-1)?.recordedAt ?? minimumTime;
 	const minimumValue = Math.min(...values);
 	const maximumValue = Math.max(...values);
 	const valueRange = maximumValue - minimumValue;
 	const padding = Math.max(0.5, valueRange * 0.2);
-	const chartMinimum = minimumValue - padding;
-	const chartMaximum = maximumValue + padding;
-	const chartRange = chartMaximum - chartMinimum;
-	return sorted.map((entry, index) => ({
-		date: WEIGHT_DATE_FORMATTER.format(entry.recordedAt),
-		recordedAt: entry.recordedAt,
-		value: values[index] ?? 0,
-		x:
-			maximumTime === minimumTime
-				? (CHART_LEFT + CHART_RIGHT) / 2
-				: CHART_LEFT +
-					((entry.recordedAt - minimumTime) / (maximumTime - minimumTime)) *
-						(CHART_RIGHT - CHART_LEFT),
-		y:
-			CHART_BOTTOM -
-			(((values[index] ?? 0) - chartMinimum) / chartRange) * (CHART_BOTTOM - CHART_TOP),
-	}));
-}
-
-function weightLinePath(points: readonly WeightChartPoint[]): string {
-	return points
-		.map(
-			(point, index) =>
-				`${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`
-		)
-		.join(' ');
-}
-
-function weightAreaPath(points: readonly WeightChartPoint[]): string {
-	const [first] = points;
-	const last = points.at(-1);
-	if (!(first && last)) {
-		return '';
-	}
-	return `${weightLinePath(points)} L${last.x.toFixed(2)} ${CHART_BOTTOM} L${first.x.toFixed(2)} ${CHART_BOTTOM} Z`;
+	const rows = sorted.map((entry, index) => {
+		const date = WEIGHT_DATE_FORMATTER.format(entry.recordedAt);
+		const value = values[index] ?? 0;
+		return {
+			date,
+			key: String(entry.recordedAt),
+			label: `${date}: ${WEIGHT_FORMATTER.format(value)} ${profileWeightUnit(speedUnit)}`,
+			recordedAt: entry.recordedAt,
+			value,
+			x: entry.recordedAt,
+		};
+	});
+	return {
+		maximum: maximumValue + padding,
+		minimum: minimumValue - padding,
+		rows,
+	};
 }
 
 function formattedWeightChange(change: number): string {
@@ -100,16 +78,18 @@ export function RiderWeightChart({
 	entries: readonly RiderWeightEntry[];
 	speedUnit: SpeedUnit;
 }) {
-	const points = weightChartPoints(entries, speedUnit);
-	const [first] = points;
-	const latest = points.at(-1);
+	const chartData = useMemo(() => weightChartData(entries, speedUnit), [entries, speedUnit]);
+	if (!chartData) {
+		return null;
+	}
+	const [first] = chartData.rows;
+	const latest = chartData.rows.at(-1);
 	if (!(first && latest)) {
 		return null;
 	}
 	const unit = profileWeightUnit(speedUnit);
 	const weightChange = latest.value - first.value;
-	const linePath = weightLinePath(points);
-	const endpointPoints = points.length > 1 ? [first, latest] : [];
+	const chartVariant = compact ? WEIGHT_CHART_VARIANTS.compact : WEIGHT_CHART_VARIANTS.full;
 	return (
 		<figure
 			aria-label={`Weight over time from ${first.date} to ${latest.date}`}
@@ -140,50 +120,21 @@ export function RiderWeightChart({
 					<p className="mt-1 text-[10px] text-slate-600">since {first.date}</p>
 				</div>
 			</div>
-			{points.length > 1 ? (
+			{chartData.rows.length > 1 ? (
 				<div
-					className={`relative mt-5 overflow-hidden ${compact ? 'h-28' : 'h-44'}`}
+					className={`relative mt-5 overflow-hidden ${chartVariant.className}`}
 					data-weight-plot="true"
 				>
-					<svg
-						aria-hidden="true"
-						className="absolute inset-0 h-full w-full"
-						preserveAspectRatio="none"
-						viewBox={`0 0 100 ${CHART_HEIGHT}`}
-					>
-						<path
-							d={weightAreaPath(points)}
-							data-weight-area="true"
-							fill="var(--metric-gear)"
-							fillOpacity="0.08"
-						/>
-						<path
-							d={linePath}
-							data-weight-line="true"
-							fill="none"
-							stroke="var(--metric-gear)"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth="2"
-							vectorEffect="non-scaling-stroke"
-						/>
-					</svg>
-					{endpointPoints.map((point, index) => (
-						<span
-							aria-hidden="true"
-							className={`absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 ${
-								index === endpointPoints.length - 1
-									? 'border-mint bg-[#10151a] shadow-[0_0_0_4px_rgba(134,239,172,0.12)]'
-									: 'border-slate-500 bg-[#10151a]'
-							}`}
-							data-weight-point="true"
-							key={`${point.recordedAt}-${point.value}`}
-							style={{
-								left: `${point.x}%`,
-								top: `${(point.y / CHART_HEIGHT) * 100}%`,
-							}}
-						/>
-					))}
+					<InteractiveLineChart
+						area
+						ariaLabel={`Weight over time from ${first.date} to ${latest.date}`}
+						background="transparent"
+						color="var(--metric-gear)"
+						height={chartVariant.height}
+						maximum={chartData.maximum}
+						minimum={chartData.minimum}
+						rows={chartData.rows}
+					/>
 				</div>
 			) : (
 				<div className="mt-5 grid min-h-24 place-items-center px-4 text-center">
@@ -198,7 +149,7 @@ export function RiderWeightChart({
 					<span>1 measurement</span>
 				) : (
 					<>
-						<span>{points.length} measurements</span>
+						<span>{chartData.rows.length} measurements</span>
 						<time dateTime={new Date(latest.recordedAt).toISOString()}>
 							{latest.date}
 						</time>

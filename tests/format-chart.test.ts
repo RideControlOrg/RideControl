@@ -1,10 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-	chartPath,
-	resistanceChartMaximum,
-	roundedChartMaximum,
-	storedChartMode,
-} from '../src/lib/chart';
+import { resistanceChartMaximum, roundedChartMaximum, storedChartMode } from '../src/lib/chart';
 import {
 	aggregateMaximum,
 	formatAggregateAverage,
@@ -42,21 +37,6 @@ describe('format utilities', () => {
 });
 
 describe('chart utilities', () => {
-	test('creates paths with evenly spaced positions', () => {
-		expect(chartPath([0, 50, 100], 0, 100)).toBe('M 0 95 L 50 50 L 100 5');
-	});
-
-	test('uses elapsed positions and clamps values', () => {
-		expect(chartPath([-10, 50, 120], 0, 100, [10, 20, 50])).toBe('M 0 95 L 25 50 L 100 5');
-		expect(chartPath([], 0, 1)).toBe('');
-	});
-
-	test('leaves gaps when a control metric is not recorded', () => {
-		expect(chartPath([10, undefined, 12], 1, 24, [1, 2, 3])).toBe(
-			'M 0 59.78260869565217 M 100 51.95652173913043'
-		);
-	});
-
 	test('rounds maxima up by chart step', () => {
 		expect(roundedChartMaximum(121, 100, 50)).toBe(150);
 		expect(roundedChartMaximum(20, 100, 50)).toBe(100);

@@ -113,6 +113,36 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	--chart-surface: #f3f3ef;
 }
 
+.ts-chart-host {
+	--ts-chart-focus-fill: var(--chart-surface);
+}
+
+.ts-chart-host svg:focus-visible {
+	outline: 2px solid
+		color-mix(in srgb, var(--color-cyan-300) 70%, transparent);
+	outline-offset: -2px;
+}
+
+.ride-control-chart-tooltip {
+	z-index: 20 !important;
+	padding: 0.5rem 0.65rem !important;
+	font:
+		600 0.75rem / 1.35 Inter,
+		ui-sans-serif,
+		system-ui,
+		sans-serif !important;
+	font-variant-numeric: tabular-nums;
+	color: var(--content-strong) !important;
+	background: var(--color-panel) !important;
+	border: 1px solid color-mix(in srgb, var(--color-line) 72%, transparent) !important;
+	border-radius: 0 !important;
+	box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 22%) !important;
+	transition:
+		top 140ms ease-out,
+		left 45ms linear;
+	will-change: top, left;
+}
+
 @layer base {
 	* {
 		box-sizing: border-box;
