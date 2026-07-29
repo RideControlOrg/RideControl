@@ -1,14 +1,7 @@
 import { useSelector } from '@tanstack/react-store';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { evenlySample, valueRange } from '../lib/arrays';
-import {
-	CHART_PLOT_BOTTOM,
-	CHART_PLOT_MIDDLE,
-	CHART_PLOT_TOP,
-	chartPath,
-	resistanceChartMaximum,
-	roundedChartMaximum,
-} from '../lib/chart';
+import { CHART_PLOT_MIDDLE, resistanceChartMaximum, roundedChartMaximum } from '../lib/chart';
 import { CHART_MODE } from '../lib/chart-mode';
 import { CONTROL_MODE } from '../lib/control-mode';
 import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
@@ -32,6 +25,7 @@ import {
 } from '../lib/units';
 import { preferencesStore } from '../stores/preferences-store';
 import type { ChartMode, ControlMode, MetricSample, RoutePoint, SpeedUnit } from '../types';
+import { InteractiveLineChart, type InteractiveLineDatum } from './interactive-chart';
 
 const MAXIMUM_RENDERED_CHART_SAMPLES = 2000;
 
@@ -54,11 +48,58 @@ interface PlotProps {
 	label: string;
 	maximum: number;
 	minimum?: number;
+	onFocusXChange?: (x: number | undefined) => void;
 	positions: number[];
 	showLabel?: boolean;
+	synchronizedFocusX?: number;
 	title: string;
 	unit: string;
 	values: (number | undefined)[];
+}
+
+function sessionChartRows({
+	decimals,
+	label,
+	positions,
+	unit,
+	values,
+}: Pick<PlotProps, 'decimals' | 'label' | 'positions' | 'unit' | 'values'>) {
+	return values.map<InteractiveLineDatum>((value, index) => {
+		const x = positions[index] ?? index;
+		const formattedValue =
+			value === undefined
+				? 'No reading'
+				: `${value.toFixed(decimals)}${unit ? ` ${unit}` : ''}`;
+		return {
+			key: `${x}-${index}`,
+			label: `${formatChartSeconds(x)} · ${label}: ${formattedValue}`,
+			value,
+			x,
+		};
+	});
+}
+
+function ChartScale({
+	decimals,
+	maximum,
+	minimum,
+	unit,
+}: Pick<PlotProps, 'decimals' | 'maximum' | 'unit'> & { minimum: number }) {
+	const labels = [maximum, (maximum + minimum) / 2, minimum];
+	const positions = [12, CHART_PLOT_MIDDLE, 88];
+	return (
+		<div className="pointer-events-none relative h-full w-16 shrink-0 font-semibold text-[11px] text-slate-300 sm:w-20 sm:text-xs">
+			{labels.map((scaleLabel, index) => (
+				<span
+					className="absolute right-2 -translate-y-1/2 whitespace-nowrap leading-none"
+					key={scaleLabel}
+					style={{ top: `${positions[index]}%` }}
+				>
+					{scaleLabel.toFixed(decimals)} {unit}
+				</span>
+			))}
+		</div>
+	);
 }
 
 export function ChartPlot({
@@ -68,73 +109,41 @@ export function ChartPlot({
 	label,
 	maximum,
 	minimum = 0,
+	onFocusXChange,
 	positions,
+	synchronizedFocusX,
 	showLabel = false,
 	title,
 	unit,
 	values,
 }: PlotProps) {
-	const labels = [maximum, (maximum + minimum) / 2, minimum];
-	const labelPositions = [12, CHART_PLOT_MIDDLE, 88];
+	const rows = useMemo(
+		() => sessionChartRows({ decimals, label, positions, unit, values }),
+		[decimals, label, positions, unit, values]
+	);
 	return (
 		<div className={`flex w-full ${heightClass}`}>
-			<div className="pointer-events-none relative h-full w-16 shrink-0 font-semibold text-[11px] text-slate-300 sm:w-20 sm:text-xs">
-				{labels.map((scaleLabel, index) => (
-					<span
-						className="absolute right-2 -translate-y-1/2 whitespace-nowrap leading-none"
-						key={scaleLabel}
-						style={{ top: `${labelPositions[index]}%` }}
-					>
-						{scaleLabel.toFixed(decimals)} {unit}
-					</span>
-				))}
-			</div>
+			<ChartScale decimals={decimals} maximum={maximum} minimum={minimum} unit={unit} />
 			<div className="relative h-full min-w-0 flex-1 overflow-hidden">
 				{showLabel ? (
 					<span
-						className="pointer-events-none absolute top-[17%] right-2 z-10 font-semibold text-[10px] text-slate-300 leading-none sm:text-[11px]"
+						className="pointer-events-none absolute top-[12%] right-2 z-10 -translate-y-1/2 font-semibold text-[10px] text-slate-300 leading-none sm:text-[11px]"
 						data-chart-series-label="true"
 					>
 						{label}
 					</span>
 				) : null}
-				<svg
-					className="block h-full w-full"
-					preserveAspectRatio="none"
-					viewBox="0 0 100 100"
-				>
-					<title>{title}</title>
-					<rect
-						data-chart-surface="true"
-						fill="var(--chart-surface)"
-						height={CHART_PLOT_BOTTOM - CHART_PLOT_TOP}
-						width="100"
-						x="0"
-						y={CHART_PLOT_TOP}
+				<div className="h-full w-full" data-chart-surface="true">
+					<InteractiveLineChart
+						ariaLabel={title}
+						color={color}
+						focusedX={synchronizedFocusX}
+						maximum={maximum}
+						minimum={minimum}
+						onFocusXChange={onFocusXChange}
+						rows={rows}
 					/>
-					<path
-						d={`M0 ${CHART_PLOT_TOP}H100 M0 ${CHART_PLOT_BOTTOM}H100`}
-						fill="none"
-						stroke="var(--chart-grid)"
-						strokeWidth=".75"
-						vectorEffect="non-scaling-stroke"
-					/>
-					<path
-						d={`M0 ${CHART_PLOT_MIDDLE}H100 M25 ${CHART_PLOT_TOP}V${CHART_PLOT_BOTTOM} M50 ${CHART_PLOT_TOP}V${CHART_PLOT_BOTTOM} M75 ${CHART_PLOT_TOP}V${CHART_PLOT_BOTTOM}`}
-						fill="none"
-						stroke="var(--chart-grid)"
-						strokeDasharray="2.5 2.5"
-						strokeWidth="1"
-						vectorEffect="non-scaling-stroke"
-					/>
-					<path
-						d={chartPath(values, minimum, maximum, positions)}
-						fill="none"
-						stroke={color}
-						strokeWidth="1.5"
-						vectorEffect="non-scaling-stroke"
-					/>
-				</svg>
+				</div>
 			</div>
 		</div>
 	);
@@ -145,6 +154,7 @@ export function SessionChart({
 	history,
 	keyboardEnabled = true,
 	onSelectChartMode,
+	onInspectSample,
 	route,
 	selectedChartMode,
 	speedUnit,
@@ -154,6 +164,7 @@ export function SessionChart({
 	history: MetricSample[];
 	keyboardEnabled?: boolean;
 	onSelectChartMode?: (mode: ChartMode) => void;
+	onInspectSample?: (sample: MetricSample | undefined) => void;
 	route: readonly RoutePoint[];
 	selectedChartMode?: ChartMode;
 	speedUnit: SpeedUnit;
@@ -164,6 +175,7 @@ export function SessionChart({
 		(preferences) => preferences.chartMode
 	);
 	const selectedMode = selectedChartMode ?? preferredChartMode;
+	const [focusedElapsedSecond, setFocusedElapsedSecond] = useState<number>();
 	const resolvedControlMode =
 		controlMode ??
 		(history.some((sample) => sample.gear !== undefined)
@@ -293,10 +305,14 @@ export function SessionChart({
 		selectedMode === CHART_MODE.ALL || series.some((item) => item.key === selectedMode)
 			? selectedMode
 			: CHART_MODE.ALL;
-	const visibleSeries =
-		effectiveMode === CHART_MODE.ALL
-			? series
-			: series.filter((item) => item.key === effectiveMode);
+	const focusedMode = useRef(effectiveMode);
+	const visibleSeries = useMemo(
+		() =>
+			effectiveMode === CHART_MODE.ALL
+				? series
+				: series.filter((item) => item.key === effectiveMode),
+		[effectiveMode, series]
+	);
 	const availableModes = useMemo(
 		() => [
 			{ label: 'All', value: CHART_MODE.ALL },
@@ -304,7 +320,30 @@ export function SessionChart({
 		],
 		[series]
 	);
-	const historyPositions = chartHistory.map((sample) => sample.elapsedSeconds);
+	const historyPositions = useMemo(
+		() => chartHistory.map((sample) => sample.elapsedSeconds),
+		[chartHistory]
+	);
+	const samplesByElapsedSecond = useMemo(
+		() => new Map(chartHistory.map((sample) => [sample.elapsedSeconds, sample])),
+		[chartHistory]
+	);
+	const inspectElapsedSecond = useCallback(
+		(elapsedSecond: number | undefined) =>
+			onInspectSample?.(
+				elapsedSecond === undefined ? undefined : samplesByElapsedSecond.get(elapsedSecond)
+			),
+		[onInspectSample, samplesByElapsedSecond]
+	);
+	const focusElapsedSecond = useCallback(
+		(elapsedSecond: number | undefined) => {
+			setFocusedElapsedSecond((current) =>
+				current === elapsedSecond ? current : elapsedSecond
+			);
+			inspectElapsedSecond(elapsedSecond);
+		},
+		[inspectElapsedSecond]
+	);
 	const historyStart = chartHistory.at(0)?.elapsedSeconds ?? 0;
 	const historySeconds =
 		chartHistory.length > 1 ? (chartHistory.at(-1)?.elapsedSeconds ?? 0) - historyStart : 0;
@@ -336,6 +375,15 @@ export function SessionChart({
 		(mode: ChartMode) => (onSelectChartMode ?? preferencesStore.actions.selectChartMode)(mode),
 		[onSelectChartMode]
 	);
+
+	useEffect(() => {
+		if (focusedMode.current === effectiveMode) {
+			return;
+		}
+		focusedMode.current = effectiveMode;
+		setFocusedElapsedSecond(undefined);
+		onInspectSample?.(undefined);
+	}, [effectiveMode, onInspectSample]);
 
 	useEffect(() => {
 		if (!keyboardEnabled) {
@@ -474,14 +522,24 @@ export function SessionChart({
 							color={item.color}
 							decimals={item.decimals}
 							heightClass={
-								effectiveMode === CHART_MODE.ALL ? 'h-24 sm:h-28' : 'h-40 sm:h-52'
+								effectiveMode === CHART_MODE.ALL
+									? 'h-[88px] sm:h-[104px]'
+									: 'h-40 sm:h-52'
 							}
 							key={item.key}
 							label={item.label}
 							maximum={item.chartMaximum}
 							minimum={item.minimum}
+							onFocusXChange={
+								effectiveMode === CHART_MODE.ALL || onInspectSample
+									? focusElapsedSecond
+									: undefined
+							}
 							positions={historyPositions}
 							showLabel
+							synchronizedFocusX={
+								effectiveMode === CHART_MODE.ALL ? focusedElapsedSecond : undefined
+							}
 							title={`${item.label} over time`}
 							unit={item.unit}
 							values={item.values}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { EMPTY_ROUTE } from '../constants';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { CONTROL_MODE } from '../lib/control-mode';
@@ -17,7 +17,7 @@ import { sessionDetailScrollPositionStorageKey } from '../lib/session-history-pr
 import { shareSessionOnX } from '../lib/session-sharing';
 import { downloadSessionTcx } from '../lib/tcx';
 import { workoutTerrainAtDistance } from '../lib/workouts';
-import type { ChartMode, SavedSession, SpeedUnit } from '../types';
+import type { ChartMode, MetricSample, SavedSession, SpeedUnit } from '../types';
 import { SessionMetric } from './metrics';
 import { SessionChart } from './session-chart';
 import { SessionSummary } from './session-summary';
@@ -162,6 +162,7 @@ export function SessionDetail({
 }) {
 	const [shareError, setShareError] = useState('');
 	const [sharing, setSharing] = useState(false);
+	const [previewWorkoutDistance, setPreviewWorkoutDistance] = useState<number>();
 	const detailScroll = usePersistentScrollPosition(
 		sessionDetailScrollPositionStorageKey(session.id),
 		true
@@ -171,6 +172,14 @@ export function SessionDetail({
 	const workoutTerrain = session.workout
 		? workoutTerrainAtDistance(session.workout.course, session.distance)
 		: undefined;
+	const previewWorkoutTerrain =
+		session.workout && previewWorkoutDistance !== undefined
+			? workoutTerrainAtDistance(session.workout.course, previewWorkoutDistance)
+			: undefined;
+	const inspectSample = useCallback(
+		(sample: MetricSample | undefined) => setPreviewWorkoutDistance(sample?.workoutDistance),
+		[]
+	);
 	const controlMetrics = [
 		...(usesGear
 			? [
@@ -347,6 +356,7 @@ export function SessionDetail({
 				<WorkoutProgress
 					elevationTotals={session.elevationTotals}
 					isRiding={false}
+					previewTerrain={previewWorkoutTerrain}
 					speedUnit={speedUnit}
 					terrain={workoutTerrain}
 					variant="session"
@@ -358,6 +368,7 @@ export function SessionDetail({
 				controlMode={session.controlMode}
 				history={session.history}
 				keyboardEnabled={chartKeyboardEnabled}
+				onInspectSample={inspectSample}
 				onSelectChartMode={onSelectChartMode}
 				route={session.workout ? session.workout.course.points : EMPTY_ROUTE}
 				selectedChartMode={selectedChartMode}

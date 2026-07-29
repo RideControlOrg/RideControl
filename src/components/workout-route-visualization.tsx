@@ -15,6 +15,17 @@ interface RouteMarker {
 	y: number;
 }
 
+function routeMarker(
+	course: WorkoutCourse,
+	isMap: boolean,
+	terrain?: WorkoutTerrain
+): RouteMarker | undefined {
+	if (!terrain) {
+		return;
+	}
+	return isMap ? { x: terrain.x, y: terrain.y } : workoutProfilePosition(course, terrain);
+}
+
 function WorkoutRouteMarker({
 	isMap,
 	isRiding,
@@ -59,12 +70,14 @@ export function WorkoutRouteVisualization({
 	className = 'h-40',
 	course,
 	isRiding = false,
+	markerTerrain,
 	terrain,
 	view,
 }: {
 	className?: string;
 	course: WorkoutCourse;
 	isRiding?: boolean;
+	markerTerrain?: WorkoutTerrain;
 	terrain?: WorkoutTerrain;
 	view: WorkoutView;
 }) {
@@ -73,10 +86,7 @@ export function WorkoutRouteVisualization({
 	const path = isMap ? workoutMapPath(course) : workoutProfilePath(course);
 	const progressPath = isMap && terrain ? workoutMapProgressPath(course, terrain) : path;
 	const progressClipId = `workout-progress-${useId().replaceAll(':', '')}`;
-	let marker: RouteMarker | undefined;
-	if (terrain) {
-		marker = isMap ? { x: terrain.x, y: terrain.y } : workoutProfilePosition(course, terrain);
-	}
+	const marker = routeMarker(course, isMap, markerTerrain ?? terrain);
 	const profileArea = `${path} L 100 92 L 0 92 Z`;
 
 	return (

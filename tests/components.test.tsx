@@ -6,6 +6,7 @@ import { ConnectionControl } from '../src/components/connection-control';
 import { DevicePairingButton, DevicePairingPanel } from '../src/components/device-pairing';
 import { GearControl } from '../src/components/gear-control';
 import { Icon } from '../src/components/icon';
+import { InteractiveLineChart } from '../src/components/interactive-chart';
 import { KeyboardShortcutsDialog } from '../src/components/keyboard-shortcuts-dialog';
 import { PrivacyPolicyDialog, TermsOfServiceDialog } from '../src/components/legal-dialog';
 import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
@@ -51,7 +52,11 @@ import {
 import { SESSION_WORKFLOW_INTENT } from '../src/lib/session-workflow';
 import { WORKOUT_DESCRIPTION_ATTRIBUTION } from '../src/lib/workout-description';
 import { WORKOUT_ROUTE_TYPE } from '../src/lib/workout-schema';
-import { WORKOUT_COURSES, workoutTerrainAtDistance } from '../src/lib/workouts';
+import {
+	WORKOUT_COURSES,
+	workoutProfilePosition,
+	workoutTerrainAtDistance,
+} from '../src/lib/workouts';
 import { createAppRouter } from '../src/router';
 import type { StoredSession } from '../src/types';
 import { savedSessionFixture } from './fixtures/saved-session';
@@ -66,9 +71,6 @@ const renderApp = async (initialSession?: StoredSession) => {
 	return render(<RouterProvider router={router} />);
 };
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
-const solidChartBoundaries =
-	/d="M0 5H100 M0 95H100"[^>]*stroke="var\(--chart-grid\)"(?![^>]*stroke-dasharray)/;
-const dashedChartGuides = /d="M0 50H100 M25 5V95 M50 5V95 M75 5V95"[^>]*stroke-dasharray="2.5 2.5"/;
 const gearProgressStyle = /style="width:([^"]+)"/;
 const noCustomWorkoutIds = new Set<string>();
 
@@ -158,6 +160,27 @@ describe('view components', () => {
 		expect(metricAccentClass('other')).toBe('bg-mint');
 		expect(metricIconClass('violet')).toBe('text-violet-400');
 		expect(metricIconClass('other')).toBe('text-sky-400');
+	});
+
+	test('renders a synchronized focus point for linked line charts', () => {
+		const html = render(
+			<div className="h-28">
+				<InteractiveLineChart
+					ariaLabel="Linked metric"
+					color="var(--metric-speed)"
+					focusedX={10}
+					height={112}
+					maximum={20}
+					minimum={0}
+					rows={[
+						{ key: '0', label: '0:00 · Speed: 10 mph', value: 10, x: 0 },
+						{ key: '10', label: '0:10 · Speed: 15 mph', value: 15, x: 10 },
+					]}
+				/>
+			</div>
+		);
+		expect(html).toContain('class="ts-chart__dot"');
+		expect(html).toContain('data-ts-key="synchronized-focus');
 	});
 
 	test('renders a compact session metric', () => {
@@ -891,6 +914,27 @@ describe('view components', () => {
 		expect(progress.match(/data-route-progress="true"/g)).toHaveLength(2);
 		expect(progress).not.toContain('stroke-dasharray');
 		expect(progress).not.toContain('Terrain resistance');
+		const previewTerrain = workoutTerrainAtDistance(course, course.distance * 0.4);
+		const previewProfilePosition = workoutProfilePosition(course, previewTerrain);
+		const previewProgress = render(
+			<WorkoutProgress
+				elevationTotals={{ ascent: 30, descent: 12 }}
+				isRiding={false}
+				previewTerrain={previewTerrain}
+				speedUnit="mph"
+				terrain={terrain}
+				variant="session"
+				workout={{ course }}
+			/>
+		);
+		expect(previewProgress).toContain(`cx="${previewTerrain.x}"`);
+		expect(previewProgress).toContain(
+			`left:clamp(0.5rem, ${previewProfilePosition.x}%, calc(100% - 0.5rem))`
+		);
+		expect(previewProgress).toContain(
+			`top:clamp(0.5rem, ${previewProfilePosition.y}%, calc(100% - 0.5rem))`
+		);
+		expect(previewProgress).toContain(`>${Math.round(terrain.progress * 100)}<`);
 		const dashboardProgress = render(
 			<WorkoutProgress
 				elevationTotals={{ ascent: 30, descent: 12 }}
@@ -1045,7 +1089,7 @@ describe('view components', () => {
 			plannedWorkout: { course: plannedCourse },
 			workout: { course: completedCourse },
 		});
-		const elevationChartIndex = html.indexOf('<title>Elevation over time</title>');
+		const elevationChartIndex = html.indexOf('aria-label="Elevation over time"');
 		expect(elevationChartIndex).toBeGreaterThan(0);
 		expect(html.slice(Math.max(0, elevationChartIndex - 1200), elevationChartIndex)).toContain(
 			'>1312 ft</span>'
@@ -1265,9 +1309,10 @@ describe('view components', () => {
 		expect(html).toContain('data-weight-chart-size="compact"');
 		expect(html).toContain('data-weight-plot="true"');
 		expect(html).not.toContain('bg-slate-950/25');
-		expect(html.match(/data-weight-point="true"/g)).toHaveLength(2);
-		expect(html).toContain('data-weight-line="true"');
-		expect(html).toContain('data-weight-area="true"');
+		expect(html).toContain('class="ts-chart__line"');
+		expect(html).toContain('class="ts-chart__area"');
+		expect(html).toContain('viewBox="0 0 640 112"');
+		expect(html).toContain('Hover over the plot or use the arrow keys');
 		expect(html).toContain('Change');
 		expect(html).toContain('−2.2');
 		expect(html).not.toContain('Each saved weight change is recorded locally.');
@@ -1534,16 +1579,20 @@ describe('view components', () => {
 		expect(html).toContain('absolute right-2 -translate-y-1/2 whitespace-nowrap leading-none');
 		expect(html).toContain('pointer-events-none relative h-full w-16 shrink-0');
 		expect(html).toContain('h-full min-w-0 flex-1 overflow-hidden');
-		expect(html).toContain('class="block h-full w-full"');
+		expect(html).toContain('class="ts-chart-surface"');
 		expect(html).toContain('data-chart-surface="true"');
-		expect(html).toContain('absolute top-[17%] right-2');
+		expect(html).toContain('absolute top-[12%] right-2 z-10 -translate-y-1/2');
 		expect(html).not.toContain('bg-[#12171d]/90');
 		expect(html).toContain('min-w-max flex-1');
 		expect(html).toContain('h-1.5 w-1.5 shrink-0 rounded-full');
 		expect(html).toContain('text-[11px] transition sm:text-[13px]');
 		expect(html).toContain('session-chart min-w-0 overflow-hidden rounded-xl p-2 sm:p-3');
-		expect(html).toMatch(solidChartBoundaries);
-		expect(html).toMatch(dashedChartGuides);
+		expect(html).toContain('class="ts-chart__rule ts-chart__rule-y"');
+		expect(html).toContain('class="ts-chart__rule ts-chart__rule-x"');
+		expect(html).toContain('stroke-dasharray="2.5 2.5"');
+		expect(html).toContain('aria-roledescription="chart"');
+		expect(html).toContain('data-ts-chart-focus=""');
+		expect(html).toContain('Hover over the plot or use the arrow keys');
 		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
 		const gearModeWithoutSamples = render(
 			<SessionChart controlMode="gear" history={[]} route={[]} speedUnit="kmh" />
@@ -1971,15 +2020,18 @@ describe('view components', () => {
 		expect(html).toContain('isolate inline-flex h-10');
 		expect(html).not.toContain('<select');
 		expect(html.match(/>All</g)).toHaveLength(2);
-		expect(html.match(/data-analytics-bar="value"/g)).toHaveLength(1);
-		expect(html.match(/data-analytics-bar="empty"/g)).toHaveLength(11);
+		expect(html).toContain('data-analytics-chart="detail"');
+		expect(html).toContain('class="ts-chart__bar ts-chart__bar-y"');
+		expect(html).toContain('viewBox="0 0 640 144"');
+		expect(html).toContain('Hover over a bar or use the arrow keys');
 		expect(html).toContain('Active years');
 		expect(html).not.toContain('Exact ride time');
 		expect(html).toContain('Weight over time');
 		expect(html).toContain('data-weight-chart-size="full"');
+		expect(html).toContain('viewBox="0 0 640 176"');
 		expect(html.match(/data-testid="rider-weight-chart"/g)).toHaveLength(1);
 		expect(html).not.toContain('bg-slate-950/25');
-		expect(html.match(/data-weight-point="true"/g)).toHaveLength(2);
+		expect(html).toContain('class="ts-chart__area"');
 		expect(html.match(/sm:text-5xl/g)).toHaveLength(18);
 		expect(html.match(/sm:text-2xl/g)).toHaveLength(9);
 		expect(html).toContain('minimal-stat-grid');
@@ -1990,8 +2042,6 @@ describe('view components', () => {
 		expect(html).toContain('minimal-chart-panel');
 		expect(html).not.toContain('mt-2 truncate font-bold text-4xl');
 		expect(html).toContain('<span class="whitespace-nowrap">');
-		expect(html).toContain('max-w-12');
-		expect(html).toContain('height:85%');
 
 		const largeTotals = render(
 			<SessionStatistics
@@ -2032,7 +2082,9 @@ describe('view components', () => {
 		expect(overview).toContain('12 metrics');
 		expect(overview).toContain('Complete ride history');
 		expect(overview).toContain('aria-label="Distance trend"');
-		expect(overview.match(/data-analytics-overview-bar=/g)).toHaveLength(12);
+		expect(overview.match(/data-analytics-chart="overview"/g)).toHaveLength(12);
+		expect(overview.match(/class="ts-chart__bar ts-chart__bar-y"/g)).toHaveLength(12);
+		expect(overview.match(/viewBox="0 0 640 40"/g)).toHaveLength(12);
 	});
 
 	test('virtualizes a large session history list', () => {

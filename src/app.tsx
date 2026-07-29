@@ -80,7 +80,14 @@ import {
 } from './lib/workouts';
 import { clickConnectionActiveForSession } from './lib/zwift-click';
 import { preferencesStore } from './stores/preferences-store';
-import type { Metrics, SavedSession, StoredSession, WorkoutCourse } from './types';
+import type {
+	MetricSample,
+	Metrics,
+	SavedSession,
+	StoredSession,
+	WorkoutCourse,
+	WorkoutTerrain,
+} from './types';
 
 function shouldIgnoreShortcut(event: KeyboardEvent) {
 	return (
@@ -125,6 +132,31 @@ function personalizedWorkoutResistance({
 				profile.riderWeightKg + profile.bikeWeightKg
 			)
 		: terrainResistance;
+}
+
+function inspectedWorkoutTerrain({
+	course,
+	isRiding,
+	preview,
+	recordedCourse,
+	startedAt,
+}: {
+	course?: WorkoutCourse;
+	isRiding: boolean;
+	preview?: { distance: number; startedAt: number };
+	recordedCourse?: WorkoutCourse;
+	startedAt: number;
+}): WorkoutTerrain | undefined {
+	if (
+		isRiding ||
+		!course ||
+		!preview ||
+		preview.startedAt !== startedAt ||
+		course.id !== recordedCourse?.id
+	) {
+		return;
+	}
+	return workoutTerrainAtDistance(course, preview.distance);
 }
 
 interface InitialNavigation {
@@ -427,6 +459,9 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		initialSession,
 		riderProfile.ready ? riderPhysicsProfile : undefined
 	);
+	const [workoutPreview, setWorkoutPreview] = useState<
+		{ distance: number; startedAt: number } | undefined
+	>();
 	const dashboardWorkout = workoutDashboardPreview({
 		distance: session.rideDistance,
 		elevationTotals: session.elevationTotals,
@@ -437,6 +472,26 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const workoutTerrain = dashboardWorkout.workout
 		? workoutTerrainAtDistance(dashboardWorkout.workout.course, dashboardWorkout.distance)
 		: undefined;
+	const previewWorkoutTerrain = inspectedWorkoutTerrain({
+		course: dashboardWorkout.workout?.course,
+		isRiding: session.isRiding,
+		preview: workoutPreview,
+		recordedCourse: session.snapshot.workout?.course,
+		startedAt: session.startedAt,
+	});
+	const inspectWorkoutSample = useCallback(
+		(sample: MetricSample | undefined) => {
+			setWorkoutPreview(
+				sample?.workoutDistance === undefined
+					? undefined
+					: {
+							distance: sample.workoutDistance,
+							startedAt: session.startedAt,
+						}
+			);
+		},
+		[session.startedAt]
+	);
 	const workoutSelected = Boolean(dashboardWorkout.workout);
 	const virtualShiftingActive = click.paired || workoutSelected;
 	const activeControlMode = trainingControlMode(click.paired, workoutSelected);
@@ -796,6 +851,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					<WorkoutProgress
 						elevationTotals={dashboardWorkout.elevationTotals}
 						isRiding={session.isRiding}
+						previewTerrain={previewWorkoutTerrain}
 						speedUnit={speedUnit}
 						targetResistance={workoutResistance}
 						terrain={workoutTerrain}
@@ -807,6 +863,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						controlMode={activeControlMode}
 						history={session.history}
 						keyboardEnabled={dashboardKeyboardEnabled}
+						onInspectSample={session.isRiding ? undefined : inspectWorkoutSample}
 						speedUnit={speedUnit}
 						workout={dashboardWorkout.workout}
 					/>

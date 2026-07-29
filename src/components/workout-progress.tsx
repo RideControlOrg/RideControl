@@ -101,6 +101,7 @@ function WorkoutStats({
 export function WorkoutProgress({
 	elevationTotals,
 	isRiding,
+	previewTerrain,
 	speedUnit,
 	targetResistance,
 	terrain,
@@ -109,6 +110,7 @@ export function WorkoutProgress({
 }: {
 	elevationTotals: ElevationTotals;
 	isRiding: boolean;
+	previewTerrain?: WorkoutTerrain;
 	speedUnit: SpeedUnit;
 	targetResistance?: number;
 	terrain: WorkoutTerrain;
@@ -212,6 +214,7 @@ export function WorkoutProgress({
 						className={WORKOUT_MAP_VISUALIZATION_CLASS}
 						course={course}
 						isRiding={isRiding}
+						markerTerrain={previewTerrain}
 						terrain={terrain}
 						view={WORKOUT_VIEW.MAP}
 					/>
@@ -232,6 +235,7 @@ export function WorkoutProgress({
 						className={WORKOUT_PROFILE_VISUALIZATION_CLASS}
 						course={course}
 						isRiding={isRiding}
+						markerTerrain={previewTerrain}
 						terrain={terrain}
 						view={WORKOUT_VIEW.PROFILE}
 					/>

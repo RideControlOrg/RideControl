@@ -33,6 +33,7 @@ import {
 	speedUnitLabel,
 } from '../lib/units';
 import type { SpeedUnit } from '../types';
+import { InteractiveBarChart, type InteractiveBarDatum } from './interactive-chart';
 import { RiderWeightChart } from './rider-weight-chart';
 import { SelectMenu } from './select-menu';
 
@@ -51,6 +52,16 @@ const TREND_RANGE_OPTIONS: { label: string; value: SessionTrendRange }[] = [
 	...PERIOD_OPTIONS,
 	{ label: 'All', value: SESSION_TREND_RANGE.ALL },
 ];
+const ANALYTICS_CHART_VARIANTS = {
+	detail: {
+		className: 'h-36 border-slate-700/70 border-b',
+		height: 144,
+	},
+	overview: {
+		className: 'h-10 min-w-0 border-slate-800 border-b',
+		height: 40,
+	},
+} as const;
 
 interface ChartDatum {
 	key: string;
@@ -58,23 +69,29 @@ interface ChartDatum {
 	rollup: SessionAnalyticsRollup;
 }
 
-interface AnalyticsChartProps {
+interface AnalyticsSeriesDefinition {
 	color: string;
-	data: ChartDatum[];
 	formatValue: (value: number) => string;
-	period: SessionAnalyticsPeriod;
-	title: string;
 	unit: string;
 	value: (rollup: SessionAnalyticsRollup) => number;
 }
 
-interface TrendMetricDefinition {
-	color: string;
-	formatValue: (value: number) => string;
+interface AnalyticsChartProps extends AnalyticsSeriesDefinition {
+	data: ChartDatum[];
+	period: SessionAnalyticsPeriod;
+	title: string;
+}
+
+interface TrendMetricDefinition extends AnalyticsSeriesDefinition {
 	key: SessionTrendMetric;
 	label: string;
-	unit: string;
-	value: (rollup: SessionAnalyticsRollup) => number;
+}
+
+interface AnalyticsChartSeries {
+	activePeriods: number;
+	latestValue: number;
+	maximum: number;
+	rows: InteractiveBarDatum[];
 }
 
 function analyticsDuration(seconds: number): string {
@@ -113,6 +130,77 @@ function activePeriodLabel(count: number, period: SessionAnalyticsPeriod): strin
 	return `${INTEGER_FORMATTER.format(count)} active ${noun}`;
 }
 
+function analyticsChartSeries(
+	data: readonly ChartDatum[],
+	definition: AnalyticsSeriesDefinition
+): AnalyticsChartSeries {
+	const values = data.map((item) => definition.value(item.rollup));
+	return {
+		activePeriods: values.filter((value) => value > 0).length,
+		latestValue: values.at(-1) ?? 0,
+		maximum: Math.max(...values, 0),
+		rows: data.map((item, index) => {
+			const value = values[index] ?? 0;
+			return {
+				key: item.key,
+				label: `${item.label}: ${definition.formatValue(value)}${
+					definition.unit ? ` ${definition.unit}` : ''
+				}`,
+				value,
+			};
+		}),
+	};
+}
+
+function AnalyticsBarPlot({
+	ariaLabel,
+	color,
+	maximum,
+	rows,
+	variant,
+}: {
+	ariaLabel: string;
+	color: string;
+	maximum: number;
+	rows: readonly InteractiveBarDatum[];
+	variant: 'detail' | 'overview';
+}) {
+	const configuration = ANALYTICS_CHART_VARIANTS[variant];
+	return (
+		<div className={configuration.className} data-analytics-chart={variant}>
+			<InteractiveBarChart
+				ariaLabel={ariaLabel}
+				background="transparent"
+				color={color}
+				height={configuration.height}
+				maximum={maximum}
+				rows={rows}
+			/>
+		</div>
+	);
+}
+
+function AnalyticsPeriodLabels({ data }: { data: readonly ChartDatum[] }) {
+	const labelEvery = Math.max(1, Math.ceil(data.length / 6));
+	return (
+		<div aria-hidden="true" className="mt-1 flex min-w-0 gap-1">
+			{data.map((item, index) => {
+				const visible = index % labelEvery === 0 || index === data.length - 1;
+				return (
+					<span
+						className={`block min-w-0 flex-1 truncate text-center text-[8px] ${
+							visible ? 'text-slate-500' : 'text-transparent'
+						}`}
+						key={item.key}
+					>
+						{item.label}
+					</span>
+				);
+			})}
+		</div>
+	);
+}
+
 function AnalyticsTrendChart({
 	color,
 	data,
@@ -122,19 +210,15 @@ function AnalyticsTrendChart({
 	unit,
 	value,
 }: AnalyticsChartProps) {
-	const values = data.map((item) => value(item.rollup));
-	const maximum = Math.max(...values, 0);
-	const labelEvery = Math.max(1, Math.ceil(data.length / 6));
-	const activePeriods = values.filter((itemValue) => itemValue > 0).length;
+	const series = analyticsChartSeries(data, { color, formatValue, unit, value });
 	const latest = data.at(-1);
-	const latestValue = values.at(-1) ?? 0;
 	return (
 		<section className="minimal-chart-panel min-w-0 py-3">
 			<div className="flex items-start justify-between gap-6">
 				<div className="min-w-0">
 					<h4 className="font-bold text-base">{title}</h4>
 					<p className="wrap-anywhere mt-2 font-bold text-3xl text-white tabular-nums">
-						{formatValue(latestValue)}
+						{formatValue(series.latestValue)}
 						{unit ? (
 							<span className="ml-1.5 font-semibold text-slate-400 text-sm">
 								{unit}
@@ -146,57 +230,20 @@ function AnalyticsTrendChart({
 				<div className="shrink-0 text-right">
 					<p className="text-slate-500 text-xs">Best period</p>
 					<p className="mt-1 font-bold text-slate-200 tabular-nums">
-						{formatValue(maximum)}
+						{formatValue(series.maximum)}
 						{unit ? ` ${unit}` : ''}
 					</p>
 				</div>
 			</div>
-			<div aria-label={`${title} by selected period`} className="mt-5 min-w-0" role="img">
-				<div className="relative flex h-36 items-end gap-1 border-slate-700/70 border-b">
-					<div
-						aria-hidden="true"
-						className="pointer-events-none absolute inset-x-0 top-[15%] border-slate-800 border-t"
-					/>
-					<div
-						aria-hidden="true"
-						className="pointer-events-none absolute inset-x-0 top-[57.5%] border-slate-800/70 border-t border-dashed"
-					/>
-					{data.map((item, index) => {
-						const itemValue = values[index] ?? 0;
-						const height =
-							maximum > 0 && itemValue > 0
-								? Math.max(2, (itemValue / maximum) * 85)
-								: 0;
-						return (
-							<div
-								className="relative flex h-full min-w-0 flex-1 items-end justify-center"
-								key={item.key}
-							>
-								<div
-									className="w-full min-w-0 max-w-12 rounded-t-md opacity-80 transition hover:opacity-100"
-									data-analytics-bar={itemValue > 0 ? 'value' : 'empty'}
-									style={{ backgroundColor: color, height: `${height}%` }}
-									title={`${item.label}: ${formatValue(itemValue)}${unit ? ` ${unit}` : ''}`}
-								/>
-							</div>
-						);
-					})}
-				</div>
-				<div aria-hidden="true" className="mt-1 flex min-w-0 gap-1">
-					{data.map((item, index) => {
-						const showLabel = index % labelEvery === 0 || index === data.length - 1;
-						return (
-							<span
-								className={`block min-w-0 flex-1 truncate text-center text-[8px] ${
-									showLabel ? 'text-slate-500' : 'text-transparent'
-								}`}
-								key={item.key}
-							>
-								{item.label}
-							</span>
-						);
-					})}
-				</div>
+			<div className="mt-5 min-w-0">
+				<AnalyticsBarPlot
+					ariaLabel={`${title} by selected period`}
+					color={color}
+					maximum={series.maximum}
+					rows={series.rows}
+					variant="detail"
+				/>
+				<AnalyticsPeriodLabels data={data} />
 			</div>
 			{data.length > 0 ? (
 				<div className="mt-2 flex items-center justify-between gap-3 border-line border-t pt-2 text-[10px]">
@@ -204,11 +251,50 @@ function AnalyticsTrendChart({
 						{data[0]?.label} – {data.at(-1)?.label}
 					</span>
 					<span className="shrink-0 text-slate-400">
-						{activePeriodLabel(activePeriods, period)}
+						{activePeriodLabel(series.activePeriods, period)}
 					</span>
 				</div>
 			) : null}
 		</section>
+	);
+}
+
+function AnalyticsTrendOverviewRow({
+	data,
+	metric,
+}: {
+	data: readonly ChartDatum[];
+	metric: TrendMetricDefinition;
+}) {
+	const series = analyticsChartSeries(data, metric);
+	return (
+		<div className="grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] items-center gap-4 border-line border-b py-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+			<div className="min-w-0">
+				<p className="flex items-center gap-2 font-semibold text-slate-400 text-xs">
+					<span
+						aria-hidden="true"
+						className="size-2 shrink-0 rounded-full"
+						style={{ backgroundColor: metric.color }}
+					/>
+					{metric.label}
+				</p>
+				<p className="wrap-anywhere mt-1 font-bold text-2xl text-white tabular-nums leading-none">
+					{metric.formatValue(series.latestValue)}
+					{metric.unit ? (
+						<span className="ml-1 font-semibold text-slate-500 text-xs">
+							{metric.unit}
+						</span>
+					) : null}
+				</p>
+			</div>
+			<AnalyticsBarPlot
+				ariaLabel={`${metric.label} trend`}
+				color={metric.color}
+				maximum={series.maximum}
+				rows={series.rows}
+				variant="overview"
+			/>
+		</div>
 	);
 }
 
@@ -226,65 +312,9 @@ function AnalyticsTrendOverview({
 				<span className="text-slate-500 text-xs">{metrics.length} metrics</span>
 			</div>
 			<div className="statistics-trend-overview-grid mt-3 grid min-w-0 gap-x-8">
-				{metrics.map((metric) => {
-					const values = data.map((item) => metric.value(item.rollup));
-					const maximum = Math.max(...values, 0);
-					const latestValue = values.at(-1) ?? 0;
-					return (
-						<div
-							className="grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] items-center gap-4 border-line border-b py-3 sm:grid-cols-[minmax(0,1fr)_11rem]"
-							key={metric.key}
-						>
-							<div className="min-w-0">
-								<p className="flex items-center gap-2 font-semibold text-slate-400 text-xs">
-									<span
-										aria-hidden="true"
-										className="size-2 shrink-0 rounded-full"
-										style={{ backgroundColor: metric.color }}
-									/>
-									{metric.label}
-								</p>
-								<p className="wrap-anywhere mt-1 font-bold text-2xl text-white tabular-nums leading-none">
-									{metric.formatValue(latestValue)}
-									{metric.unit ? (
-										<span className="ml-1 font-semibold text-slate-500 text-xs">
-											{metric.unit}
-										</span>
-									) : null}
-								</p>
-							</div>
-							<div
-								aria-label={`${metric.label} trend`}
-								className="flex h-10 min-w-0 items-end gap-1 border-slate-800 border-b"
-								role="img"
-							>
-								{data.map((item, index) => {
-									const itemValue = values[index] ?? 0;
-									const height =
-										maximum > 0 && itemValue > 0
-											? Math.max(8, (itemValue / maximum) * 100)
-											: 0;
-									return (
-										<span
-											className="min-w-0 flex-1 rounded-t-sm opacity-80"
-											data-analytics-overview-bar={
-												itemValue > 0 ? 'value' : 'empty'
-											}
-											key={item.key}
-											style={{
-												backgroundColor: metric.color,
-												height: `${height}%`,
-											}}
-											title={`${item.label}: ${metric.formatValue(itemValue)}${
-												metric.unit ? ` ${metric.unit}` : ''
-											}`}
-										/>
-									);
-								})}
-							</div>
-						</div>
-					);
-				})}
+				{metrics.map((metric) => (
+					<AnalyticsTrendOverviewRow data={data} key={metric.key} metric={metric} />
+				))}
 			</div>
 		</section>
 	);

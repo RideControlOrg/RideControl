@@ -6,12 +6,14 @@ export function SessionOverview({
 	controlMode,
 	history,
 	keyboardEnabled,
+	onInspectSample,
 	speedUnit,
 	workout,
 }: {
 	controlMode: ControlMode;
 	history: MetricSample[];
 	keyboardEnabled: boolean;
+	onInspectSample?: (sample: MetricSample | undefined) => void;
 	speedUnit: SpeedUnit;
 	workout?: SessionWorkout;
 }) {
@@ -20,6 +22,7 @@ export function SessionOverview({
 			controlMode={controlMode}
 			history={history}
 			keyboardEnabled={keyboardEnabled}
+			onInspectSample={onInspectSample}
 			route={workout ? workout.course.points : EMPTY_ROUTE}
 			speedUnit={speedUnit}
 		/>
