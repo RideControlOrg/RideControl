@@ -1,3 +1,5 @@
+import { isStringIn } from './type-guards';
+
 export const CONTROL_MODE = {
 	GEAR: 'gear',
 	RESISTANCE: 'resistance',
@@ -5,10 +7,10 @@ export const CONTROL_MODE = {
 
 export type ControlMode = (typeof CONTROL_MODE)[keyof typeof CONTROL_MODE];
 
-const CONTROL_MODES = new Set<unknown>(Object.values(CONTROL_MODE));
+const CONTROL_MODES: readonly ControlMode[] = Object.values(CONTROL_MODE);
 
 export function isControlMode(value: unknown): value is ControlMode {
-	return CONTROL_MODES.has(value);
+	return isStringIn(value, CONTROL_MODES);
 }
 
 export function trainingControlMode(clickPaired: boolean, workoutSelected: boolean): ControlMode {

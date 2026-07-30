@@ -115,7 +115,7 @@ export function SessionCalendar({
 	speedUnit: SpeedUnit;
 	summaries: SavedSessionSummary[];
 }) {
-	const normalizedMonth = sessionCalendarMonth(month);
+	const normalizedMonth = useMemo(() => sessionCalendarMonth(month), [month]);
 	const days = useMemo(
 		() => sessionCalendarDays(normalizedMonth, summaries),
 		[normalizedMonth, summaries]
@@ -148,12 +148,16 @@ export function SessionCalendar({
 	}, [days, normalizedMonth, selectedDayKey, selectedSessionDayKey, selectedSessionIsVisible]);
 
 	const selectedDay = days.find((day) => day.key === selectedDayKey);
-	const monthTotals = summaries.reduce(
-		(totals, session) => ({
-			distance: totals.distance + session.distance,
-			elapsedSeconds: totals.elapsedSeconds + session.elapsedSeconds,
-		}),
-		{ distance: 0, elapsedSeconds: 0 }
+	const monthTotals = useMemo(
+		() =>
+			summaries.reduce(
+				(totals, session) => ({
+					distance: totals.distance + session.distance,
+					elapsedSeconds: totals.elapsedSeconds + session.elapsedSeconds,
+				}),
+				{ distance: 0, elapsedSeconds: 0 }
+			),
+		[summaries]
 	);
 
 	return (

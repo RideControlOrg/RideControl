@@ -25,6 +25,7 @@ import {
 import { WORKOUT_ROUTE_TYPE } from '../src/lib/workout-schema';
 import { outAndBackRoutePoints, restoreWorkoutCourse, WORKOUT_COURSES } from '../src/lib/workouts';
 import type { WorkoutCourse } from '../src/types';
+import { requiredValue } from './test-values';
 
 Object.defineProperty(globalThis, 'DOMParser', { configurable: true, value: DOMParser });
 
@@ -274,7 +275,7 @@ describe('workout GPX files', () => {
 			},
 		};
 		saveCustomWorkouts([legacy], storage);
-		const [migrated] = loadCustomWorkouts(storage);
+		const migrated = requiredValue(loadCustomWorkouts(storage)[0], 'migrated workout');
 		expect(migrated).toMatchObject({
 			distance: pointToPoint.distance,
 			id: pointToPoint.id,

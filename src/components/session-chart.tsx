@@ -45,6 +45,7 @@ interface PlotProps {
 	color: string;
 	decimals: number;
 	heightClass: string;
+	interactive: boolean;
 	label: string;
 	maximum: number;
 	minimum?: number;
@@ -106,6 +107,7 @@ export function ChartPlot({
 	color,
 	decimals,
 	heightClass,
+	interactive,
 	label,
 	maximum,
 	minimum = 0,
@@ -138,6 +140,7 @@ export function ChartPlot({
 						ariaLabel={title}
 						color={color}
 						focusedX={synchronizedFocusX}
+						interactive={interactive}
 						maximum={maximum}
 						minimum={minimum}
 						onFocusXChange={onFocusXChange}
@@ -152,6 +155,7 @@ export function ChartPlot({
 export function SessionChart({
 	controlMode,
 	history,
+	inspectionEnabled = true,
 	keyboardEnabled = true,
 	onSelectChartMode,
 	onInspectSample,
@@ -162,6 +166,7 @@ export function SessionChart({
 }: {
 	controlMode?: ControlMode;
 	history: MetricSample[];
+	inspectionEnabled?: boolean;
 	keyboardEnabled?: boolean;
 	onSelectChartMode?: (mode: ChartMode) => void;
 	onInspectSample?: (sample: MetricSample | undefined) => void;
@@ -377,6 +382,14 @@ export function SessionChart({
 	);
 
 	useEffect(() => {
+		if (inspectionEnabled) {
+			return;
+		}
+		setFocusedElapsedSecond(undefined);
+		onInspectSample?.(undefined);
+	}, [inspectionEnabled, onInspectSample]);
+
+	useEffect(() => {
 		if (focusedMode.current === effectiveMode) {
 			return;
 		}
@@ -404,11 +417,13 @@ export function SessionChart({
 				availableModes.findIndex((mode) => mode.value === effectiveMode)
 			);
 			const direction = event.key === 'ArrowRight' ? 1 : -1;
-			selectMode(
+			const nextMode =
 				availableModes[
 					(current + direction + availableModes.length) % availableModes.length
-				].value
-			);
+				];
+			if (nextMode) {
+				selectMode(nextMode.value);
+			}
 		};
 		window.addEventListener('keydown', handleKeys);
 		return () => window.removeEventListener('keydown', handleKeys);
@@ -526,19 +541,23 @@ export function SessionChart({
 									? 'h-[88px] sm:h-[104px]'
 									: 'h-40 sm:h-52'
 							}
+							interactive={inspectionEnabled}
 							key={item.key}
 							label={item.label}
 							maximum={item.chartMaximum}
 							minimum={item.minimum}
 							onFocusXChange={
-								effectiveMode === CHART_MODE.ALL || onInspectSample
+								inspectionEnabled &&
+								(effectiveMode === CHART_MODE.ALL || onInspectSample)
 									? focusElapsedSecond
 									: undefined
 							}
 							positions={historyPositions}
 							showLabel
 							synchronizedFocusX={
-								effectiveMode === CHART_MODE.ALL ? focusedElapsedSecond : undefined
+								inspectionEnabled && effectiveMode === CHART_MODE.ALL
+									? focusedElapsedSecond
+									: undefined
 							}
 							title={`${item.label} over time`}
 							unit={item.unit}

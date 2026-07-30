@@ -8,7 +8,7 @@ function containsFiles(dataTransfer: DataTransfer): boolean {
 
 export function useFileDrop(
 	enabled: boolean,
-	onDropFile: (file: File) => Promise<void>
+	onDropFile: (file: File) => Promise<void> | void
 ): { active: boolean; targetRef: RefObject<HTMLDivElement | null> } {
 	const targetRef = useRef<HTMLDivElement>(null);
 	const dragDepth = useRef(0);
@@ -53,7 +53,7 @@ export function useFileDrop(
 			const [file] = Array.from(event.dataTransfer.files);
 			finish();
 			if (file) {
-				onDropFile(file).catch(() => undefined);
+				Promise.resolve(onDropFile(file)).catch(() => undefined);
 			}
 		};
 

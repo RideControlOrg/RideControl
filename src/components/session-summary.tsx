@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { formatDuration, formatWholeNumber } from '../lib/format';
 import { distanceUnitLabel, formatDistanceValue } from '../lib/units';
 import type { SpeedUnit } from '../types';
 import { SmallMetric } from './metrics';
 
-export function SessionSummary({
+export const SessionSummary = memo(function SessionSummaryComponent({
 	calories,
 	distance,
 	elapsedSeconds,
@@ -35,4 +36,4 @@ export function SessionSummary({
 			/>
 		</>
 	);
-}
+});

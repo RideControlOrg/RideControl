@@ -8,7 +8,7 @@ import {
 	SESSION_TREND_METRIC,
 	type SessionTrendMetric,
 } from './session-analytics';
-import { isString } from './type-guards';
+import { isStringIn } from './type-guards';
 
 export const SESSION_HISTORY_SCROLL_POSITION_STORAGE_KEY =
 	'ride-control-session-history-scroll-position';
@@ -38,14 +38,11 @@ const SESSION_TREND_RANGES: readonly SessionTrendRange[] = Object.values(SESSION
 const SESSION_TREND_METRICS: readonly SessionTrendMetric[] = Object.values(SESSION_TREND_METRIC);
 
 function isSessionTrendRange(value: unknown): value is SessionTrendRange {
-	return isString(value) && SESSION_TREND_RANGES.some((range) => range === value);
+	return isStringIn(value, SESSION_TREND_RANGES);
 }
 
 function isSessionTrendMetricSelection(value: unknown): value is SessionTrendMetricSelection {
-	return (
-		value === SESSION_TREND_METRIC_SELECTION.ALL ||
-		(isString(value) && SESSION_TREND_METRICS.some((metric) => metric === value))
-	);
+	return value === SESSION_TREND_METRIC_SELECTION.ALL || isStringIn(value, SESSION_TREND_METRICS);
 }
 
 export function sessionDetailScrollPositionStorageKey(sessionId: string): string {

@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { memo, useId, useMemo } from 'react';
 import { WORKOUT_VIEW, type WorkoutView } from '../lib/workout-schema';
 import {
 	workoutMapPath,
@@ -66,7 +66,7 @@ function WorkoutRouteMarker({
 	);
 }
 
-export function WorkoutRouteVisualization({
+export const WorkoutRouteVisualization = memo(function WorkoutRouteVisualizationComponent({
 	className = 'h-40',
 	course,
 	isRiding = false,
@@ -83,10 +83,19 @@ export function WorkoutRouteVisualization({
 }) {
 	const progress = terrain ? terrain.progress * 100 : 0;
 	const isMap = view === WORKOUT_VIEW.MAP;
-	const path = isMap ? workoutMapPath(course) : workoutProfilePath(course);
-	const progressPath = isMap && terrain ? workoutMapProgressPath(course, terrain) : path;
+	const path = useMemo(
+		() => (isMap ? workoutMapPath(course) : workoutProfilePath(course)),
+		[course, isMap]
+	);
+	const progressPath = useMemo(
+		() => (isMap && terrain ? workoutMapProgressPath(course, terrain) : path),
+		[course, isMap, path, terrain]
+	);
 	const progressClipId = `workout-progress-${useId().replaceAll(':', '')}`;
-	const marker = routeMarker(course, isMap, markerTerrain ?? terrain);
+	const marker = useMemo(
+		() => routeMarker(course, isMap, markerTerrain ?? terrain),
+		[course, isMap, markerTerrain, terrain]
+	);
 	const profileArea = `${path} L 100 92 L 0 92 Z`;
 
 	return (
@@ -147,4 +156,4 @@ export function WorkoutRouteVisualization({
 			)}
 		</div>
 	);
-}
+});

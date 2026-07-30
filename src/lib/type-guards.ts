@@ -15,3 +15,10 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';
 }
+
+export function isStringIn<TValue extends string>(
+	value: unknown,
+	values: readonly TValue[]
+): value is TValue {
+	return isString(value) && values.some((candidate) => candidate === value);
+}

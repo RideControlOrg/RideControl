@@ -378,7 +378,7 @@ export function feelingLabel(feeling?: SessionFeeling): string {
 	if (!feeling) {
 		return 'Not recorded';
 	}
-	return feeling[0].toUpperCase() + feeling.slice(1);
+	return feeling.charAt(0).toUpperCase() + feeling.slice(1);
 }
 
 export function sessionSummary(session: SavedSession): SavedSessionSummary {

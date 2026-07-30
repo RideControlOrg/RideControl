@@ -9,6 +9,7 @@ const TRACK_GPX = `<?xml version="1.0"?>
 		<trkseg>
 			<trkpt lat="37" lon="-122"><ele>10</ele></trkpt>
 			<trkpt lat="37.001" lon="-122"><ele>20</ele></trkpt>
+			<trkpt lat="37.002" lon="-122"><ele>15</ele></trkpt>
 			<trkpt lat="37" lon="-122"><ele>10</ele></trkpt>
 		</trkseg>
 	</trk>
@@ -30,13 +31,16 @@ describe('GPX utilities', () => {
 		});
 		expect(route[1]?.distance).toBeCloseTo(0.111, 2);
 		expect(route[1]?.elevation).toBe(20);
-		expect(route[2]?.distance).toBeCloseTo(0.222, 2);
+		expect(route[3]?.distance).toBeCloseTo(0.445, 2);
 	});
 
-	test('requires elevation data on every GPX route point', () => {
+	test('skips an incomplete point when enough valid route data remains', () => {
 		const missingElevation = TRACK_GPX.replace('<ele>20</ele>', '');
-		expect(() =>
-			parseGpx(missingElevation, new DOMParser() as unknown as globalThis.DOMParser)
-		).toThrow('Every GPX route point must include valid coordinates and elevation data.');
+		const route = parseGpx(
+			missingElevation,
+			new DOMParser() as unknown as globalThis.DOMParser
+		);
+		expect(route).toHaveLength(3);
+		expect(route.every((point) => Number.isFinite(point.elevation))).toBe(true);
 	});
 });

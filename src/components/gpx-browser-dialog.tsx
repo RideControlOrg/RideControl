@@ -755,6 +755,9 @@ export function GpxBrowserDialog({
 			return;
 		}
 		const provider = providers.find((candidate) => candidate.id === providerId) ?? providers[0];
+		if (!provider) {
+			return;
+		}
 		const collection =
 			provider.collections.find((candidate) => candidate.id === collectionId) ??
 			provider.collections[0];

@@ -14,6 +14,7 @@ import {
 	normalizeSavedSession,
 	normalizeSavedSessionRecord,
 	requestPersistentSessionStorage,
+	type SavedSessionRecord,
 	saveSessionRecords,
 	sessionListAfterDelete,
 	sessionSummary,
@@ -22,9 +23,11 @@ import { MAXIMUM_SESSION_DESCRIPTION_LENGTH } from '../src/lib/session-descripti
 import {
 	createSessionWorkoutSnapshot,
 	restoreSessionWorkoutSnapshot,
+	type SessionWorkoutSnapshot,
 } from '../src/lib/session-workout-snapshots';
 import { WORKOUT_COURSES } from '../src/lib/workouts';
 import type { SavedSession, SavedSessionSummary, SessionSnapshot } from '../src/types';
+import { requiredValue } from './test-values';
 
 const snapshot: SessionSnapshot = {
 	aggregates: emptySession.aggregates,
@@ -47,6 +50,8 @@ const snapshot: SessionSnapshot = {
 	maximums: emptyMetrics,
 	startedAt: new Date(2026, 6, 18, 8, 30).getTime(),
 };
+
+type SavedSessionWrite = SavedSessionRecord | SavedSessionSummary | SessionWorkoutSnapshot;
 
 describe('saved session utilities', () => {
 	test('formats recorded and missing session feelings', () => {
@@ -104,11 +109,11 @@ describe('saved session utilities', () => {
 
 	test('writes and deletes both full and summary session records', () => {
 		const session = createSavedSession(snapshot, { comments: '' }, 1234, 'session-1');
-		const writes = new Map<string, unknown[]>();
+		const writes = new Map<string, SavedSessionWrite[]>();
 		saveSessionRecords(
 			(name) =>
 				({
-					put: (value: unknown) => {
+					put: (value: SavedSessionWrite) => {
 						writes.set(name, [...(writes.get(name) ?? []), value]);
 						return {} as IDBRequest<IDBValidKey>;
 					},
@@ -118,7 +123,7 @@ describe('saved session utilities', () => {
 		expect(writes.get('sessions')).toEqual([session]);
 		const summaryRecord = writes.get('session-summaries')?.[0];
 		expect(summaryRecord).toEqual(sessionSummary(session));
-		expect('history' in (summaryRecord as Record<string, unknown>)).toBe(false);
+		expect(summaryRecord && 'history' in summaryRecord).toBe(false);
 
 		const deletions = new Map<string, IDBValidKey[]>();
 		deleteSessionRecords(
@@ -148,11 +153,11 @@ describe('saved session utilities', () => {
 			...createSavedSession(snapshot, { comments: '' }, 1234, 'session-with-workout'),
 			workout: { course: workout },
 		};
-		const writes = new Map<string, unknown[]>();
+		const writes = new Map<string, SavedSessionWrite[]>();
 		const { snapshotId } = saveSessionRecords(
 			(name) =>
 				({
-					put: (value: unknown) => {
+					put: (value: SavedSessionWrite) => {
 						writes.set(name, [...(writes.get(name) ?? []), value]);
 						return {} as IDBRequest<IDBValidKey>;
 					},
@@ -162,7 +167,7 @@ describe('saved session utilities', () => {
 		const storedSession = writes.get('sessions')?.[0];
 		const storedWorkout = writes.get('session-workouts')?.[0];
 		expect(storedSession).toMatchObject({ workoutSnapshotId: snapshotId });
-		expect('workout' in (storedSession as Record<string, unknown>)).toBeFalse();
+		expect(storedSession && 'workout' in storedSession).toBeFalse();
 		expect(storedWorkout).toMatchObject({ id: snapshotId, workout: session.workout });
 		expect(
 			normalizeSavedSessionRecord(
@@ -246,7 +251,9 @@ describe('saved session utilities', () => {
 		);
 		const groups = groupSessionsByDate(summaries);
 		expect(groups).toHaveLength(2);
-		expect(groups[0].sessions.map((session) => session.id)).toEqual(['one', 'two']);
+		expect(
+			requiredValue(groups[0], 'first session group').sessions.map((session) => session.id)
+		).toEqual(['one', 'two']);
 		expect(groups[1]?.sessions[0]?.id).toBe('three');
 	});
 
@@ -297,14 +304,17 @@ describe('saved session utilities', () => {
 					startedAt: index,
 				}) satisfies SavedSessionSummary
 		);
+		const first = requiredValue(sessions[0], 'first session');
+		const second = requiredValue(sessions[1], 'second session');
+		const third = requiredValue(sessions[2], 'third session');
 		expect(sessionListAfterDelete(sessions, 'two')).toEqual({
-			next: sessions[2],
-			sessions: [sessions[0], sessions[2]],
+			next: third,
+			sessions: [first, third],
 		});
-		expect(sessionListAfterDelete(sessions, 'three').next).toBe(sessions[1]);
-		expect(sessionListAfterDelete([sessions[0]], 'one')).toEqual({ sessions: [] });
+		expect(sessionListAfterDelete(sessions, 'three').next).toBe(second);
+		expect(sessionListAfterDelete([first], 'one')).toEqual({ sessions: [] });
 		expect(sessionListAfterDelete(sessions, 'missing')).toEqual({
-			next: sessions[0],
+			next: first,
 			sessions,
 		});
 	});

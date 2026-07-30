@@ -130,8 +130,8 @@ export function filterClickShiftsForController(
 	return shifts;
 }
 
-export async function waitForUsableClickNotification(
-	attempts: readonly Promise<unknown>[],
+export async function waitForUsableClickNotification<T>(
+	attempts: readonly Promise<T>[],
 	receivedMessage: () => boolean
 ): Promise<void> {
 	try {

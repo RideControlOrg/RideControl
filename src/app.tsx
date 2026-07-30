@@ -419,10 +419,9 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		devicesOpen,
 		rememberedDevices
 	);
-	const liveMetrics = metricsWithHeartRate(
-		trainer.metrics,
-		heartRate.connected,
-		heartRate.heartRate
+	const liveMetrics = useMemo(
+		() => metricsWithHeartRate(trainer.metrics, heartRate.connected, heartRate.heartRate),
+		[heartRate.connected, heartRate.heartRate, trainer.metrics]
 	);
 	const { connected } = trainer;
 	const speedUnit = useSelector(preferencesStore, (preferences) => preferences.speedUnit);
@@ -462,23 +461,51 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const [workoutPreview, setWorkoutPreview] = useState<
 		{ distance: number; startedAt: number } | undefined
 	>();
-	const dashboardWorkout = workoutDashboardPreview({
-		distance: session.rideDistance,
-		elevationTotals: session.elevationTotals,
-		ended: session.ended,
-		selectedWorkout: session.selectedWorkout,
-		workout: session.workout,
-	});
-	const workoutTerrain = dashboardWorkout.workout
-		? workoutTerrainAtDistance(dashboardWorkout.workout.course, dashboardWorkout.distance)
-		: undefined;
-	const previewWorkoutTerrain = inspectedWorkoutTerrain({
-		course: dashboardWorkout.workout?.course,
-		isRiding: session.isRiding,
-		preview: workoutPreview,
-		recordedCourse: session.snapshot.workout?.course,
-		startedAt: session.startedAt,
-	});
+	const dashboardWorkout = useMemo(
+		() =>
+			workoutDashboardPreview({
+				distance: session.rideDistance,
+				elevationTotals: session.elevationTotals,
+				ended: session.ended,
+				selectedWorkout: session.selectedWorkout,
+				workout: session.workout,
+			}),
+		[
+			session.elevationTotals,
+			session.ended,
+			session.rideDistance,
+			session.selectedWorkout,
+			session.workout,
+		]
+	);
+	const workoutTerrain = useMemo(
+		() =>
+			dashboardWorkout.workout
+				? workoutTerrainAtDistance(
+						dashboardWorkout.workout.course,
+						dashboardWorkout.distance
+					)
+				: undefined,
+		[dashboardWorkout.distance, dashboardWorkout.workout]
+	);
+	const recordedWorkoutCourse = session.snapshot.workout?.course;
+	const previewWorkoutTerrain = useMemo(
+		() =>
+			inspectedWorkoutTerrain({
+				course: dashboardWorkout.workout?.course,
+				isRiding: session.isRiding,
+				preview: workoutPreview,
+				recordedCourse: recordedWorkoutCourse,
+				startedAt: session.startedAt,
+			}),
+		[
+			dashboardWorkout.workout?.course,
+			recordedWorkoutCourse,
+			session.isRiding,
+			session.startedAt,
+			workoutPreview,
+		]
+	);
 	const inspectWorkoutSample = useCallback(
 		(sample: MetricSample | undefined) => {
 			setWorkoutPreview(
@@ -495,13 +522,23 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const workoutSelected = Boolean(dashboardWorkout.workout);
 	const virtualShiftingActive = click.paired || workoutSelected;
 	const activeControlMode = trainingControlMode(click.paired, workoutSelected);
-	const workoutResistance = personalizedWorkoutResistance({
-		gear: gearControl.gear,
-		profile: riderPhysicsProfile,
-		profileReady: riderProfile.ready,
-		terrainResistance: workoutTerrain?.resistance,
-		virtualShiftingActive,
-	});
+	const workoutResistance = useMemo(
+		() =>
+			personalizedWorkoutResistance({
+				gear: gearControl.gear,
+				profile: riderPhysicsProfile,
+				profileReady: riderProfile.ready,
+				terrainResistance: workoutTerrain?.resistance,
+				virtualShiftingActive,
+			}),
+		[
+			gearControl.gear,
+			riderPhysicsProfile,
+			riderProfile.ready,
+			virtualShiftingActive,
+			workoutTerrain?.resistance,
+		]
+	);
 	gearResistanceRef.current = workoutTerrain
 		? (_fromGear, toGear) =>
 				trainer.updateProgramShiftResistance(
@@ -862,8 +899,9 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					<SessionOverview
 						controlMode={activeControlMode}
 						history={session.history}
+						inspectionEnabled={!session.isRiding}
 						keyboardEnabled={dashboardKeyboardEnabled}
-						onInspectSample={session.isRiding ? undefined : inspectWorkoutSample}
+						onInspectSample={inspectWorkoutSample}
 						speedUnit={speedUnit}
 						workout={dashboardWorkout.workout}
 					/>

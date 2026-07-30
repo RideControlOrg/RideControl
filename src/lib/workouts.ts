@@ -859,7 +859,10 @@ export function workoutProfilePosition(
 	terrain: WorkoutTerrain
 ): { x: number; y: number } {
 	const x = terrain.progress * 100;
-	const [first] = workoutProfilePoints(course);
+	const first = workoutProfilePoints(course).at(0);
+	if (!first) {
+		throw new Error(`Workout "${course.id}" has no profile points`);
+	}
 	return {
 		x,
 		y: curveValueAtX(workoutProfileSegments(course), first.y, x),

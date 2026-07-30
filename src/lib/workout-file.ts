@@ -29,6 +29,8 @@ export const WORKOUT_GPX_EXTENSION_NAMESPACE =
 	'https://github.com/RideControlOrg/RideControl/xmlschemas/WorkoutExtension/v1';
 export const WORKOUT_GPX_FORMAT_VERSION = 3;
 export const MAX_WORKOUT_NAME_LENGTH = 100;
+export const MAX_GPX_FILE_BYTES = 2 * 1024 * 1024;
+export const MAX_GPX_ROUTE_POINTS = 25_000;
 
 const WORKOUT_LIBRARY_FORMAT = 'ride-control-workout-library';
 const WORKOUT_LIBRARY_VERSION = 1;
@@ -39,6 +41,8 @@ const EDGE_HYPHENS = /^-+|-+$/g;
 const GPX_FILE_EXTENSION = /(?:\.workout)?\.gpx$/i;
 const GPX_WORKOUT_ID_PREFIX = 'gpx-';
 const IMPORTED_GPX_DESCRIPTION = 'Imported from a GPX route with elevation data.';
+const GPX_POINT_ELEMENT = /<(?:[A-Za-z_][\w.-]*:)?(?:rtept|trkpt)\b/giu;
+const UNSAFE_XML_DECLARATION = /<!DOCTYPE|<!ENTITY/iu;
 
 interface WorkoutLibraryData {
 	courses: WorkoutCourse[];
@@ -244,6 +248,19 @@ export function parseWorkoutFile(
 	parser: DOMParser = new DOMParser(),
 	fallbackName = 'Imported GPX workout'
 ): WorkoutCourse {
+	if (new TextEncoder().encode(source).byteLength > MAX_GPX_FILE_BYTES) {
+		throw new Error('The GPX file is larger than the 2 MiB import limit.');
+	}
+	if (UNSAFE_XML_DECLARATION.test(source)) {
+		throw new Error(
+			'GPX files containing document type or entity declarations are not supported.'
+		);
+	}
+	if ((source.match(GPX_POINT_ELEMENT)?.length ?? 0) > MAX_GPX_ROUTE_POINTS) {
+		throw new Error(
+			`The GPX file contains more than ${MAX_GPX_ROUTE_POINTS.toLocaleString()} route points.`
+		);
+	}
 	const xml = parser.parseFromString(source, 'text/xml');
 	const parsed = parseGpxDocument(xml);
 	const root = xml.documentElement;
@@ -285,9 +302,12 @@ export function parseWorkoutFile(
 }
 
 export async function readWorkoutFile(
-	file: Pick<File, 'name' | 'text'>,
+	file: Pick<File, 'name' | 'text'> & { size?: number },
 	resolveStartingCity: typeof reverseGeocodeStartingCity = reverseGeocodeStartingCity
 ): Promise<WorkoutCourse> {
+	if (file.size !== undefined && file.size > MAX_GPX_FILE_BYTES) {
+		throw new Error('The GPX file is larger than the 2 MiB import limit.');
+	}
 	const course = parseWorkoutFile(
 		await file.text(),
 		new DOMParser(),

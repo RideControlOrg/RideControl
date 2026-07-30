@@ -2,6 +2,7 @@ import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	useEffect,
 	useId,
+	useMemo,
 	useRef,
 	useState,
 } from 'react';
@@ -243,12 +244,19 @@ export function SuggestionInput({
 	const listboxId = useId();
 	const root = useRef<HTMLDivElement>(null);
 	const input = useRef<HTMLInputElement>(null);
-	const normalizedValue = value.trim().toLocaleLowerCase();
-	const matchesValue = (suggestion: string) =>
-		!normalizedValue || suggestion.toLocaleLowerCase().includes(normalizedValue);
-	const filteredCustomSuggestions = customSuggestions.filter(matchesValue);
-	const filteredStandardSuggestions = suggestions.filter(matchesValue);
-	const filteredSuggestions = [...filteredCustomSuggestions, ...filteredStandardSuggestions];
+	const { filteredCustomSuggestions, filteredStandardSuggestions, filteredSuggestions } =
+		useMemo(() => {
+			const normalizedValue = value.trim().toLocaleLowerCase();
+			const matchesValue = (suggestion: string) =>
+				!normalizedValue || suggestion.toLocaleLowerCase().includes(normalizedValue);
+			const matchingCustomSuggestions = customSuggestions.filter(matchesValue);
+			const matchingStandardSuggestions = suggestions.filter(matchesValue);
+			return {
+				filteredCustomSuggestions: matchingCustomSuggestions,
+				filteredStandardSuggestions: matchingStandardSuggestions,
+				filteredSuggestions: [...matchingCustomSuggestions, ...matchingStandardSuggestions],
+			};
+		}, [customSuggestions, suggestions, value]);
 
 	useEffect(() => {
 		if (!open) {

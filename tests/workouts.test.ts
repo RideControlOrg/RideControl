@@ -23,6 +23,7 @@ import {
 	workoutSelectionLocked,
 	workoutTerrainAtDistance,
 } from '../src/lib/workouts';
+import { requiredValue } from './test-values';
 
 const course = WORKOUT_COURSES.find((workout) => workout.id === 'cedar-circuit');
 
@@ -312,7 +313,10 @@ describe('terrain workouts', () => {
 		expect(cedar && workoutFlatStartDistance(cedar)).toBe(WORKOUT_MODERATE_FLAT_START_DISTANCE);
 		expect(prairie && workoutFlatStartDistance(prairie)).toBe(WORKOUT_FLAT_START_DISTANCE);
 		for (const workout of WORKOUT_COURSES) {
-			const startElevation = workout.points[0]?.elevation;
+			const startElevation = requiredValue(
+				workout.points[0],
+				'workout start point'
+			).elevation;
 			const rolloutDistance = workoutFlatStartDistance(workout);
 			const rolloutPoints = workout.points.filter(
 				(point) => point.distance <= rolloutDistance

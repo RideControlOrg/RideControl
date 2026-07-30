@@ -135,9 +135,16 @@ export function PrivacyPolicyDialog({ onClose, open }: { onClose: () => void; op
 						does not send your recorded ride history.
 					</li>
 					<li>
+						When you explicitly choose enhanced GPX processing, Ride Control sends that
+						GPX file to its Cloudflare Worker to clean and prepare the route. The file
+						is processed only for that request and is not stored in Ride Control's route
+						catalog or asset storage. Choosing on-device processing does not upload the
+						file or request a starting-place lookup.
+					</li>
+					<li>
 						If an imported GPX file has no route description, Ride Control may send its
 						starting coordinate to OpenStreetMap's Nominatim service to find a place
-						name.
+						name only through import paths where that lookup is separately allowed.
 					</li>
 					<li>
 						Links to route providers, OpenStreetMap, GitHub, and sponsorship services

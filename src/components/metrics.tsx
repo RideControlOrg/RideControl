@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { metricAccentClass, metricIconClass } from '../lib/metric-presentation';
 import { Icon } from './icon';
 
@@ -20,7 +21,7 @@ function MetricSummary({
 	);
 }
 
-export function Metric({
+export const Metric = memo(function MetricComponent({
 	average,
 	label,
 	maximum,
@@ -57,9 +58,9 @@ export function Metric({
 			</div>
 		</div>
 	);
-}
+});
 
-export function SmallMetric({
+export const SmallMetric = memo(function SmallMetricComponent({
 	large = false,
 	label,
 	unit,
@@ -93,9 +94,9 @@ export function SmallMetric({
 			</p>
 		</div>
 	);
-}
+});
 
-export function SessionMetric({
+export const SessionMetric = memo(function SessionMetricComponent({
 	accent,
 	average,
 	icon,
@@ -136,4 +137,4 @@ export function SessionMetric({
 			<div className={`mt-3 h-px ${metricAccentClass(accent)}`} />
 		</div>
 	);
-}
+});

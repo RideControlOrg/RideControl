@@ -1,4 +1,4 @@
-import { isFiniteNumber, isRecord, isString } from './type-guards';
+import { isFiniteNumber, isRecord, isStringIn } from './type-guards';
 
 export const APP_OVERLAY = {
 	BUILD: 'build',
@@ -31,7 +31,7 @@ export type SideTrayOverlay = (typeof SIDE_TRAY_OVERLAYS)[number];
 type SideTrayWidths = Partial<Record<SideTrayOverlay, number>>;
 
 export function isSideTrayOverlay(value: unknown): value is SideTrayOverlay {
-	return isString(value) && SIDE_TRAY_OVERLAYS.some((overlay) => overlay === value);
+	return isStringIn(value, SIDE_TRAY_OVERLAYS);
 }
 
 function storedOpenSideTray(storage: Pick<Storage, 'getItem'>): string | null {

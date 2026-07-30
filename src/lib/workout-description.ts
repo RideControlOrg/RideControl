@@ -1,3 +1,5 @@
+import { isStringIn } from './type-guards';
+
 export const WORKOUT_DESCRIPTION_ATTRIBUTION = {
 	OPENSTREETMAP: 'openstreetmap',
 } as const;
@@ -7,10 +9,12 @@ export type WorkoutDescriptionAttribution =
 
 export const OPENSTREETMAP_ATTRIBUTION_URL = 'https://www.openstreetmap.org/copyright';
 
+const WORKOUT_DESCRIPTION_ATTRIBUTIONS: readonly WorkoutDescriptionAttribution[] = Object.values(
+	WORKOUT_DESCRIPTION_ATTRIBUTION
+);
+
 export function isWorkoutDescriptionAttribution(
 	value: unknown
 ): value is WorkoutDescriptionAttribution {
-	return Object.values(WORKOUT_DESCRIPTION_ATTRIBUTION).some(
-		(attribution) => attribution === value
-	);
+	return isStringIn(value, WORKOUT_DESCRIPTION_ATTRIBUTIONS);
 }

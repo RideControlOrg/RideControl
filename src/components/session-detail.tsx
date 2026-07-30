@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY_ROUTE } from '../constants';
 import { usePersistentScrollPosition } from '../hooks/use-persistent-scroll-position';
 import { CONTROL_MODE } from '../lib/control-mode';
@@ -169,51 +169,61 @@ export function SessionDetail({
 	);
 	const usesGear = session.controlMode === CONTROL_MODE.GEAR;
 	const imported = isImportedSession(session);
-	const workoutTerrain = session.workout
-		? workoutTerrainAtDistance(session.workout.course, session.distance)
-		: undefined;
-	const previewWorkoutTerrain =
-		session.workout && previewWorkoutDistance !== undefined
-			? workoutTerrainAtDistance(session.workout.course, previewWorkoutDistance)
-			: undefined;
+	const workoutTerrain = useMemo(
+		() =>
+			session.workout
+				? workoutTerrainAtDistance(session.workout.course, session.distance)
+				: undefined,
+		[session.distance, session.workout]
+	);
+	const previewWorkoutTerrain = useMemo(
+		() =>
+			session.workout && previewWorkoutDistance !== undefined
+				? workoutTerrainAtDistance(session.workout.course, previewWorkoutDistance)
+				: undefined,
+		[previewWorkoutDistance, session.workout]
+	);
 	const inspectSample = useCallback(
 		(sample: MetricSample | undefined) => setPreviewWorkoutDistance(sample?.workoutDistance),
 		[]
 	);
-	const controlMetrics = [
-		...(usesGear
-			? [
-					{
-						accent: 'mint',
-						average: formatAggregateAverage(session.aggregates.gear, 0),
-						icon: 'controls',
-						label: 'GEAR',
-						maximum: formatWholeNumber(aggregateMaximum(session.aggregates.gear)),
-						unit: '',
-					},
-				]
-			: []),
-		{
-			accent: 'mint',
-			average: formatAggregateAverage(session.aggregates.resistance, 0),
-			icon: 'resistance',
-			label: 'RESISTANCE',
-			maximum: formatWholeNumber(aggregateMaximum(session.aggregates.resistance)),
-			unit: '%',
-		},
-	];
-	const standardMetrics = STANDARD_METRIC_KEYS.map((key) => {
-		const presentation = METRIC_PRESENTATION[key];
-		return {
-			accent: presentation.accent,
-			average: formatAggregateAverage(session.aggregates[key], 0),
-			icon: presentation.icon,
-			label: presentation.label.toUpperCase(),
-			maximum: formatWholeNumber(session.maximums[key]),
-			unit: presentation.unit,
-		};
-	});
-	const shareOnX = async () => {
+	const metrics = useMemo(
+		() => [
+			...STANDARD_METRIC_KEYS.map((key) => {
+				const presentation = METRIC_PRESENTATION[key];
+				return {
+					accent: presentation.accent,
+					average: formatAggregateAverage(session.aggregates[key], 0),
+					icon: presentation.icon,
+					label: presentation.label.toUpperCase(),
+					maximum: formatWholeNumber(session.maximums[key]),
+					unit: presentation.unit,
+				};
+			}),
+			...(usesGear
+				? [
+						{
+							accent: 'mint',
+							average: formatAggregateAverage(session.aggregates.gear, 0),
+							icon: 'controls',
+							label: 'GEAR',
+							maximum: formatWholeNumber(aggregateMaximum(session.aggregates.gear)),
+							unit: '',
+						},
+					]
+				: []),
+			{
+				accent: 'mint',
+				average: formatAggregateAverage(session.aggregates.resistance, 0),
+				icon: 'resistance',
+				label: 'RESISTANCE',
+				maximum: formatWholeNumber(aggregateMaximum(session.aggregates.resistance)),
+				unit: '%',
+			},
+		],
+		[session.aggregates, session.maximums, usesGear]
+	);
+	const shareOnX = useCallback(async () => {
 		setShareError('');
 		setSharing(true);
 		try {
@@ -227,7 +237,7 @@ export function SessionDetail({
 		} finally {
 			setSharing(false);
 		}
-	};
+	}, [session, speedUnit]);
 	return (
 		<div
 			className="session-detail-container min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-3 sm:px-6 sm:pb-6"
@@ -348,7 +358,7 @@ export function SessionDetail({
 				/>
 			</div>
 			<div className="minimal-session-metric-grid mt-2 grid gap-x-5 gap-y-1">
-				{[...standardMetrics, ...controlMetrics].map((metric) => (
+				{metrics.map((metric) => (
 					<SessionMetric key={metric.label} {...metric} />
 				))}
 			</div>

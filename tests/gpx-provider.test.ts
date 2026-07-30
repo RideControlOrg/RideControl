@@ -17,6 +17,7 @@ import {
 	shouldShowGpxCollectionSelector,
 } from '../src/lib/gpx-provider';
 import type { WorkoutCourse } from '../src/types';
+import { requiredValue } from './test-values';
 
 const provider = {
 	description: 'Public cycling routes.',
@@ -171,7 +172,10 @@ describe('GPX provider backend client', () => {
 	});
 
 	test('loads an already prepared route and surfaces backend errors', async () => {
-		const result = { analysis: catalog.analyses[route.id], course };
+		const result = {
+			analysis: requiredValue(catalog.analyses[route.id], 'prepared route analysis'),
+			course,
+		};
 		const fetchMock = mock(async () => Response.json(result));
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		expect(await fetchGpxRoute(route)).toEqual(result);

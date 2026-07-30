@@ -9,6 +9,7 @@ import {
 	ruleY,
 } from '@tanstack/charts';
 import { focusNearestX } from '@tanstack/charts/focus';
+import { focusDisabled } from '@tanstack/charts/focus/disabled';
 import { Chart, type DynamicChartProps } from '@tanstack/react-charts';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -33,14 +34,22 @@ const GUIDE_STYLE = {
 	strokeOpacity: 0.75,
 	strokeWidth: 1,
 } as const;
+
+interface LabeledChartDatum {
+	label: string;
+}
+
 const INTERACTION_PROPS = {
 	focus: focusNearestX,
 	maxFocusDistance: Number.POSITIVE_INFINITY,
-	style: { height: '100%' },
 	tooltip: {
 		className: 'ride-control-chart-tooltip',
-		format: (point: { datum: InteractiveChartDatum<unknown> }) => point.datum.label,
+		format: (point: { datum: LabeledChartDatum }) => point.datum.label,
 	},
+} as const;
+const NON_INTERACTIVE_PROPS = {
+	focus: focusDisabled,
+	keyboard: false,
 } as const;
 
 function chartTheme(background: string): ChartTheme {
@@ -86,9 +95,8 @@ function MeasuredChartFrame({
 	);
 }
 
-export interface InteractiveChartDatum<TValue> {
+export interface InteractiveChartDatum<TValue> extends LabeledChartDatum {
 	key: string;
-	label: string;
 	value: TValue;
 }
 
@@ -97,22 +105,24 @@ type InteractiveChartSurfaceProps<TDatum, TInput> = Pick<
 	'ariaDescription' | 'ariaLabel' | 'className' | 'definition' | 'input' | 'onFocusChange'
 > & {
 	height?: number;
+	interactive?: boolean;
 };
 
-function InteractiveChartSurface<TDatum extends InteractiveChartDatum<unknown>, TInput>({
+function InteractiveChartSurface<TDatum extends LabeledChartDatum, TInput>({
 	ariaDescription,
 	ariaLabel,
 	className,
 	definition,
 	height,
 	input,
+	interactive = true,
 	onFocusChange,
 }: InteractiveChartSurfaceProps<TDatum, TInput>) {
 	return (
 		<MeasuredChartFrame height={height}>
 			{(chartHeight) => (
 				<Chart<TDatum, TInput>
-					{...INTERACTION_PROPS}
+					{...(interactive ? INTERACTION_PROPS : NON_INTERACTIVE_PROPS)}
 					ariaDescription={ariaDescription}
 					ariaLabel={ariaLabel}
 					className={className}
@@ -120,6 +130,7 @@ function InteractiveChartSurface<TDatum extends InteractiveChartDatum<unknown>, 
 					height={chartHeight}
 					input={input}
 					onFocusChange={onFocusChange}
+					style={{ height: '100%' }}
 				/>
 			)}
 		</MeasuredChartFrame>
@@ -232,6 +243,7 @@ export function InteractiveLineChart({
 	color,
 	focusedX,
 	height,
+	interactive = true,
 	maximum,
 	minimum,
 	onFocusXChange,
@@ -244,6 +256,7 @@ export function InteractiveLineChart({
 	color: string;
 	focusedX?: number;
 	height?: number;
+	interactive?: boolean;
 	maximum: number;
 	minimum: number;
 	onFocusXChange?: (x: number | undefined) => void;
@@ -258,7 +271,11 @@ export function InteractiveLineChart({
 	);
 	return (
 		<InteractiveChartSurface<InteractiveLineDatum, InteractiveLineInput>
-			ariaDescription="Hover over the plot or use the arrow keys to inspect exact values."
+			ariaDescription={
+				interactive
+					? 'Hover over the plot or use the arrow keys to inspect exact values.'
+					: 'Live chart updates while the session is running.'
+			}
 			ariaLabel={ariaLabel}
 			className={className}
 			definition={interactiveLineDefinition}
@@ -274,7 +291,8 @@ export function InteractiveLineChart({
 				xMaximum,
 				xMinimum,
 			}}
-			onFocusChange={onFocusXChange ? handleFocusChange : undefined}
+			interactive={interactive}
+			onFocusChange={interactive && onFocusXChange ? handleFocusChange : undefined}
 		/>
 	);
 }
