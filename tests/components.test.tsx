@@ -12,6 +12,7 @@ import { PrivacyPolicyDialog, TermsOfServiceDialog } from '../src/components/leg
 import { Metric, SessionMetric, SmallMetric } from '../src/components/metrics';
 import { Notification } from '../src/components/notification';
 import { ProfilePanel, RemoveBikeDialog, RemoveImageDialog } from '../src/components/profile-panel';
+import { RemoveWorkoutDialog } from '../src/components/remove-workout-dialog';
 import { RenameWorkoutDialog } from '../src/components/rename-workout-dialog';
 import { ResistanceControl } from '../src/components/resistance-control';
 import { SelectMenu, SuggestionInput } from '../src/components/select-menu';
@@ -801,6 +802,28 @@ describe('view components', () => {
 		expect(customPanel).not.toContain('View map');
 		expect(customPanel).toContain('Remove');
 		expect(customPanel.match(/Download GPX/g)).toHaveLength(7);
+		const closedRemoveDialog = render(
+			<RemoveWorkoutDialog
+				courseName={importedCourse.name}
+				onCancel={() => undefined}
+				onConfirm={() => undefined}
+				open={false}
+			/>
+		);
+		expect(closedRemoveDialog).toBe('');
+		const removeDialog = render(
+			<RemoveWorkoutDialog
+				courseName={importedCourse.name}
+				onCancel={() => undefined}
+				onConfirm={() => undefined}
+				open
+			/>
+		);
+		expect(removeDialog).toContain('role="alertdialog"');
+		expect(removeDialog).toContain('Remove this workout?');
+		expect(removeDialog).toContain(importedCourse.name);
+		expect(removeDialog).toContain('Cancel workout removal');
+		expect(removeDialog).toContain('Remove workout');
 		const renameDialog = render(
 			<RenameWorkoutDialog
 				course={importedCourse}
