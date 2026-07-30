@@ -41,11 +41,15 @@ describe('latest-value scheduler', () => {
 
 	test('clears delayed work and lets a new connection send immediately', async () => {
 		let now = 0;
-		const cleared: unknown[] = [];
+		const cleared: number[] = [];
 		const timers: Array<() => void> = [];
 		const sent: number[] = [];
 		const scheduler = createLatestValueScheduler({
-			clearTimer: (timer) => cleared.push(timer),
+			clearTimer: (timer) => {
+				if (typeof timer === 'number') {
+					cleared.push(timer);
+				}
+			},
 			minimumIntervalMs: 500,
 			now: () => now,
 			send: (value: number) => {

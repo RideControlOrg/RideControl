@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { isFiniteNumber, isFunction, isRecord, isString } from '../src/lib/type-guards';
+import { isFiniteNumber, isFunction, isRecord, isString, isStringIn } from '../src/lib/type-guards';
 
 describe('runtime type guards', () => {
 	test('accepts only finite numbers', () => {
@@ -17,5 +17,12 @@ describe('runtime type guards', () => {
 		expect(isRecord(null)).toBeFalse();
 		expect(isString('value')).toBeTrue();
 		expect(isString(1)).toBeFalse();
+	});
+
+	test('narrows values to known string domains', () => {
+		const modes = ['all', 'speed', 'power'] as const;
+		expect(isStringIn('speed', modes)).toBeTrue();
+		expect(isStringIn('unknown', modes)).toBeFalse();
+		expect(isStringIn(1, modes)).toBeFalse();
 	});
 });

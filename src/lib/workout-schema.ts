@@ -1,3 +1,5 @@
+import { isStringIn } from './type-guards';
+
 export const WORKOUT_DIFFICULTY = {
 	CHALLENGING: 'challenging',
 	GENTLE: 'gentle',
@@ -6,10 +8,10 @@ export const WORKOUT_DIFFICULTY = {
 
 export type WorkoutDifficulty = (typeof WORKOUT_DIFFICULTY)[keyof typeof WORKOUT_DIFFICULTY];
 
-const WORKOUT_DIFFICULTIES = new Set<unknown>(Object.values(WORKOUT_DIFFICULTY));
+const WORKOUT_DIFFICULTIES: readonly WorkoutDifficulty[] = Object.values(WORKOUT_DIFFICULTY);
 
 export function isWorkoutDifficulty(value: unknown): value is WorkoutDifficulty {
-	return WORKOUT_DIFFICULTIES.has(value);
+	return isStringIn(value, WORKOUT_DIFFICULTIES);
 }
 
 export const WORKOUT_ROUTE_TYPE = {
@@ -20,10 +22,10 @@ export const WORKOUT_ROUTE_TYPE = {
 
 export type WorkoutRouteType = (typeof WORKOUT_ROUTE_TYPE)[keyof typeof WORKOUT_ROUTE_TYPE];
 
-const WORKOUT_ROUTE_TYPES = new Set<unknown>(Object.values(WORKOUT_ROUTE_TYPE));
+const WORKOUT_ROUTE_TYPES: readonly WorkoutRouteType[] = Object.values(WORKOUT_ROUTE_TYPE);
 
 export function isWorkoutRouteType(value: unknown): value is WorkoutRouteType {
-	return WORKOUT_ROUTE_TYPES.has(value);
+	return isStringIn(value, WORKOUT_ROUTE_TYPES);
 }
 
 export function workoutRouteLabel(routeType: WorkoutRouteType): string {

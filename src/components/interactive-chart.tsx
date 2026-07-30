@@ -34,12 +34,17 @@ const GUIDE_STYLE = {
 	strokeOpacity: 0.75,
 	strokeWidth: 1,
 } as const;
+
+interface LabeledChartDatum {
+	label: string;
+}
+
 const INTERACTION_PROPS = {
 	focus: focusNearestX,
 	maxFocusDistance: Number.POSITIVE_INFINITY,
 	tooltip: {
 		className: 'ride-control-chart-tooltip',
-		format: (point: { datum: InteractiveChartDatum<unknown> }) => point.datum.label,
+		format: (point: { datum: LabeledChartDatum }) => point.datum.label,
 	},
 } as const;
 const NON_INTERACTIVE_PROPS = {
@@ -90,9 +95,8 @@ function MeasuredChartFrame({
 	);
 }
 
-export interface InteractiveChartDatum<TValue> {
+export interface InteractiveChartDatum<TValue> extends LabeledChartDatum {
 	key: string;
-	label: string;
 	value: TValue;
 }
 
@@ -104,7 +108,7 @@ type InteractiveChartSurfaceProps<TDatum, TInput> = Pick<
 	interactive?: boolean;
 };
 
-function InteractiveChartSurface<TDatum extends InteractiveChartDatum<unknown>, TInput>({
+function InteractiveChartSurface<TDatum extends LabeledChartDatum, TInput>({
 	ariaDescription,
 	ariaLabel,
 	className,

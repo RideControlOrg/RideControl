@@ -5,7 +5,7 @@ import {
 	isTestedChromeBrowser,
 } from '../src/lib/browser';
 
-function browser(userAgent: string, brands: string[] = [], extra: Record<string, unknown> = {}) {
+function browser(userAgent: string, brands: string[] = [], extra: { brave?: object } = {}) {
 	return {
 		...extra,
 		userAgent,

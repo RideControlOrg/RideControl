@@ -1,4 +1,5 @@
 import { CONTROL_MODE } from './control-mode';
+import { isStringIn } from './type-guards';
 
 export const CHART_MODE = {
 	ALL: 'all',
@@ -14,7 +15,7 @@ export const CHART_MODE = {
 
 export type ChartMode = (typeof CHART_MODE)[keyof typeof CHART_MODE];
 
-const PERSISTED_CHART_MODES = new Set<unknown>([
+const PERSISTED_CHART_MODES: readonly ChartMode[] = [
 	CHART_MODE.ALL,
 	CHART_MODE.SPEED,
 	CHART_MODE.POWER,
@@ -24,8 +25,8 @@ const PERSISTED_CHART_MODES = new Set<unknown>([
 	CHART_MODE.GRADE,
 	CHART_MODE.RESISTANCE,
 	CHART_MODE.ELEVATION,
-]);
+];
 
 export function isPersistedChartMode(value: unknown): value is ChartMode {
-	return PERSISTED_CHART_MODES.has(value);
+	return isStringIn(value, PERSISTED_CHART_MODES);
 }

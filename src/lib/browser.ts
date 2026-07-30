@@ -5,7 +5,7 @@ interface BrowserBrand {
 }
 
 interface BrowserNavigator {
-	brave?: unknown;
+	brave?: object;
 	userAgent: string;
 	userAgentData?: {
 		brands: readonly BrowserBrand[];
@@ -13,7 +13,7 @@ interface BrowserNavigator {
 }
 
 interface BluetoothReconnectCapability {
-	getDevices?: unknown;
+	getDevices?: () => Promise<readonly BluetoothDevice[]>;
 }
 
 const CHROME_USER_AGENT = /\bChrome\//;

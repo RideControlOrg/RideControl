@@ -142,11 +142,15 @@ describe('reconnect controller', () => {
 
 	test('cancels retries and ignores duplicate scheduling', () => {
 		const callbacks: Array<() => void> = [];
-		const cleared: unknown[] = [];
+		const cleared: number[] = [];
 		const controller = createReconnectController<string>({
 			attempt: async () => false,
 			canRetry: () => true,
-			clearTimer: (timer) => cleared.push(timer),
+			clearTimer: (timer) => {
+				if (typeof timer === 'number') {
+					cleared.push(timer);
+				}
+			},
 			delayForAttempt: () => 100,
 			setTimer: ((callback: () => void) => {
 				callbacks.push(callback);
@@ -181,7 +185,7 @@ describe('reconnect controller', () => {
 
 	test('preempts Bluetooth backoff as soon as the device advertises', async () => {
 		const callbacks: Array<() => void | Promise<void>> = [];
-		const cleared: unknown[] = [];
+		const cleared: number[] = [];
 		const delays: number[] = [];
 		let advertisementListener: EventListener | undefined;
 		let watchSignal: AbortSignal | undefined;
@@ -207,7 +211,11 @@ describe('reconnect controller', () => {
 				return Promise.resolve(true);
 			},
 			canRetry: () => true,
-			clearTimer: (timer) => cleared.push(timer),
+			clearTimer: (timer) => {
+				if (typeof timer === 'number') {
+					cleared.push(timer);
+				}
+			},
 			setTimer: ((callback: () => void, delay: number) => {
 				callbacks.push(callback);
 				delays.push(delay);
