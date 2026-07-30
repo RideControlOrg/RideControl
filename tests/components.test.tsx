@@ -1600,6 +1600,26 @@ describe('view components', () => {
 		expect(gearModeWithoutSamples).toContain('Gear over time');
 		expect(gearModeWithoutSamples).toContain('Gear</button>');
 		expect(gearModeWithoutSamples).toContain('Connect and pedal to graph live session data');
+		const liveChart = render(
+			<SessionChart
+				history={[
+					{
+						cadence: 85,
+						elapsedSeconds: 1,
+						heartRate: 140,
+						power: 180,
+						resistance: 42,
+						speed: 30,
+					},
+				]}
+				inspectionEnabled={false}
+				route={[]}
+				speedUnit="kmh"
+			/>
+		);
+		expect(liveChart).toContain('Live chart updates while the session is running.');
+		expect(liveChart).toContain('tabindex="-1"');
+		expect(liveChart).not.toContain('Hover over the plot or use the arrow keys');
 	});
 
 	test('supports a chart selection scoped outside the shared dashboard preference', () => {

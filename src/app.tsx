@@ -862,8 +862,9 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					<SessionOverview
 						controlMode={activeControlMode}
 						history={session.history}
+						inspectionEnabled={!session.isRiding}
 						keyboardEnabled={dashboardKeyboardEnabled}
-						onInspectSample={session.isRiding ? undefined : inspectWorkoutSample}
+						onInspectSample={inspectWorkoutSample}
 						speedUnit={speedUnit}
 						workout={dashboardWorkout.workout}
 					/>

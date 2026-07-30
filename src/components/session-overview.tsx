@@ -5,6 +5,7 @@ import { SessionChart } from './session-chart';
 export function SessionOverview({
 	controlMode,
 	history,
+	inspectionEnabled,
 	keyboardEnabled,
 	onInspectSample,
 	speedUnit,
@@ -12,6 +13,7 @@ export function SessionOverview({
 }: {
 	controlMode: ControlMode;
 	history: MetricSample[];
+	inspectionEnabled: boolean;
 	keyboardEnabled: boolean;
 	onInspectSample?: (sample: MetricSample | undefined) => void;
 	speedUnit: SpeedUnit;
@@ -21,6 +23,7 @@ export function SessionOverview({
 		<SessionChart
 			controlMode={controlMode}
 			history={history}
+			inspectionEnabled={inspectionEnabled}
 			keyboardEnabled={keyboardEnabled}
 			onInspectSample={onInspectSample}
 			route={workout ? workout.course.points : EMPTY_ROUTE}
