@@ -34,11 +34,17 @@ import {
 	WORKOUT_DESCRIPTION_ATTRIBUTION,
 } from '../lib/workout-description';
 import { canMoveWorkoutCourse, downloadWorkoutFile } from '../lib/workout-file';
+import {
+	type GpxImportProcessor,
+	gpxUploadValidationError,
+	type WorkoutImportResult,
+} from '../lib/workout-import';
 import { workoutMaximumGrade } from '../lib/workout-metrics';
 import { WORKOUT_VIEW, workoutRouteLabel } from '../lib/workout-schema';
 import { workoutDifficultyLabel, workoutMatchesSearch } from '../lib/workouts';
 import type { SpeedUnit, WorkoutCourse } from '../types';
 import type { GpxBrowserSelection } from './gpx-browser-dialog';
+import { GpxImportChoiceDialog, GpxImportResultDialog } from './gpx-import-dialog';
 import { Icon } from './icon';
 import { RenameWorkoutDialog } from './rename-workout-dialog';
 import { SideTray } from './side-tray';
@@ -382,7 +388,7 @@ export function WorkoutPanel({
 	onCloseGpx?: () => void;
 	onFocusCourse?: (courseId: string | undefined) => void;
 	onImportCourse: (course: WorkoutCourse) => Promise<WorkoutCourse>;
-	onImportFile: (file: File) => Promise<WorkoutCourse>;
+	onImportFile: (file: File, processor: GpxImportProcessor) => Promise<WorkoutImportResult>;
 	onRemoveCourse: (courseId: string) => void;
 	onRenameCourse: (courseId: string, name: string) => WorkoutCourse;
 	onReorderCourse: (movedCourseId: string, destinationIndex: number) => void;
@@ -395,6 +401,12 @@ export function WorkoutPanel({
 }) {
 	const importInput = useRef<HTMLInputElement>(null);
 	const [importing, setImporting] = useState(false);
+	const [pendingImportFile, setPendingImportFile] = useState<File>();
+	const [importResult, setImportResult] = useState<{
+		error?: string;
+		fileName: string;
+		result?: WorkoutImportResult;
+	}>();
 	const [libraryStatus, setLibraryStatus] = useState('');
 	const [importError, setImportError] = useState('');
 	const [renamingCourse, setRenamingCourse] = useState<WorkoutCourse>();
@@ -434,32 +446,50 @@ export function WorkoutPanel({
 		return () => window.cancelAnimationFrame(frame);
 	}, [courses, focusedCourseId, onFocusCourse, open]);
 
+	const requestWorkoutImport = useCallback((file: File) => {
+		const validationError = gpxUploadValidationError(file);
+		if (validationError) {
+			setImportResult({ error: validationError, fileName: file.name });
+			return;
+		}
+		setPendingImportFile(file);
+	}, []);
 	const importWorkout = useCallback(
-		async (file: File) => {
+		async (processor: GpxImportProcessor) => {
+			const file = pendingImportFile;
+			if (!file) {
+				return;
+			}
+			setPendingImportFile(undefined);
 			setImporting(true);
 			setLibraryStatus('');
 			setImportError('');
 			try {
-				const course = await onImportFile(file);
+				const result = await onImportFile(file, processor);
 				setSearchQuery('');
 				workoutListScroll.scrollToTop();
-				setLibraryStatus(`${course.name} imported and saved on this device.`);
+				setLibraryStatus(`${result.course.name} imported and saved on this device.`);
+				setImportResult({ fileName: file.name, result });
 			} catch (error) {
-				setImportError(errorMessage(error));
+				const message = errorMessage(error);
+				setImportError(message);
+				setImportResult({ error: message, fileName: file.name });
 			} finally {
 				setImporting(false);
 			}
 		},
-		[onImportFile, workoutListScroll.scrollToTop]
+		[onImportFile, pendingImportFile, workoutListScroll.scrollToTop]
 	);
 	const { active: fileDropActive, targetRef: fileDropTarget } = useFileDrop(
-		open && !importing,
-		importWorkout
+		open && !(importing || pendingImportFile || importResult),
+		requestWorkoutImport
 	);
 
 	const closePanel = () => {
 		setRenamingCourse(undefined);
 		setMappedCourse(undefined);
+		setPendingImportFile(undefined);
+		setImportResult(undefined);
 		setSearchQuery('');
 		onClose();
 	};
@@ -516,7 +546,15 @@ export function WorkoutPanel({
 		<>
 			<SideTray
 				closeLabel="Close terrain workouts"
-				closeOnEscape={!(gpxBrowserOpen || mappedCourse || renamingCourse)}
+				closeOnEscape={
+					!(
+						gpxBrowserOpen ||
+						importResult ||
+						mappedCourse ||
+						pendingImportFile ||
+						renamingCourse
+					)
+				}
 				labelledBy="workout-panel-title"
 				onClose={closePanel}
 				open={open}
@@ -561,7 +599,7 @@ export function WorkoutPanel({
 									const file = event.currentTarget.files?.[0];
 									event.currentTarget.value = '';
 									if (file) {
-										importWorkout(file);
+										requestWorkoutImport(file);
 									}
 								}}
 								ref={importInput}
@@ -752,6 +790,22 @@ export function WorkoutPanel({
 						const renamed = onRenameCourse(courseId, name);
 						setLibraryStatus(`${renamed.name} renamed and saved on this device.`);
 					}}
+				/>
+			) : null}
+			{pendingImportFile ? (
+				<GpxImportChoiceDialog
+					fileName={pendingImportFile.name}
+					onCancel={() => setPendingImportFile(undefined)}
+					onChoose={importWorkout}
+				/>
+			) : null}
+			{importResult ? (
+				<GpxImportResultDialog
+					error={importResult.error}
+					fileName={importResult.fileName}
+					onClose={() => setImportResult(undefined)}
+					result={importResult.result}
+					speedUnit={speedUnit}
 				/>
 			) : null}
 		</>

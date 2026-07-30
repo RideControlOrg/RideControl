@@ -6,12 +6,16 @@ import {
 	moveWorkoutCourse,
 	orderWorkoutCourses,
 	prioritizeWorkoutCourse,
-	readWorkoutFile,
 	renameCustomWorkout,
 	saveCustomWorkouts,
 	saveWorkoutOrder,
 	withoutCustomWorkout,
 } from '../lib/workout-file';
+import {
+	type GpxImportProcessor,
+	importWorkoutFile,
+	type WorkoutImportResult,
+} from '../lib/workout-import';
 import { WORKOUT_COURSES } from '../lib/workouts';
 import type { WorkoutCourse } from '../types';
 
@@ -55,9 +59,9 @@ export function useWorkoutLibrary() {
 	);
 
 	const importFile = useCallback(
-		async (file: File) => {
-			const course = await readWorkoutFile(file);
-			return importCourse(course);
+		async (file: File, processor: GpxImportProcessor): Promise<WorkoutImportResult> => {
+			const result = await importWorkoutFile(file, processor);
+			return { ...result, course: importCourse(result.course) };
 		},
 		[importCourse]
 	);

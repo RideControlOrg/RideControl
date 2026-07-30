@@ -5,6 +5,8 @@ import { xmlChild, xmlDescendant, xmlDescendants, xmlNumber, xmlText } from './x
 const EARTH_RADIUS_METERS = 6_371_000;
 const MINIMUM_GPX_POINTS = 3;
 const DISTANCE_EPSILON = 0.000_001;
+const MAXIMUM_ROUTE_POINT_GAP_METERS = 10_000;
+const DUPLICATE_POINT_DISTANCE_METERS = 0.01;
 
 export interface ParsedGpxTrack {
 	description: string;
@@ -47,12 +49,12 @@ function validCoordinate(latitude: number | undefined, longitude: number | undef
 	);
 }
 
-function gpxPoint(element: Element): GpxPointSource {
+function gpxPoint(element: Element): GpxPointSource | undefined {
 	const latitude = Number(element.getAttribute('lat'));
 	const longitude = Number(element.getAttribute('lon'));
 	const elevation = xmlNumber(xmlChild(element, 'ele'));
 	if (!(validCoordinate(latitude, longitude) && elevation !== undefined)) {
-		throw new Error('Every GPX route point must include valid coordinates and elevation data.');
+		return;
 	}
 	return {
 		distance: xmlNumber(xmlDescendant(element, 'DistanceKilometers')),
@@ -77,22 +79,35 @@ function customDistancesAreValid(points: GpxPointSource[]): boolean {
 function routePoints(points: GpxPointSource[]): GeographicRoutePoint[] {
 	const useCustomDistances = customDistancesAreValid(points);
 	let totalMeters = 0;
-	return points.map((point, index) => {
+	return points.flatMap((point, index) => {
 		const previous = points[index - 1];
 		if (previous) {
-			totalMeters += distanceBetween(
+			const segmentMeters = distanceBetween(
 				previous.latitude,
 				previous.longitude,
 				point.latitude,
 				point.longitude
 			);
+			if (segmentMeters <= DUPLICATE_POINT_DISTANCE_METERS) {
+				return [];
+			}
+			if (segmentMeters > MAXIMUM_ROUTE_POINT_GAP_METERS) {
+				throw new Error(
+					'A GPX route cannot contain coordinate gaps longer than 10 kilometers.'
+				);
+			}
+			totalMeters += segmentMeters;
 		}
-		return {
-			distance: useCustomDistances ? (point.distance ?? 0) : kilometersForMeters(totalMeters),
-			elevation: point.elevation,
-			latitude: point.latitude,
-			longitude: point.longitude,
-		};
+		return [
+			{
+				distance: useCustomDistances
+					? (point.distance ?? 0)
+					: kilometersForMeters(totalMeters),
+				elevation: point.elevation,
+				latitude: point.latitude,
+				longitude: point.longitude,
+			},
+		];
 	});
 }
 
@@ -115,16 +130,24 @@ export function parseGpxDocument(xml: Document): ParsedGpxTrack {
 		throw new Error('The GPX file does not contain a track or route.');
 	}
 	const pointName = track ? 'trkpt' : 'rtept';
-	const sourcePoints = xmlDescendants(container, pointName).map(gpxPoint);
+	const sourcePoints = xmlDescendants(container, pointName).flatMap(
+		(element) => gpxPoint(element) ?? []
+	);
 	if (sourcePoints.length < MINIMUM_GPX_POINTS) {
-		throw new Error('A workout GPX file needs at least three route points.');
+		throw new Error(
+			'A workout GPX file needs at least three valid route points with coordinates and elevation data.'
+		);
+	}
+	const points = routePoints(sourcePoints);
+	if (points.length < MINIMUM_GPX_POINTS) {
+		throw new Error('A workout GPX file needs at least three distinct route points.');
 	}
 	const metadata = xmlDescendant(root, 'metadata');
 	return {
 		description:
 			xmlText(xmlChild(container, 'desc')) || xmlText(xmlChild(metadata ?? root, 'desc')),
 		name: xmlText(xmlChild(container, 'name')) || xmlText(xmlChild(metadata ?? root, 'name')),
-		points: routePoints(sourcePoints),
+		points,
 	};
 }
 
