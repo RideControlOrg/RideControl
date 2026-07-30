@@ -78,12 +78,16 @@ export function useSession(
 	const persistActive = useMemo(() => createActiveSessionWriter(), []);
 	const state = useSelector(store);
 	const selectedWorkout = state.ended ? state.plannedWorkout : state.workout;
-	const activeControl = selectedWorkout
-		? {
-				...control,
-				mode: trainingControlMode(control.mode === CONTROL_MODE.GEAR, true),
-			}
-		: control;
+	const activeControl = useMemo<SessionControlState>(
+		() => ({
+			gear: control.gear,
+			mode: selectedWorkout
+				? trainingControlMode(control.mode === CONTROL_MODE.GEAR, true)
+				: control.mode,
+			resistance: control.resistance,
+		}),
+		[control.gear, control.mode, control.resistance, selectedWorkout]
+	);
 	const latestMetrics = useRef(metrics);
 	const latestControl = useRef(activeControl);
 	const latestProfileSnapshot = useRef(profileSnapshot);

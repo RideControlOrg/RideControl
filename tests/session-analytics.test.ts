@@ -22,6 +22,7 @@ import {
 	sessionsByLocalDate,
 } from '../src/lib/session-calendar';
 import { savedSessionFixture } from './fixtures/saved-session';
+import { requiredValue } from './test-values';
 
 function analyticsSession(
 	id: string,
@@ -174,8 +175,12 @@ describe('session analytics', () => {
 
 		expect(replaced.cache.totals.distance).toBe(40);
 		expect(replaced.cache.totals.ascent).toBe(800);
-		expect(replaced.cache.periods.months['2026-04'].sessionCount).toBe(1);
-		expect(replaced.cache.periods.months['2026-05'].sessionCount).toBe(1);
+		expect(
+			requiredValue(replaced.cache.periods.months['2026-04'], 'April rollup').sessionCount
+		).toBe(1);
+		expect(
+			requiredValue(replaced.cache.periods.months['2026-05'], 'May rollup').sessionCount
+		).toBe(1);
 		expect(replaced.peaksNeedRebuild).toBe(true);
 
 		const rebuilt = rebuildSessionAnalyticsPeaks(replaced.cache, [other, replacement]);
@@ -217,7 +222,7 @@ describe('session calendar data', () => {
 		const rideDay = days.find((day) => day.date.getDate() === 1 && day.inCurrentMonth);
 
 		expect(days.length % 7).toBe(0);
-		expect(days[0].date.getDay()).toBe(1);
+		expect(requiredValue(days[0], 'first calendar day').date.getDay()).toBe(1);
 		expect(grouped.size).toBe(1);
 		expect(rideDay?.sessions.map((session) => session.id)).toEqual(['morning', 'evening']);
 	});

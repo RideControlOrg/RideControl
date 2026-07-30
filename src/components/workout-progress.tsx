@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { formatGradeValue } from '../lib/format';
 import {
 	GRADE_METRIC_PRESENTATION,
@@ -98,7 +99,7 @@ function WorkoutStats({
 	);
 }
 
-export function WorkoutProgress({
+export const WorkoutProgress = memo(function WorkoutProgressComponent({
 	elevationTotals,
 	isRiding,
 	previewTerrain,
@@ -243,4 +244,4 @@ export function WorkoutProgress({
 			</div>
 		</section>
 	);
-}
+});

@@ -27,6 +27,7 @@ import {
 } from '../src/lib/session-workout-snapshots';
 import { WORKOUT_COURSES } from '../src/lib/workouts';
 import type { SavedSession, SavedSessionSummary, SessionSnapshot } from '../src/types';
+import { requiredValue } from './test-values';
 
 const snapshot: SessionSnapshot = {
 	aggregates: emptySession.aggregates,
@@ -250,7 +251,9 @@ describe('saved session utilities', () => {
 		);
 		const groups = groupSessionsByDate(summaries);
 		expect(groups).toHaveLength(2);
-		expect(groups[0].sessions.map((session) => session.id)).toEqual(['one', 'two']);
+		expect(
+			requiredValue(groups[0], 'first session group').sessions.map((session) => session.id)
+		).toEqual(['one', 'two']);
 		expect(groups[1]?.sessions[0]?.id).toBe('three');
 	});
 
@@ -301,14 +304,17 @@ describe('saved session utilities', () => {
 					startedAt: index,
 				}) satisfies SavedSessionSummary
 		);
+		const first = requiredValue(sessions[0], 'first session');
+		const second = requiredValue(sessions[1], 'second session');
+		const third = requiredValue(sessions[2], 'third session');
 		expect(sessionListAfterDelete(sessions, 'two')).toEqual({
-			next: sessions[2],
-			sessions: [sessions[0], sessions[2]],
+			next: third,
+			sessions: [first, third],
 		});
-		expect(sessionListAfterDelete(sessions, 'three').next).toBe(sessions[1]);
-		expect(sessionListAfterDelete([sessions[0]], 'one')).toEqual({ sessions: [] });
+		expect(sessionListAfterDelete(sessions, 'three').next).toBe(second);
+		expect(sessionListAfterDelete([first], 'one')).toEqual({ sessions: [] });
 		expect(sessionListAfterDelete(sessions, 'missing')).toEqual({
-			next: sessions[0],
+			next: first,
 			sessions,
 		});
 	});

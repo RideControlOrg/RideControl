@@ -1,6 +1,6 @@
 import { strToU8, zlibSync } from 'fflate';
 import { z } from 'zod';
-import type { SavedSession, SpeedUnit } from '../types';
+import type { SavedSession, SpeedUnit, WorkoutCourse } from '../types';
 import { apiUrl } from './api';
 import { aggregateAverage, formatDuration } from './format';
 import { getSessionAnalytics } from './saved-sessions';
@@ -89,6 +89,14 @@ function visualCoordinate(value: number): number {
 	return Math.max(0, Math.min(VISUAL_SCALE, Math.round(value)));
 }
 
+function sampledCoursePoint(points: WorkoutCourse['points'], index: number) {
+	const point = points[index];
+	if (!point) {
+		throw new Error(`Missing sampled workout point at index ${index}`);
+	}
+	return point;
+}
+
 function workoutVisual(session: SavedSession): WorkoutShareSummary['visual'] {
 	const course = session.workout?.course;
 	if (!course || course.points.length < 3) {
@@ -104,7 +112,7 @@ function workoutVisual(session: SavedSession): WorkoutShareSummary['visual'] {
 	const elevationRange = Math.max(maximumElevation - minimumElevation, 1);
 	return {
 		elevation: indexes.map((index) => {
-			const point = course.points[index];
+			const point = sampledCoursePoint(course.points, index);
 			return [
 				visualCoordinate((point.distance / course.distance) * VISUAL_SCALE),
 				visualCoordinate(
@@ -113,7 +121,7 @@ function workoutVisual(session: SavedSession): WorkoutShareSummary['visual'] {
 			];
 		}),
 		map: indexes.map((index) => {
-			const point = course.points[index];
+			const point = sampledCoursePoint(course.points, index);
 			return [
 				visualCoordinate((point.x / 100) * VISUAL_SCALE),
 				visualCoordinate((point.y / 100) * VISUAL_SCALE),

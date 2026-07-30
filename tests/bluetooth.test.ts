@@ -18,6 +18,7 @@ import {
 	rememberedBluetoothDevice,
 	rememberedBluetoothDevices,
 } from '../src/lib/remembered-bluetooth-devices';
+import { requiredValue } from './test-values';
 
 describe('Bluetooth data utilities', () => {
 	test('tracks meaningful pedaling activity', () => {
@@ -143,7 +144,10 @@ describe('Bluetooth data utilities', () => {
 		expect(rememberedBluetoothDevice(devices, 'heart-rate')).toBe(permitted[1]);
 		expect(
 			rememberedBluetoothDevices(devices, ['click-plus', 'missing', 'click-minus'], 2)
-		).toEqual([permitted[3], permitted[2]]);
+		).toEqual([
+			requiredValue(permitted[3], 'remembered Click plus device'),
+			requiredValue(permitted[2], 'remembered Click minus device'),
+		]);
 	});
 
 	test('connects GATT', async () => {

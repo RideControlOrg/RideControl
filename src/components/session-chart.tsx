@@ -417,11 +417,13 @@ export function SessionChart({
 				availableModes.findIndex((mode) => mode.value === effectiveMode)
 			);
 			const direction = event.key === 'ArrowRight' ? 1 : -1;
-			selectMode(
+			const nextMode =
 				availableModes[
 					(current + direction + availableModes.length) % availableModes.length
-				].value
-			);
+				];
+			if (nextMode) {
+				selectMode(nextMode.value);
+			}
 		};
 		window.addEventListener('keydown', handleKeys);
 		return () => window.removeEventListener('keydown', handleKeys);

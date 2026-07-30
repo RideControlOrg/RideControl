@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { matchingGpxRoutes } from '../src/lib/gpx-browser-form';
 import type { GpxRouteAnalysis, GpxRouteSummary } from '../src/lib/gpx-provider';
+import { requiredValue } from './test-values';
 
 function route(id: string, group: string, distanceKm: number, name: string): GpxRouteSummary {
 	return {
@@ -41,7 +42,10 @@ describe('GPX browser form', () => {
 		expect(matchingGpxRoutes(routes, emptyForm, 'kmh', analyses)).toEqual(routes);
 		expect(
 			matchingGpxRoutes(routes, { ...emptyForm, group: 'Australia' }, 'kmh', analyses)
-		).toEqual([routes[1], routes[3]]);
+		).toEqual([
+			requiredValue(routes[1], 'Australian prepared route'),
+			requiredValue(routes[3], 'Australian unprepared route'),
+		]);
 	});
 
 	test('combines prepared difficulty, displayed distance, and text filters', () => {
@@ -59,7 +63,7 @@ describe('GPX browser form', () => {
 				'kmh',
 				analyses
 			)
-		).toEqual([routes[1]]);
+		).toEqual([requiredValue(routes[1], 'moderate Australian route')]);
 		expect(
 			matchingGpxRoutes(
 				routes,
@@ -67,6 +71,6 @@ describe('GPX browser form', () => {
 				'mph',
 				analyses
 			)
-		).toEqual([routes[1]]);
+		).toEqual([requiredValue(routes[1], 'route within the imperial distance range')]);
 	});
 });

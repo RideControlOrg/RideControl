@@ -25,6 +25,13 @@ const MAX_UINT32 = 4_294_967_294;
 const MAX_STANDARD_SPEED_METERS_PER_SECOND = MAX_UINT16 / 1000;
 const FIT_EPOCH_MILLISECONDS = 631_065_600_000;
 
+function fitMessageNumber(value: number | undefined, name: string): number {
+	if (value === undefined) {
+		throw new Error(`Garmin FIT profile is missing message number ${name}`);
+	}
+	return value;
+}
+
 function fitLocalTimestamp(timestamp: number): number {
 	return Math.floor(
 		(timestamp - new Date(timestamp).getTimezoneOffset() * 60_000 - FIT_EPOCH_MILLISECONDS) /
@@ -132,7 +139,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		timeCreated: startedAt,
 		type: 'activity',
 	};
-	encoder.onMesg(Profile.MesgNum.FILE_ID, fileIdMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.FILE_ID, 'FILE_ID'), fileIdMessage);
 	const deviceInfoMessage: DeviceInfoMesg = {
 		deviceIndex: 'creator',
 		manufacturer: 'development',
@@ -140,17 +147,17 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		productName: 'Ride Control',
 		timestamp: startedAt,
 	};
-	encoder.onMesg(Profile.MesgNum.DEVICE_INFO, deviceInfoMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.DEVICE_INFO, 'DEVICE_INFO'), deviceInfoMessage);
 	const startEventMessage: EventMesg = {
 		event: 'timer',
 		eventType: 'start',
 		timerTrigger: 'manual',
 		timestamp: startedAt,
 	};
-	encoder.onMesg(Profile.MesgNum.EVENT, startEventMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.EVENT, 'EVENT'), startEventMessage);
 	for (const [index, sample] of session.history.entries()) {
 		encoder.onMesg(
-			Profile.MesgNum.RECORD,
+			fitMessageNumber(Profile.MesgNum.RECORD, 'RECORD'),
 			recordMessage(
 				sample,
 				new Date(
@@ -167,7 +174,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		timerTrigger: 'manual',
 		timestamp: endedAt,
 	};
-	encoder.onMesg(Profile.MesgNum.EVENT, stopEventMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.EVENT, 'EVENT'), stopEventMessage);
 	const lapMessage: LapMesg = {
 		...summary,
 		event: 'lap',
@@ -176,7 +183,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		startTime: startedAt,
 		timestamp: endedAt,
 	};
-	encoder.onMesg(Profile.MesgNum.LAP, lapMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.LAP, 'LAP'), lapMessage);
 	const sessionMessage: SessionMesg = {
 		...summary,
 		event: 'session',
@@ -189,7 +196,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		timestamp: endedAt,
 		trigger: 'activityEnd',
 	};
-	encoder.onMesg(Profile.MesgNum.SESSION, sessionMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.SESSION, 'SESSION'), sessionMessage);
 	const activityMessage: ActivityMesg = {
 		event: 'activity',
 		eventType: 'stop',
@@ -199,7 +206,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		totalTimerTime: summary.totalTimerTime,
 		type: 'manual',
 	};
-	encoder.onMesg(Profile.MesgNum.ACTIVITY, activityMessage);
+	encoder.onMesg(fitMessageNumber(Profile.MesgNum.ACTIVITY, 'ACTIVITY'), activityMessage);
 	return encoder.close();
 }
 

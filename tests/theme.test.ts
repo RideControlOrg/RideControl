@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { applyUiTheme, isUiTheme, storedUiTheme, UI_THEME_STORAGE_KEY } from '../src/lib/theme';
+import { requiredValue } from './test-values';
 
 const stylesheet = await readFile(new URL('../src/style.css', import.meta.url), 'utf8');
 const routeMapSource = await readFile(
@@ -34,7 +35,7 @@ function cssVariable(block: string, name: string): string {
 	if (!match) {
 		throw new Error(`Missing hexadecimal CSS variable: ${name}`);
 	}
-	return match[1];
+	return requiredValue(match[1], `value for CSS variable ${name}`);
 }
 
 function relativeLuminance(hex: string): number {
@@ -43,14 +44,21 @@ function relativeLuminance(hex: string): number {
 		const normalized = channel / 255;
 		return normalized <= 0.040_45 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
 	});
-	return linearChannels[0] * 0.2126 + linearChannels[1] * 0.7152 + linearChannels[2] * 0.0722;
+	return (
+		requiredValue(linearChannels[0], 'red luminance channel') * 0.2126 +
+		requiredValue(linearChannels[1], 'green luminance channel') * 0.7152 +
+		requiredValue(linearChannels[2], 'blue luminance channel') * 0.0722
+	);
 }
 
 function contrastRatio(first: string, second: string): number {
 	const luminances = [relativeLuminance(first), relativeLuminance(second)].sort(
 		(left, right) => right - left
 	);
-	return (luminances[0] + 0.05) / (luminances[1] + 0.05);
+	return (
+		(requiredValue(luminances[0], 'lighter luminance') + 0.05) /
+		(requiredValue(luminances[1], 'darker luminance') + 0.05)
+	);
 }
 
 describe('interface theme', () => {

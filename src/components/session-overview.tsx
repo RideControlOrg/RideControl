@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { EMPTY_ROUTE } from '../constants';
 import type { ControlMode, MetricSample, SessionWorkout, SpeedUnit } from '../types';
 import { SessionChart } from './session-chart';
 
-export function SessionOverview({
+export const SessionOverview = memo(function SessionOverviewComponent({
 	controlMode,
 	history,
 	inspectionEnabled,
@@ -30,4 +31,4 @@ export function SessionOverview({
 			speedUnit={speedUnit}
 		/>
 	);
-}
+});
