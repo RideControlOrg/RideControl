@@ -46,6 +46,7 @@ import type { SpeedUnit, WorkoutCourse } from '../types';
 import type { GpxBrowserSelection } from './gpx-browser-dialog';
 import { GpxImportChoiceDialog, GpxImportResultDialog } from './gpx-import-dialog';
 import { Icon } from './icon';
+import { RemoveWorkoutDialog } from './remove-workout-dialog';
 import { RenameWorkoutDialog } from './rename-workout-dialog';
 import { SideTray } from './side-tray';
 import { WorkoutRouteVisualization } from './workout-route-visualization';
@@ -410,6 +411,7 @@ export function WorkoutPanel({
 	const [libraryStatus, setLibraryStatus] = useState('');
 	const [importError, setImportError] = useState('');
 	const [renamingCourse, setRenamingCourse] = useState<WorkoutCourse>();
+	const [removingCourse, setRemovingCourse] = useState<WorkoutCourse>();
 	const [mappedCourse, setMappedCourse] = useState<WorkoutCourse>();
 	const [searchQuery, setSearchQuery] = useState('');
 	const sensors = useSensors(
@@ -487,6 +489,7 @@ export function WorkoutPanel({
 
 	const closePanel = () => {
 		setRenamingCourse(undefined);
+		setRemovingCourse(undefined);
 		setMappedCourse(undefined);
 		setPendingImportFile(undefined);
 		setImportResult(undefined);
@@ -552,7 +555,8 @@ export function WorkoutPanel({
 						importResult ||
 						mappedCourse ||
 						pendingImportFile ||
-						renamingCourse
+						renamingCourse ||
+						removingCourse
 					)
 				}
 				labelledBy="workout-panel-title"
@@ -696,7 +700,7 @@ export function WorkoutPanel({
 													);
 												}
 											}}
-											onRemove={() => onRemoveCourse(course.id)}
+											onRemove={() => setRemovingCourse(course)}
 											onRename={() => setRenamingCourse(course)}
 											onSelect={() =>
 												onSelect(
@@ -792,6 +796,18 @@ export function WorkoutPanel({
 					}}
 				/>
 			) : null}
+			<RemoveWorkoutDialog
+				courseName={removingCourse?.name ?? ''}
+				onCancel={() => setRemovingCourse(undefined)}
+				onConfirm={() => {
+					if (removingCourse) {
+						onRemoveCourse(removingCourse.id);
+						setLibraryStatus(`${removingCourse.name} removed from this device.`);
+						setRemovingCourse(undefined);
+					}
+				}}
+				open={Boolean(removingCourse)}
+			/>
 			{pendingImportFile ? (
 				<GpxImportChoiceDialog
 					fileName={pendingImportFile.name}
