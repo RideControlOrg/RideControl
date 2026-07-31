@@ -53,6 +53,7 @@ import {
 	appRouteSideTray,
 	HOME_APP_ROUTE,
 } from './lib/app-route';
+import { sessionChartInspectionEnabled } from './lib/chart';
 import {
 	CONTROL_MODE,
 	trainingControlMode,
@@ -899,7 +900,8 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 					<SessionOverview
 						controlMode={activeControlMode}
 						history={session.history}
-						inspectionEnabled={!session.isRiding}
+						inspectionEnabled={sessionChartInspectionEnabled(session)}
+						key={session.startedAt}
 						keyboardEnabled={dashboardKeyboardEnabled}
 						onInspectSample={inspectWorkoutSample}
 						speedUnit={speedUnit}

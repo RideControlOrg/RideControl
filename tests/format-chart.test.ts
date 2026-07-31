@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { resistanceChartMaximum, roundedChartMaximum, storedChartMode } from '../src/lib/chart';
+import {
+	resistanceChartMaximum,
+	roundedChartMaximum,
+	sessionChartInspectionEnabled,
+	storedChartMode,
+} from '../src/lib/chart';
 import {
 	aggregateMaximum,
 	formatAggregateAverage,
@@ -37,6 +42,21 @@ describe('format utilities', () => {
 });
 
 describe('chart utilities', () => {
+	test('enables chart inspection only for completed or paused recorded sessions', () => {
+		expect(
+			sessionChartInspectionEnabled({ elapsedSeconds: 0, ended: false, isRiding: false })
+		).toBe(false);
+		expect(
+			sessionChartInspectionEnabled({ elapsedSeconds: 10, ended: false, isRiding: true })
+		).toBe(false);
+		expect(
+			sessionChartInspectionEnabled({ elapsedSeconds: 10, ended: false, isRiding: false })
+		).toBe(true);
+		expect(
+			sessionChartInspectionEnabled({ elapsedSeconds: 10, ended: true, isRiding: false })
+		).toBe(true);
+	});
+
 	test('rounds maxima up by chart step', () => {
 		expect(roundedChartMaximum(121, 100, 50)).toBe(150);
 		expect(roundedChartMaximum(20, 100, 50)).toBe(100);
