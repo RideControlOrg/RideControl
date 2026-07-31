@@ -1797,7 +1797,7 @@ describe('view components', () => {
 		).toBe('');
 		const html = render(
 			<SessionSaveDialog
-				intent={SESSION_WORKFLOW_INTENT.CONTINUE}
+				intent={SESSION_WORKFLOW_INTENT.EXTEND}
 				onClose={() => undefined}
 				onSave={async () => undefined}
 				onStartWithoutSaving={() => undefined}
@@ -1824,8 +1824,8 @@ describe('view components', () => {
 		expect(html).toContain('Description');
 		expect(html).toContain('0 / 500');
 		expect(html).toContain('maxLength="500"');
-		expect(html).toContain('Continue without saving');
-		expect(html).toContain('Save &amp; continue');
+		expect(html).toContain('Start extension without saving');
+		expect(html).toContain('Save &amp; start extension');
 		const endSession = render(
 			<SessionSaveDialog
 				intent={SESSION_WORKFLOW_INTENT.END}
@@ -2302,6 +2302,39 @@ describe('view components', () => {
 		expect(html).toContain('RECORDED');
 		expect(html.indexOf('RECORDED')).toBeLessThan(html.indexOf('POWER'));
 		expect(html.indexOf('POWER')).toBeLessThan(html.indexOf(courseMapLabel));
+	});
+
+	test('offers per-session and combined metrics for linked course journeys', () => {
+		const html = render(
+			<SessionDetail
+				combinedJourney={{
+					partCount: 2,
+					partNumber: 2,
+					session: {
+						...savedSessionFixture,
+						calories: 500,
+						distance: 20,
+						elapsedSeconds: 7200,
+						id: 'journey:saved-session',
+					},
+				}}
+				session={{
+					...savedSessionFixture,
+					continuation: {
+						journeyId: savedSessionFixture.id,
+						previousSessionId: savedSessionFixture.id,
+						workoutStartDistance: savedSessionFixture.distance,
+					},
+					id: 'second-session',
+				}}
+				speedUnit="mph"
+			/>
+		);
+		expect(html).toContain('Course journey · Part 2 of 2');
+		expect(html).toContain('aria-pressed="true"');
+		expect(html).toContain('aria-pressed="false"');
+		expect(html).toContain('This session');
+		expect(html).toContain('Full journey');
 	});
 
 	test('shows the rider weight captured with the session in the selected units', () => {

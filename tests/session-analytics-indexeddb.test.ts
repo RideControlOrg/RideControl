@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import {
 	deleteSavedSession,
 	getSessionAnalytics,
+	listSavedSessionJourney,
 	listSavedSessionsForMonth,
 	saveSession,
 	sessionSummary,
@@ -77,6 +78,11 @@ describe('session analytics IndexedDB cache', () => {
 
 		const second = {
 			...savedSessionFixture,
+			continuation: {
+				journeyId: savedSessionFixture.id,
+				previousSessionId: savedSessionFixture.id,
+				workoutStartDistance: savedSessionFixture.distance,
+			},
 			distance: 20,
 			elapsedSeconds: 7200,
 			endedAt: new Date(2026, 7, 1, 1).getTime(),
@@ -88,6 +94,10 @@ describe('session analytics IndexedDB cache', () => {
 		expect(afterAddition.totals.sessionCount).toBe(2);
 		expect(afterAddition.totals.distance).toBe(30);
 		expect(await listSavedSessionsForMonth(2026, 7)).toHaveLength(1);
+		expect((await listSavedSessionJourney(second)).map((session) => session.id)).toEqual([
+			savedSessionFixture.id,
+			second.id,
+		]);
 
 		await deleteSavedSession(replacement.id);
 		const afterDelete = await getSessionAnalytics();

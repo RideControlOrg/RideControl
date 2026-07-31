@@ -33,15 +33,15 @@ describe('session workflow store', () => {
 	test('preserves the requested next session while saving', () => {
 		const session = { id: 'saved-session' } as SavedSession;
 		const store = createSessionWorkflowStore(false);
-		store.actions.open({ kind: SESSION_WORKFLOW_INTENT.CONTINUE, session });
+		store.actions.open({ kind: SESSION_WORKFLOW_INTENT.EXTEND, session });
 		const prompt = store.get();
 		expect(prompt).toEqual({
-			intent: { kind: SESSION_WORKFLOW_INTENT.CONTINUE, session },
+			intent: { kind: SESSION_WORKFLOW_INTENT.EXTEND, session },
 			phase: SESSION_WORKFLOW_PHASE.PROMPT,
 		});
 		store.actions.startSaving();
 		expect(store.get()).toEqual({
-			intent: { kind: SESSION_WORKFLOW_INTENT.CONTINUE, session },
+			intent: { kind: SESSION_WORKFLOW_INTENT.EXTEND, session },
 			phase: SESSION_WORKFLOW_PHASE.SAVING,
 		});
 		store.actions.saveFailed();

@@ -29,6 +29,7 @@ import {
 	sessionAnalyticsContribution,
 	updateSessionAnalyticsCache,
 } from './session-analytics';
+import { restoreSessionContinuation } from './session-continuation';
 import { normalizeSessionDescription } from './session-description';
 import {
 	createSessionWorkoutSnapshot,
@@ -41,7 +42,7 @@ import { isFiniteNumber, isRecord, isString } from './type-guards';
 import { restoreSessionWorkout } from './workouts';
 
 const DATABASE_NAME = 'ridecontrol-sessions';
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 const ACTIVE_SESSION_ID = 'current';
 const ACTIVE_SESSION_STORE = 'active-session';
 const ACTIVE_SESSION_SAMPLE_STORE = 'active-session-samples';
@@ -53,6 +54,7 @@ const SUMMARY_STORE = 'session-summaries';
 const WORKOUT_STORE = 'session-workouts';
 const ENDED_AT_INDEX = 'endedAt';
 const STARTED_AT_INDEX = 'startedAt';
+const SESSION_CONTINUATION_INDEX = 'continuation.journeyId';
 const WORKOUT_SNAPSHOT_INDEX = 'workoutSnapshotId';
 const MERIDIEM_SUFFIX = /\s*(AM|PM)$/i;
 const SESSION_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' });
@@ -151,6 +153,9 @@ function summaryStoreForUpgrade(request: IDBOpenDBRequest): IDBObjectStore | und
 	}
 	if (summaries && !summaries.indexNames.contains(STARTED_AT_INDEX)) {
 		summaries.createIndex(STARTED_AT_INDEX, STARTED_AT_INDEX);
+	}
+	if (summaries && !summaries.indexNames.contains(SESSION_CONTINUATION_INDEX)) {
+		summaries.createIndex(SESSION_CONTINUATION_INDEX, SESSION_CONTINUATION_INDEX);
 	}
 	return summaries;
 }
@@ -384,6 +389,7 @@ export function feelingLabel(feeling?: SessionFeeling): string {
 export function sessionSummary(session: SavedSession): SavedSessionSummary {
 	return {
 		calories: session.calories,
+		...(session.continuation ? { continuation: session.continuation } : {}),
 		distance: session.distance,
 		elapsedSeconds: session.elapsedSeconds,
 		endedAt: session.endedAt,
@@ -426,6 +432,7 @@ export function normalizeSavedSessionRecord(
 export function normalizeSavedSessionSummary(session: SavedSessionSummary): SavedSessionSummary {
 	return {
 		...session,
+		continuation: restoreSessionContinuation(session.continuation),
 		importedAt: normalizedImportedAt(session.importedAt),
 		workoutName: isString(session.workoutName) ? session.workoutName : undefined,
 	};
@@ -604,12 +611,35 @@ export function normalizeSavedSession(session: SavedSession): SavedSession {
 			),
 		},
 		comments: normalizeSessionDescription(session.comments),
+		continuation: restoreSessionContinuation(session.continuation),
 		controlMode: controlModeForHistory(session.history, session.controlMode),
 		elevationTotals: restoreElevationTotals(session.elevationTotals, session.history),
 		importedAt: normalizedImportedAt(session.importedAt),
 		profileSnapshot: riderPhysicsProfileFromStoredValue(session.profileSnapshot),
 		workout: restoreSessionWorkout(session.workout),
 	};
+}
+
+export async function listSavedSessionJourney(selected: SavedSession): Promise<SavedSession[]> {
+	const database = await openDatabase();
+	let journeyId = selected.id;
+	if (selected.continuation) {
+		({ journeyId } = selected.continuation);
+	}
+	const transaction = database.transaction(SUMMARY_STORE, 'readonly');
+	const completed = indexedDbTransactionComplete(transaction);
+	const relatedSummaries = await indexedDbRequestResult(
+		transaction
+			.objectStore(SUMMARY_STORE)
+			.index(SESSION_CONTINUATION_INDEX)
+			.getAll(journeyId) as IDBRequest<SavedSessionSummary[]>
+	);
+	await completed;
+	const ids = new Set([selected.id, journeyId, ...relatedSummaries.map((summary) => summary.id)]);
+	const sessions = await Promise.all([...ids].map((id) => getSavedSession(id)));
+	return sessions
+		.filter((session): session is SavedSession => session !== undefined)
+		.sort((left, right) => left.startedAt - right.startedAt);
 }
 
 export async function countSavedSessions(): Promise<number> {

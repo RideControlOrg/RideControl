@@ -13,6 +13,7 @@ import {
 	formatSessionTimeRange,
 	isImportedSession,
 } from '../lib/saved-sessions';
+import { type CombinedSessionJourney, sessionWorkoutDistance } from '../lib/session-continuation';
 import { sessionDetailScrollPositionStorageKey } from '../lib/session-history-preferences';
 import { shareSessionOnX } from '../lib/session-sharing';
 import { downloadSessionTcx } from '../lib/tcx';
@@ -135,8 +136,50 @@ export function DeleteSessionDialog({
 	);
 }
 
+function JourneyMetricScope({
+	journey,
+	onChange,
+	showCombined,
+}: {
+	journey: CombinedSessionJourney;
+	onChange: (showCombined: boolean) => void;
+	showCombined: boolean;
+}) {
+	return (
+		<div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-line border-y py-2">
+			<p className="text-slate-400 text-xs">
+				Course journey · Part {journey.partNumber} of {journey.partCount}
+			</p>
+			<fieldset className="flex items-center border border-line">
+				<legend className="sr-only">Session metric scope</legend>
+				<button
+					aria-pressed={!showCombined}
+					className={`px-3 py-1.5 font-semibold text-xs ${
+						showCombined ? 'text-slate-400 hover:text-white' : 'bg-slate-700 text-white'
+					}`}
+					onClick={() => onChange(false)}
+					type="button"
+				>
+					This session
+				</button>
+				<button
+					aria-pressed={showCombined}
+					className={`border-line border-l px-3 py-1.5 font-semibold text-xs ${
+						showCombined ? 'bg-mint/10 text-mint' : 'text-slate-400 hover:text-white'
+					}`}
+					onClick={() => onChange(true)}
+					type="button"
+				>
+					Full journey
+				</button>
+			</fieldset>
+		</div>
+	);
+}
+
 export function SessionDetail({
 	chartKeyboardEnabled = true,
+	combinedJourney,
 	deleteConfirmationOpen = false,
 	deleting = false,
 	onCancelDelete,
@@ -149,6 +192,7 @@ export function SessionDetail({
 	speedUnit,
 }: {
 	chartKeyboardEnabled?: boolean;
+	combinedJourney?: CombinedSessionJourney;
 	deleteConfirmationOpen?: boolean;
 	deleting?: boolean;
 	onCancelDelete?: () => void;
@@ -162,26 +206,32 @@ export function SessionDetail({
 }) {
 	const [shareError, setShareError] = useState('');
 	const [sharing, setSharing] = useState(false);
+	const [showCombinedJourney, setShowCombinedJourney] = useState(false);
 	const [previewWorkoutDistance, setPreviewWorkoutDistance] = useState<number>();
+	const displayedSession =
+		showCombinedJourney && combinedJourney ? combinedJourney.session : session;
 	const detailScroll = usePersistentScrollPosition(
 		sessionDetailScrollPositionStorageKey(session.id),
 		true
 	);
-	const usesGear = session.controlMode === CONTROL_MODE.GEAR;
+	const usesGear = displayedSession.controlMode === CONTROL_MODE.GEAR;
 	const imported = isImportedSession(session);
 	const workoutTerrain = useMemo(
 		() =>
-			session.workout
-				? workoutTerrainAtDistance(session.workout.course, session.distance)
+			displayedSession.workout
+				? workoutTerrainAtDistance(
+						displayedSession.workout.course,
+						sessionWorkoutDistance(displayedSession)
+					)
 				: undefined,
-		[session.distance, session.workout]
+		[displayedSession]
 	);
 	const previewWorkoutTerrain = useMemo(
 		() =>
-			session.workout && previewWorkoutDistance !== undefined
-				? workoutTerrainAtDistance(session.workout.course, previewWorkoutDistance)
+			displayedSession.workout && previewWorkoutDistance !== undefined
+				? workoutTerrainAtDistance(displayedSession.workout.course, previewWorkoutDistance)
 				: undefined,
-		[previewWorkoutDistance, session.workout]
+		[displayedSession.workout, previewWorkoutDistance]
 	);
 	const inspectSample = useCallback(
 		(sample: MetricSample | undefined) => setPreviewWorkoutDistance(sample?.workoutDistance),
@@ -193,10 +243,10 @@ export function SessionDetail({
 				const presentation = METRIC_PRESENTATION[key];
 				return {
 					accent: presentation.accent,
-					average: formatAggregateAverage(session.aggregates[key], 0),
+					average: formatAggregateAverage(displayedSession.aggregates[key], 0),
 					icon: presentation.icon,
 					label: presentation.label.toUpperCase(),
-					maximum: formatWholeNumber(session.maximums[key]),
+					maximum: formatWholeNumber(displayedSession.maximums[key]),
 					unit: presentation.unit,
 				};
 			}),
@@ -204,24 +254,28 @@ export function SessionDetail({
 				? [
 						{
 							accent: 'mint',
-							average: formatAggregateAverage(session.aggregates.gear, 0),
+							average: formatAggregateAverage(displayedSession.aggregates.gear, 0),
 							icon: 'controls',
 							label: 'GEAR',
-							maximum: formatWholeNumber(aggregateMaximum(session.aggregates.gear)),
+							maximum: formatWholeNumber(
+								aggregateMaximum(displayedSession.aggregates.gear)
+							),
 							unit: '',
 						},
 					]
 				: []),
 			{
 				accent: 'mint',
-				average: formatAggregateAverage(session.aggregates.resistance, 0),
+				average: formatAggregateAverage(displayedSession.aggregates.resistance, 0),
 				icon: 'resistance',
 				label: 'RESISTANCE',
-				maximum: formatWholeNumber(aggregateMaximum(session.aggregates.resistance)),
+				maximum: formatWholeNumber(
+					aggregateMaximum(displayedSession.aggregates.resistance)
+				),
 				unit: '%',
 			},
 		],
-		[session.aggregates, session.maximums, usesGear]
+		[displayedSession.aggregates, displayedSession.maximums, usesGear]
 	);
 	const shareOnX = useCallback(async () => {
 		setShareError('');
@@ -317,6 +371,7 @@ export function SessionDetail({
 								<button
 									className="w-full rounded-lg border border-mint/30 px-3 py-2 font-semibold text-mint text-xs transition hover:border-mint/60 hover:bg-mint/5 sm:w-auto"
 									onClick={onStartNew}
+									title="Start a fresh linked session from this saved course position"
 									type="button"
 								>
 									Start new session
@@ -348,11 +403,18 @@ export function SessionDetail({
 					/>
 				) : null}
 			</div>
+			{combinedJourney ? (
+				<JourneyMetricScope
+					journey={combinedJourney}
+					onChange={setShowCombinedJourney}
+					showCombined={showCombinedJourney}
+				/>
+			) : null}
 			<div className="minimal-summary-grid mt-3 grid">
 				<SessionSummary
-					calories={session.calories}
-					distance={session.distance}
-					elapsedSeconds={session.elapsedSeconds}
+					calories={displayedSession.calories}
+					distance={displayedSession.distance}
+					elapsedSeconds={displayedSession.elapsedSeconds}
 					speedUnit={speedUnit}
 					timeLabel="RECORDED"
 				/>
@@ -362,25 +424,27 @@ export function SessionDetail({
 					<SessionMetric key={metric.label} {...metric} />
 				))}
 			</div>
-			{session.workout && workoutTerrain ? (
+			{displayedSession.workout && workoutTerrain ? (
 				<WorkoutProgress
-					elevationTotals={session.elevationTotals}
+					elevationTotals={displayedSession.elevationTotals}
 					isRiding={false}
 					previewTerrain={previewWorkoutTerrain}
 					speedUnit={speedUnit}
 					terrain={workoutTerrain}
 					variant="session"
-					workout={session.workout}
+					workout={displayedSession.workout}
 				/>
 			) : null}
 			<SessionMetadataDetails session={session} speedUnit={speedUnit} />
 			<SessionChart
-				controlMode={session.controlMode}
-				history={session.history}
+				controlMode={displayedSession.controlMode}
+				history={displayedSession.history}
 				keyboardEnabled={chartKeyboardEnabled}
 				onInspectSample={inspectSample}
 				onSelectChartMode={onSelectChartMode}
-				route={session.workout ? session.workout.course.points : EMPTY_ROUTE}
+				route={
+					displayedSession.workout ? displayedSession.workout.course.points : EMPTY_ROUTE
+				}
 				selectedChartMode={selectedChartMode}
 				speedUnit={speedUnit}
 				variant="session"

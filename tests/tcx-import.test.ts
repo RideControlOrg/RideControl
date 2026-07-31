@@ -110,6 +110,11 @@ describe('TCX import', () => {
 		};
 		const workoutSession: SavedSession = {
 			...session,
+			continuation: {
+				journeyId: 'journey-1',
+				previousSessionId: 'session-1',
+				workoutStartDistance: 12.5,
+			},
 			elevationTotals: { ascent: 205.5, descent: 91.25 },
 			history: session.history.map((sample, index) => {
 				const terrain = workoutTerrainAtDistance(course, index + 1);
@@ -148,6 +153,7 @@ describe('TCX import', () => {
 		expect(imported.history[0]?.elevation).toBeNumber();
 		expect(imported.history[0]?.grade).toBeNumber();
 		expect(imported.elevationTotals).toEqual({ ascent: 205.5, descent: 91.25 });
+		expect(imported.continuation).toEqual(workoutSession.continuation);
 	});
 
 	test('imports TCX files in nested ZIP folders and skips duplicate sessions', async () => {

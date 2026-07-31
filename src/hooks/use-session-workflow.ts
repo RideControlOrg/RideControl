@@ -14,7 +14,7 @@ import {
 	type SessionWorkflowIntent,
 } from '../lib/session-workflow';
 import { createSessionWorkflowStore } from '../stores/session-workflow-store';
-import type { SavedSession, SessionMetadata } from '../types';
+import type { SavedSession, SessionMetadata, SessionSnapshot } from '../types';
 
 export function useSessionWorkflow(
 	session: SessionWorkflowController,
@@ -30,37 +30,77 @@ export function useSessionWorkflow(
 		() => finishRideSession(session.endSession, settleTrainerResistance),
 		[session.endSession, settleTrainerResistance]
 	);
+	const { extendFrom: extendFromSession, selectedWorkout, startNew: resetSession } = session;
+
+	const startFromCurrent = useCallback(
+		(sourceSession: SessionSnapshot, previousSessionId?: string) => {
+			const { workout: sourceWorkout } = sourceSession;
+			if (
+				sourceWorkout &&
+				selectedWorkout &&
+				sourceWorkout.course.id === selectedWorkout.course.id
+			) {
+				extendFromSession(sourceSession, previousSessionId);
+			} else {
+				resetSession();
+			}
+		},
+		[extendFromSession, resetSession, selectedWorkout]
+	);
 
 	const startNewSession = useCallback(() => {
-		session.startNew();
+		if (session.elapsedSeconds > 0) {
+			startFromCurrent(session.snapshot, session.savedSessionId);
+		} else {
+			session.startNew();
+		}
 		store.actions.close();
 		setNotice('New session ready.');
-	}, [session.startNew, setNotice, store]);
+	}, [
+		session.elapsedSeconds,
+		session.savedSessionId,
+		session.snapshot,
+		session.startNew,
+		startFromCurrent,
+		setNotice,
+		store,
+	]);
 
-	const continueSession = useCallback(
+	const extendSession = useCallback(
 		(savedSession: SavedSession) => {
-			session.continueFrom(savedSession);
+			session.extendFrom(savedSession, savedSession.id);
 			store.actions.close();
-			setNotice('Session continued.');
+			setNotice('Course continuation ready with fresh ride metrics.');
 		},
-		[session.continueFrom, setNotice, store]
+		[session.extendFrom, setNotice, store]
 	);
 
 	const completeIntent = useCallback(
-		(intent: SessionWorkflowIntent, saved: boolean) => {
+		(intent: SessionWorkflowIntent, savedSession?: SavedSession) => {
 			switch (intent.kind) {
-				case SESSION_WORKFLOW_INTENT.CONTINUE:
-					session.continueFrom(intent.session);
+				case SESSION_WORKFLOW_INTENT.EXTEND:
+					session.extendFrom(intent.session, intent.session.id);
 					setNotice(
-						saved ? 'Session saved. Selected session continued.' : 'Session continued.'
+						savedSession
+							? 'Session saved. Course continuation ready with fresh ride metrics.'
+							: 'Course continuation ready with fresh ride metrics.'
 					);
 					break;
-				case SESSION_WORKFLOW_INTENT.NEW:
-					session.startNew();
-					setNotice(saved ? 'Session saved. New session ready.' : 'New session ready.');
+				case SESSION_WORKFLOW_INTENT.NEW: {
+					const sourceSession = savedSession || session.snapshot;
+					const previousSessionId = savedSession
+						? savedSession.id
+						: session.savedSessionId;
+					startFromCurrent(sourceSession, previousSessionId);
+					setNotice(
+						savedSession
+							? 'Session saved. New linked session ready.'
+							: 'New linked session ready.'
+					);
 					break;
+				}
 				case SESSION_WORKFLOW_INTENT.END:
-					if (saved) {
+					if (savedSession) {
 						setNotice('Session saved.');
 					} else {
 						session.markDiscarded();
@@ -72,7 +112,15 @@ export function useSessionWorkflow(
 			}
 			store.actions.close();
 		},
-		[session.continueFrom, session.markDiscarded, session.startNew, setNotice, store]
+		[
+			session.extendFrom,
+			session.markDiscarded,
+			session.savedSessionId,
+			session.snapshot,
+			setNotice,
+			startFromCurrent,
+			store,
+		]
 	);
 
 	const endSession = useCallback(() => {
@@ -104,22 +152,22 @@ export function useSessionWorkflow(
 		store,
 	]);
 
-	const requestContinuation = useCallback(
+	const requestExtension = useCallback(
 		(savedSession: SavedSession) => {
 			const currentNeedsSave =
 				(session.ended && !sessionIsResolved) ||
 				(!session.ended && session.elapsedSeconds > 0);
 			if (!currentNeedsSave) {
-				continueSession(savedSession);
+				extendSession(savedSession);
 				return;
 			}
 			if (!session.ended) {
 				finishSession();
 			}
-			store.actions.open({ kind: SESSION_WORKFLOW_INTENT.CONTINUE, session: savedSession });
+			store.actions.open({ kind: SESSION_WORKFLOW_INTENT.EXTEND, session: savedSession });
 		},
 		[
-			continueSession,
+			extendSession,
 			session.elapsedSeconds,
 			session.ended,
 			sessionIsResolved,
@@ -139,7 +187,7 @@ export function useSessionWorkflow(
 				const savedSession = createSavedSession(session.snapshot, metadata);
 				await saveSession(savedSession);
 				session.markSaved(savedSession.id);
-				completeIntent(intent, true);
+				completeIntent(intent, savedSession);
 			} catch (error) {
 				store.actions.saveFailed();
 				setNotice(`Session could not be saved: ${errorMessage(error)}`);
@@ -150,7 +198,7 @@ export function useSessionWorkflow(
 
 	const proceedWithoutSaving = useCallback(() => {
 		if (state.phase !== SESSION_WORKFLOW_PHASE.CLOSED) {
-			completeIntent(state.intent, false);
+			completeIntent(state.intent);
 		}
 	}, [completeIntent, state]);
 	const closeSaveDialog = useCallback(() => store.actions.close(), [store]);
@@ -168,7 +216,7 @@ export function useSessionWorkflow(
 		endSession,
 		openSaveDialog,
 		proceedWithoutSaving,
-		requestContinuation,
+		requestExtension,
 		requestNewSession,
 		requestPersistentStorage,
 		saveCurrentSession,

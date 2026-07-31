@@ -95,6 +95,12 @@ describe('saved session utilities', () => {
 		});
 		expect('history' in summary).toBe(false);
 		expect(sessionSummary({ ...session, importedAt: 5678 }).importedAt).toBe(5678);
+		const continuation = {
+			journeyId: session.id,
+			previousSessionId: session.id,
+			workoutStartDistance: 10,
+		};
+		expect(sessionSummary({ ...session, continuation }).continuation).toEqual(continuation);
 		expect(isImportedSession({ id: 'tcx:legacy-import' })).toBe(true);
 		expect(isImportedSession({ id: 'fit:activity-import' })).toBe(true);
 		expect(isImportedSession({ id: session.id })).toBe(false);

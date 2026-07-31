@@ -82,6 +82,7 @@ export function SessionHistory({
 	weightHistory?: readonly RiderWeightEntry[];
 }) {
 	const {
+		combinedJourney,
 		deleteSelectedSession: deleteHistorySession,
 		deleting,
 		downloadAllActivityFiles,
@@ -272,6 +273,7 @@ export function SessionHistory({
 		detail = (
 			<SessionDetail
 				chartKeyboardEnabled={open && !(deleteConfirmationOpen || historyHelpOpen)}
+				combinedJourney={combinedJourney}
 				deleteConfirmationOpen={deleteConfirmationOpen}
 				deleting={deleting}
 				key={selected.id}

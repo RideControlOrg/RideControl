@@ -55,6 +55,11 @@ export function SessionControls({
 				<button
 					className="h-10 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
 					onClick={onRequestNew}
+					title={
+						workoutName
+							? 'Start a fresh linked session from this course position'
+							: undefined
+					}
 					type="button"
 				>
 					Start new session

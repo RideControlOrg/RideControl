@@ -15,10 +15,10 @@ import { SessionSummary } from './session-summary';
 
 function actionLabels(intent: SessionWorkflowIntent['kind']) {
 	switch (intent) {
-		case SESSION_WORKFLOW_INTENT.CONTINUE:
+		case SESSION_WORKFLOW_INTENT.EXTEND:
 			return {
-				primary: 'Save & continue',
-				secondary: 'Continue without saving',
+				primary: 'Save & start extension',
+				secondary: 'Start extension without saving',
 				secondaryClass: 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
 			};
 		case SESSION_WORKFLOW_INTENT.NEW:

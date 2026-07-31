@@ -7,11 +7,11 @@ import {
 	aggregateResistance,
 	loadStoredSession,
 	restoreAggregate,
-	sessionContinuation,
 	sessionHasRecordedData,
 	sessionNeedsUnloadWarning,
 	storedResistance,
 } from '../src/lib/session';
+import { freshSessionExtension, sessionWorkoutDistance } from '../src/lib/session-continuation';
 import { requestUnloadConfirmation } from '../src/lib/unload';
 import { WORKOUT_COURSES } from '../src/lib/workouts';
 
@@ -27,7 +27,11 @@ describe('session utilities', () => {
 		expect(nonNegativeNumber('4')).toBe(0);
 	});
 
-	test('creates an active unsaved continuation with all recorded data', () => {
+	test('creates a linked extension with fresh ride metrics at the prior course position', () => {
+		const [workout] = WORKOUT_COURSES;
+		if (!workout) {
+			throw new Error('Expected a built-in workout course');
+		}
 		const snapshot = {
 			aggregates: emptySession.aggregates,
 			calories: 120,
@@ -54,10 +58,28 @@ describe('session utilities', () => {
 				riderWeightKg: 68,
 			},
 			startedAt: 1000,
+			workout: { course: workout },
 		};
-		const continued = sessionContinuation(snapshot);
-		expect(continued).toMatchObject({ ...snapshot, ended: false, endedAt: 0 });
-		expect(continued.savedSessionId).toBeUndefined();
+		const continued = freshSessionExtension(snapshot, 6000, 'journey-1', 'session-1');
+		expect(continued).toMatchObject({
+			calories: 0,
+			continuation: {
+				journeyId: 'journey-1',
+				previousSessionId: 'session-1',
+				workoutStartDistance: 14,
+			},
+			distance: 0,
+			elapsedSeconds: 0,
+			elevationTotals: { ascent: 0, descent: 0 },
+			ended: false,
+			endedAt: 0,
+			history: [],
+			startedAt: 6000,
+			workout: snapshot.workout,
+		});
+		expect(continued.aggregates).toEqual(emptySession.aggregates);
+		expect(continued.maximums).toEqual(emptySession.maximums);
+		expect(sessionWorkoutDistance(continued)).toBe(14);
 	});
 
 	test('protects recorded active sessions from accidental page exit', () => {

@@ -8,9 +8,11 @@ import {
 	deleteSavedSession,
 	getSavedSession,
 	listAllSavedSessions,
+	listSavedSessionJourney,
 	listSavedSessions,
 	sessionListAfterDelete,
 } from '../lib/saved-sessions';
+import { type CombinedSessionJourney, combineSessionJourney } from '../lib/session-continuation';
 import { loadSelectedSessionId, saveSelectedSessionId } from '../lib/session-history-preferences';
 import { downloadSessionTcxArchive } from '../lib/tcx-archive';
 import type { SavedSession, SavedSessionSummary } from '../types';
@@ -21,6 +23,7 @@ export function useSessionHistory(open: boolean, preferredSessionId?: string) {
 	const [summaries, setSummaries] = useState<SavedSessionSummary[]>([]);
 	const [total, setTotal] = useState(0);
 	const [selected, setSelected] = useState<SavedSession>();
+	const [combinedJourney, setCombinedJourney] = useState<CombinedSessionJourney>();
 	const [selectedId, setSelectedId] = useState(
 		() => preferredSessionId ?? loadSelectedSessionId()
 	);
@@ -48,7 +51,13 @@ export function useSessionHistory(open: boolean, preferredSessionId?: string) {
 			rememberSelectedSession(id);
 			setLoading(true);
 			try {
-				setSelected(await getSavedSession(id));
+				const session = await getSavedSession(id);
+				setSelected(session);
+				setCombinedJourney(
+					session
+						? combineSessionJourney(await listSavedSessionJourney(session), session.id)
+						: undefined
+				);
 				setError('');
 			} catch (loadError) {
 				setError(errorMessage(loadError));
@@ -81,6 +90,7 @@ export function useSessionHistory(open: boolean, preferredSessionId?: string) {
 				await selectSession(nextSessionId);
 			} else {
 				setSelected(undefined);
+				setCombinedJourney(undefined);
 				rememberSelectedSession(undefined);
 			}
 		},
@@ -176,6 +186,7 @@ export function useSessionHistory(open: boolean, preferredSessionId?: string) {
 				await selectSession(updated.next.id);
 			} else {
 				setSelected(undefined);
+				setCombinedJourney(undefined);
 				rememberSelectedSession(undefined);
 			}
 			return true;
@@ -203,6 +214,7 @@ export function useSessionHistory(open: boolean, preferredSessionId?: string) {
 	}, [summaries]);
 
 	return {
+		combinedJourney,
 		deleteSelectedSession,
 		deleting,
 		downloadAllActivityFiles,
