@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { emptyMetrics, emptySession } from '../src/constants';
 import { CONTROL_MODE } from '../src/lib/control-mode';
-import { WORKOUT_COURSES } from '../src/lib/workouts';
+import {
+	WORKOUT_COURSES,
+	workoutElevationTotalsBetweenDistances,
+	workoutTerrainAtDistance,
+} from '../src/lib/workouts';
 import {
 	createSessionStore,
 	sessionSnapshotFromState,
@@ -219,6 +223,61 @@ describe('session store', () => {
 		);
 	});
 
+	test('continues course terrain from a prior session while recording fresh metrics', () => {
+		const workout = WORKOUT_COURSES.find((course) => course.id === 'cedar-circuit');
+		if (!workout) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const source = restoredSession({
+			calories: 300,
+			distance: 2.4,
+			elapsedSeconds: 1800,
+			elevationTotals: { ascent: 100, descent: 50 },
+			history: [
+				{
+					cadence: 80,
+					elapsedSeconds: 1800,
+					heartRate: 140,
+					power: 180,
+					speed: 30,
+				},
+			],
+			startedAt: 1000,
+			workout: { course: workout },
+		});
+		const store = createSessionStore(restoredSession(), 5000);
+		store.actions.extendFrom(source, 6000, 'session-1', 'session-1');
+
+		expect(store.get()).toMatchObject({
+			calories: 0,
+			distance: 0,
+			elapsedSeconds: 0,
+			elevationTotals: { ascent: 0, descent: 0 },
+			history: [],
+		});
+
+		store.actions.syncRiding(true);
+		store.actions.recordTick({
+			control: { gear: 12, mode: CONTROL_MODE.RESISTANCE, resistance: 35 },
+			distanceDelta: 0.6,
+			metrics: liveMetrics,
+			seconds: 60,
+		});
+
+		const expectedTerrain = workoutTerrainAtDistance(workout, 3);
+		expect(store.get().distance).toBeCloseTo(0.6);
+		expect(store.get().elapsedSeconds).toBe(60);
+		expect(store.get().history[0]).toMatchObject({
+			elevation: expectedTerrain.elevation,
+			grade: expectedTerrain.grade,
+			workoutDistance: expectedTerrain.distance,
+			workoutLap: expectedTerrain.lap,
+		});
+		expect(store.get().elevationTotals).toEqual(
+			workoutElevationTotalsBetweenDistances(workout, 2.4, 3)
+		);
+	});
+
 	test('records virtual gears and workout terrain in the same ride samples', () => {
 		const workout = WORKOUT_COURSES.find((course) => course.id === 'cedar-circuit');
 		if (!workout) {
@@ -300,26 +359,36 @@ describe('session store', () => {
 			startedAt: 6000,
 		});
 
-		store.actions.continueFrom({
-			aggregates: emptySession.aggregates,
-			calories: 100,
-			controlMode: 'resistance',
-			distance: 12,
-			elapsedSeconds: 900,
-			elevationTotals: { ascent: 120, descent: 80 },
-			endedAt: 4000,
-			history: [],
-			maximums: emptyMetrics,
-			startedAt: 2000,
-		});
+		store.actions.extendFrom(
+			{
+				aggregates: emptySession.aggregates,
+				calories: 100,
+				controlMode: 'resistance',
+				distance: 12,
+				elapsedSeconds: 900,
+				elevationTotals: { ascent: 120, descent: 80 },
+				endedAt: 4000,
+				history: [],
+				maximums: emptyMetrics,
+				startedAt: 2000,
+			},
+			7000,
+			'journey-1',
+			'session-1'
+		);
 		expect(store.get()).toMatchObject({
-			calories: 100,
-			distance: 12,
-			elapsedSeconds: 900,
-			elevationTotals: { ascent: 120, descent: 80 },
+			calories: 0,
+			continuation: {
+				journeyId: 'journey-1',
+				previousSessionId: 'session-1',
+				workoutStartDistance: 12,
+			},
+			distance: 0,
+			elapsedSeconds: 0,
+			elevationTotals: { ascent: 0, descent: 0 },
 			ended: false,
 			endedAt: 0,
-			startedAt: 2000,
+			startedAt: 7000,
 		});
 		expect(store.get().savedSessionId).toBeUndefined();
 	});

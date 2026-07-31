@@ -47,6 +47,11 @@ describe('TCX export', () => {
 		}
 		const workoutSession: SavedSession = {
 			...session,
+			continuation: {
+				journeyId: 'journey-1',
+				previousSessionId: 'session-1',
+				workoutStartDistance: 12.5,
+			},
 			elevationTotals: { ascent: 82.5, descent: 30.25 },
 			history: session.history.map((sample, index) => {
 				const terrain = workoutTerrainAtDistance(course, index + 0.5);
@@ -72,6 +77,9 @@ describe('TCX export', () => {
 		expect(tcx).toContain('<rc:TotalDescentMeters>30.25</rc:TotalDescentMeters>');
 		expect(tcx).toContain('<rc:Name>Cedar Circuit</rc:Name>');
 		expect(tcx).toContain('<rc:Point>');
+		expect(tcx).toContain('<rc:JourneyId>journey-1</rc:JourneyId>');
+		expect(tcx).toContain('<rc:PreviousSessionId>session-1</rc:PreviousSessionId>');
+		expect(tcx).toContain('<rc:WorkoutStartDistance>12.500</rc:WorkoutStartDistance>');
 	});
 
 	test('exports gear and applied resistance for a virtual shifting session', () => {

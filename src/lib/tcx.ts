@@ -1,4 +1,4 @@
-import type { MetricSample, SavedSession, SessionWorkout } from '../types';
+import type { MetricSample, SavedSession, SessionContinuation, SessionWorkout } from '../types';
 import {
 	ACTIVITY_FILE_FORMAT,
 	sessionActivityFilename,
@@ -122,6 +122,22 @@ function profileSummaryXml(profile?: RiderPhysicsProfile): string {
 						</rc:ProfileSnapshot>`;
 }
 
+function continuationSummaryXml(continuation?: SessionContinuation): string {
+	if (!continuation) {
+		return '';
+	}
+	return `
+						<rc:Continuation>
+							<rc:JourneyId>${xmlEscape(continuation.journeyId)}</rc:JourneyId>${
+								continuation.previousSessionId
+									? `
+							<rc:PreviousSessionId>${xmlEscape(continuation.previousSessionId)}</rc:PreviousSessionId>`
+									: ''
+							}
+							<rc:WorkoutStartDistance>${nonNegativeNumber(continuation.workoutStartDistance).toFixed(3)}</rc:WorkoutStartDistance>
+						</rc:Continuation>`;
+}
+
 export function sessionToTcx(session: SavedSession): string {
 	const startedAt = new Date(session.startedAt).toISOString();
 	const description = normalizeSessionDescription(session.comments);
@@ -199,7 +215,7 @@ export function sessionToTcx(session: SavedSession): string {
 						<rc:SessionId>${xmlEscape(session.id)}</rc:SessionId>
 						<rc:TotalAscentMeters>${nonNegativeNumber(session.elevationTotals.ascent).toFixed(2)}</rc:TotalAscentMeters>
 						<rc:TotalDescentMeters>${nonNegativeNumber(session.elevationTotals.descent).toFixed(2)}</rc:TotalDescentMeters>
-						${controlSummary}${profileSummaryXml(session.profileSnapshot)}${workoutSummaryXml(session.workout)}
+						${controlSummary}${profileSummaryXml(session.profileSnapshot)}${continuationSummaryXml(session.continuation)}${workoutSummaryXml(session.workout)}
 					</rc:Summary>
 				</Extensions>
 			</Lap>${

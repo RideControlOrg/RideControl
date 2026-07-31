@@ -4,7 +4,6 @@ import type {
 	MetricSample,
 	Metrics,
 	SessionAggregates,
-	SessionSnapshot,
 	StoredSession,
 } from '../types';
 import { CONTROL_MODE, type ControlMode, isControlMode } from './control-mode';
@@ -13,6 +12,7 @@ import { clampGear, MAX_GEAR, MIN_GEAR } from './gears';
 import { clamp, nonNegativeNumber } from './numbers';
 import { riderPhysicsProfileFromStoredValue } from './profile';
 import { clampResistance, DEFAULT_RESISTANCE, MAX_RESISTANCE, MIN_RESISTANCE } from './resistance';
+import { restoreSessionContinuation } from './session-continuation';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
 import { restoreSessionWorkout } from './workouts';
 
@@ -20,25 +20,6 @@ export const SESSION_STORAGE_KEY = 'trainer-session';
 export const RESISTANCE_STORAGE_KEY = 'trainer-resistance-percent';
 
 type ReadableStorage = Pick<Storage, 'getItem'>;
-
-export function sessionContinuation(snapshot: SessionSnapshot): StoredSession {
-	return {
-		aggregates: snapshot.aggregates,
-		calories: snapshot.calories,
-		controlMode: snapshot.controlMode,
-		discarded: false,
-		distance: snapshot.distance,
-		elapsedSeconds: snapshot.elapsedSeconds,
-		elevationTotals: snapshot.elevationTotals,
-		ended: false,
-		endedAt: 0,
-		history: snapshot.history,
-		maximums: snapshot.maximums,
-		profileSnapshot: snapshot.profileSnapshot,
-		startedAt: snapshot.startedAt,
-		workout: snapshot.workout,
-	};
-}
 
 export function sessionHasRecordedData(ended: boolean, elapsedSeconds: number): boolean {
 	return !ended && elapsedSeconds > 0;
@@ -203,6 +184,7 @@ export function restoreStoredSession(value: unknown): StoredSession {
 			),
 		},
 		calories: nonNegativeNumber(parsed.calories),
+		continuation: restoreSessionContinuation(parsed.continuation),
 		controlMode: controlModeForHistory(history, parsed.controlMode),
 		discarded: parsed.discarded === true,
 		distance: nonNegativeNumber(parsed.distance),

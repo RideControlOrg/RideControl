@@ -433,6 +433,19 @@ export function workoutElevationTotalsAtDistance(
 	};
 }
 
+export function workoutElevationTotalsBetweenDistances(
+	course: WorkoutCourse,
+	startDistance: number,
+	endDistance: number
+): ElevationTotals {
+	const start = workoutElevationTotalsAtDistance(course, startDistance);
+	const end = workoutElevationTotalsAtDistance(course, Math.max(startDistance, endDistance));
+	return {
+		ascent: Math.max(0, end.ascent - start.ascent),
+		descent: Math.max(0, end.descent - start.descent),
+	};
+}
+
 export function workoutTerrainAtDistance(
 	course: WorkoutCourse,
 	totalDistance: number

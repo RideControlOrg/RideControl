@@ -464,7 +464,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const dashboardWorkout = useMemo(
 		() =>
 			workoutDashboardPreview({
-				distance: session.rideDistance,
+				distance: session.workoutDistance,
 				elevationTotals: session.elevationTotals,
 				ended: session.ended,
 				selectedWorkout: session.selectedWorkout,
@@ -473,7 +473,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		[
 			session.elevationTotals,
 			session.ended,
-			session.rideDistance,
+			session.workoutDistance,
 			session.selectedWorkout,
 			session.workout,
 		]
@@ -671,12 +671,12 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		},
 		[setActiveOverlay]
 	);
-	const continueFromHistory = useCallback(
+	const extendFromHistory = useCallback(
 		(savedSession: SavedSession) => {
 			setActiveOverlay(undefined);
-			workflow.requestContinuation(savedSession);
+			workflow.requestExtension(savedSession);
 		},
-		[setActiveOverlay, workflow.requestContinuation]
+		[setActiveOverlay, workflow.requestExtension]
 	);
 	const selectWorkout = useCallback(
 		(course?: WorkoutCourse) => {
@@ -935,7 +935,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				onSelectCalendarMonth={selectHistoryCalendarMonth}
 				onSelectSessionId={selectHistorySession}
 				onSelectView={selectHistoryView}
-				onStartNew={continueFromHistory}
+				onStartNew={extendFromHistory}
 				open={activeOverlay === APP_OVERLAY.HISTORY}
 				requestedSessionId={requestedSessionId}
 				requestedSessionMonth={requestedSessionCalendarMonth}

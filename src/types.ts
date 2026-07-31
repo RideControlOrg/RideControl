@@ -54,6 +54,12 @@ export interface SessionWorkout {
 	course: WorkoutCourse;
 }
 
+export interface SessionContinuation {
+	journeyId: string;
+	previousSessionId?: string;
+	workoutStartDistance: number;
+}
+
 export interface WorkoutTerrain {
 	completedLaps: number;
 	distance: number;
@@ -118,6 +124,7 @@ export interface SessionAggregates {
 export interface StoredSession {
 	aggregates: SessionAggregates;
 	calories: number;
+	continuation?: SessionContinuation;
 	controlMode: ControlMode;
 	discarded: boolean;
 	distance: number;
@@ -144,6 +151,7 @@ export interface SessionMetadata {
 export interface SessionSnapshot {
 	aggregates: SessionAggregates;
 	calories: number;
+	continuation?: SessionContinuation;
 	controlMode: ControlMode;
 	distance: number;
 	elapsedSeconds: number;
@@ -163,6 +171,7 @@ export interface SavedSession extends SessionSnapshot, SessionMetadata {
 
 export interface SavedSessionSummary {
 	calories: number;
+	continuation?: SessionContinuation;
 	distance: number;
 	elapsedSeconds: number;
 	endedAt: number;

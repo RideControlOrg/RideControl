@@ -15,6 +15,7 @@ import { nonNegativeNumber } from './numbers';
 import { parsedTeeth, riderPhysicsProfileFromStoredValue } from './profile';
 import { clampResistance } from './resistance';
 import { addMetricAggregates } from './session';
+import { restoreSessionContinuation } from './session-continuation';
 import { normalizeSessionDescription } from './session-description';
 import { IMPORTED_TCX_ID_PREFIX, isRideControlTcxExtensionNamespace } from './tcx-schema';
 import {
@@ -183,6 +184,21 @@ function activityProfileSnapshot(activity: Element) {
 	});
 }
 
+function activityContinuation(activity: Element) {
+	const continuation = descendants(activity, 'Continuation').find((element) =>
+		isRideControlTcxExtensionNamespace(element.namespaceURI)
+	);
+	if (!continuation) {
+		return;
+	}
+	return restoreSessionContinuation({
+		journeyId: text(child(continuation, 'JourneyId')).slice(0, 256),
+		previousSessionId:
+			text(child(continuation, 'PreviousSessionId')).slice(0, 256) || undefined,
+		workoutStartDistance: numberValue(child(continuation, 'WorkoutStartDistance')),
+	});
+}
+
 function fallbackAggregate(laps: Element[], names: string[]): MetricAggregate {
 	const values = laps
 		.map((lap) =>
@@ -291,6 +307,7 @@ function parseActivity(activity: Element): SavedSession {
 		...notesMetadata(activity),
 		aggregates,
 		calories,
+		continuation: activityContinuation(activity),
 		controlMode: hasGear ? CONTROL_MODE.GEAR : CONTROL_MODE.RESISTANCE,
 		distance: kilometersForMeters(distanceMeters),
 		elapsedSeconds,

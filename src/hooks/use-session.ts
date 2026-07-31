@@ -40,13 +40,14 @@ interface SessionControlState {
 
 interface SessionController {
 	aggregates: SessionAggregates;
-	continueFrom: (sourceSession: SessionSnapshot) => void;
+	continuation: StoredSession['continuation'];
 	controlMode: ControlMode;
 	discarded: boolean;
 	elapsedSeconds: number;
 	elevationTotals: ElevationTotals;
 	ended: boolean;
 	endSession: () => void;
+	extendFrom: (sourceSession: SessionSnapshot, previousSessionId?: string) => void;
 	history: MetricSample[];
 	isRiding: boolean;
 	manuallyPaused: boolean;
@@ -64,6 +65,7 @@ interface SessionController {
 	startNew: () => void;
 	togglePause: () => void;
 	workout?: SessionWorkout;
+	workoutDistance: number;
 }
 
 export function useSession(
@@ -203,11 +205,19 @@ export function useSession(
 		[store]
 	);
 
-	const continueFrom = useCallback(
-		(sourceSession: SessionSnapshot) => {
+	const extendFrom = useCallback(
+		(sourceSession: SessionSnapshot, previousSessionId?: string) => {
 			lastTrainerDistance.current = latestMetrics.current.distance;
 			lastPedalingAt.current = 0;
-			store.actions.continueFrom(sourceSession);
+			let journeyId: string = crypto.randomUUID();
+			if (previousSessionId) {
+				journeyId = previousSessionId;
+			}
+			const { continuation } = sourceSession;
+			if (continuation) {
+				({ journeyId } = continuation);
+			}
+			store.actions.extendFrom(sourceSession, Date.now(), journeyId, previousSessionId);
 		},
 		[lastPedalingAt, store]
 	);
@@ -216,13 +226,14 @@ export function useSession(
 
 	return {
 		aggregates: state.aggregates,
-		continueFrom,
+		continuation: state.continuation,
 		controlMode: state.controlMode,
 		discarded: state.discarded,
 		elapsedSeconds: state.elapsedSeconds,
 		elevationTotals: state.elevationTotals,
 		ended: state.ended,
 		endSession,
+		extendFrom,
 		history: state.history,
 		isRiding: state.isRiding,
 		manuallyPaused: state.manuallyPaused,
@@ -240,5 +251,6 @@ export function useSession(
 		startNew,
 		togglePause,
 		workout: state.workout,
+		workoutDistance: (state.continuation?.workoutStartDistance ?? 0) + state.distance,
 	};
 }
