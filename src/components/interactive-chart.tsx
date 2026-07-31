@@ -212,16 +212,20 @@ const interactiveLineDefinition = defineChart<InteractiveLineInput>()(({ input }
 				x: 'x',
 				y: 'value',
 			}),
-			dot(focusedRows, {
-				fill: input.background,
-				id: 'synchronized-focus',
-				key: 'key',
-				r: 5,
-				stroke: input.color,
-				strokeWidth: 2.5,
-				x: 'x',
-				y: 'value',
-			}),
+			...(focusedRows.length > 0
+				? [
+						dot(focusedRows, {
+							fill: input.background,
+							id: 'synchronized-focus',
+							key: 'key',
+							r: 5,
+							stroke: input.color,
+							strokeWidth: 2.5,
+							x: 'x',
+							y: 'value',
+						}),
+					]
+				: []),
 		],
 		theme: chartTheme(input.background),
 		x: {
@@ -284,7 +288,7 @@ export function InteractiveLineChart({
 				area,
 				background,
 				color,
-				focusedX,
+				focusedX: interactive ? focusedX : undefined,
 				maximum,
 				minimum,
 				rows,

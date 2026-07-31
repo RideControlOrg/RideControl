@@ -182,6 +182,25 @@ describe('view components', () => {
 		);
 		expect(html).toContain('class="ts-chart__dot"');
 		expect(html).toContain('data-ts-key="synchronized-focus');
+		const liveHtml = render(
+			<div className="h-28">
+				<InteractiveLineChart
+					ariaLabel="Live metric"
+					color="var(--metric-speed)"
+					focusedX={10}
+					height={112}
+					interactive={false}
+					maximum={20}
+					minimum={0}
+					rows={[
+						{ key: '0', label: '0:00 · Speed: 10 mph', value: 10, x: 0 },
+						{ key: '10', label: '0:10 · Speed: 15 mph', value: 15, x: 10 },
+					]}
+				/>
+			</div>
+		);
+		expect(liveHtml).not.toContain('class="ts-chart__dot"');
+		expect(liveHtml).not.toContain('data-ts-key="synchronized-focus');
 	});
 
 	test('renders a compact session metric', () => {
