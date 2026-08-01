@@ -1,6 +1,6 @@
 import { useSelector } from '@tanstack/react-store';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { evenlySample, valueRange } from '../lib/arrays';
+import { valueRange } from '../lib/arrays';
 import { CHART_PLOT_MIDDLE, resistanceChartMaximum, roundedChartMaximum } from '../lib/chart';
 import { CHART_MODE } from '../lib/chart-mode';
 import { CONTROL_MODE } from '../lib/control-mode';
@@ -16,6 +16,7 @@ import {
 	STANDARD_METRIC_KEYS,
 } from '../lib/metric-presentation';
 import { MIN_RESISTANCE } from '../lib/resistance';
+import { sampleSessionChartHistory } from '../lib/session-chart-sampling';
 import {
 	convertElevation,
 	convertSpeed,
@@ -26,8 +27,6 @@ import {
 import { preferencesStore } from '../stores/preferences-store';
 import type { ChartMode, ControlMode, MetricSample, RoutePoint, SpeedUnit } from '../types';
 import { InteractiveLineChart, type InteractiveLineDatum } from './interactive-chart';
-
-const MAXIMUM_RENDERED_CHART_SAMPLES = 2000;
 
 function chartControlsEdgeBackground(
 	direction: 'left' | 'right',
@@ -72,7 +71,7 @@ function sessionChartRows({
 				? 'No reading'
 				: `${value.toFixed(decimals)}${unit ? ` ${unit}` : ''}`;
 		return {
-			key: `${x}-${index}`,
+			key: String(x),
 			label: `${formatChartSeconds(x)} · ${label}: ${formattedValue}`,
 			value,
 			x,
@@ -186,10 +185,7 @@ export function SessionChart({
 		(history.some((sample) => sample.gear !== undefined)
 			? CONTROL_MODE.GEAR
 			: CONTROL_MODE.RESISTANCE);
-	const chartHistory = useMemo(
-		() => evenlySample(history, MAXIMUM_RENDERED_CHART_SAMPLES),
-		[history]
-	);
+	const chartHistory = useMemo(() => sampleSessionChartHistory(history), [history]);
 	const series = useMemo(() => {
 		const speedValues = chartHistory.map((sample) => convertSpeed(sample.speed, speedUnit));
 		const routeElevations = route.map((point) => convertElevation(point.elevation, speedUnit));

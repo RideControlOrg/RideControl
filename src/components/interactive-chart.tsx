@@ -123,6 +123,7 @@ function InteractiveChartSurface<TDatum extends LabeledChartDatum, TInput>({
 			{(chartHeight) => (
 				<Chart<TDatum, TInput>
 					{...(interactive ? INTERACTION_PROPS : NON_INTERACTIVE_PROPS)}
+					animate={false}
 					ariaDescription={ariaDescription}
 					ariaLabel={ariaLabel}
 					className={className}
