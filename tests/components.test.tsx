@@ -2327,8 +2327,10 @@ describe('view components', () => {
 		const html = render(
 			<SessionDetail
 				combinedJourney={{
+					nextSessionId: undefined,
 					partCount: 2,
 					partNumber: 2,
+					previousSessionId: savedSessionFixture.id,
 					session: {
 						...savedSessionFixture,
 						calories: 500,
@@ -2337,6 +2339,7 @@ describe('view components', () => {
 						id: 'journey:saved-session',
 					},
 				}}
+				onSelectLinkedSession={() => undefined}
 				session={{
 					...savedSessionFixture,
 					continuation: {
@@ -2354,6 +2357,8 @@ describe('view components', () => {
 		expect(html).toContain('aria-pressed="false"');
 		expect(html).toContain('This session');
 		expect(html).toContain('Full journey');
+		expect(html).toContain('>Previous</button>');
+		expect(html).toContain('disabled="" type="button">Next</button>');
 	});
 
 	test('shows the rider weight captured with the session in the selected units', () => {

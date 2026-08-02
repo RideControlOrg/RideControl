@@ -281,6 +281,7 @@ export function SessionHistory({
 				onConfirmDelete={() => deleteSelectedSession()}
 				onDelete={() => setDeleteConfirmationOpen(true)}
 				onSelectChartMode={setSelectedChartMode}
+				onSelectLinkedSession={selectSession}
 				onStartNew={() => onStartNew(selected)}
 				selectedChartMode={selectedChartMode}
 				session={selected}
