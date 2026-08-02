@@ -71,6 +71,7 @@ import { type AppShortcut, appShortcutForKey, gearingKeyboardShortcuts } from '.
 import { activeRiderPhysicsProfile, type RiderPhysicsProfile } from './lib/profile';
 import type { ProfileTab } from './lib/profile-tab';
 import { sessionHasRecordedData, sessionNeedsUnloadWarning } from './lib/session';
+import { createSessionDeviceReconnectController } from './lib/session-device-reconnect';
 import { loadSessionHistoryView, type SessionHistoryView } from './lib/session-history-view';
 import { requestUnloadConfirmation } from './lib/unload';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
@@ -564,6 +565,16 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	useEffect(() => {
 		click.setConnectionActive(clickConnectionActive);
 	}, [click.setConnectionActive, clickConnectionActive]);
+	const sessionDeviceConnections = useRef([trainer, heartRate, click]);
+	const sessionDeviceReconnect = useMemo(createSessionDeviceReconnectController, []);
+	sessionDeviceConnections.current = [trainer, heartRate, click];
+	useEffect(() => {
+		sessionDeviceReconnect.reconnectForSession(
+			session.startedAt,
+			session.ended,
+			sessionDeviceConnections.current
+		);
+	}, [session.ended, session.startedAt, sessionDeviceReconnect]);
 	const dashboardKeyboardEnabled = activeOverlay === undefined && !workflow.saveDialogOpen;
 	clickShiftRef.current = shiftHandlerUnlessBlocked(
 		gearControl.shiftGear,

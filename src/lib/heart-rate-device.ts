@@ -1,4 +1,10 @@
-import { BATTERY, HEART_RATE, OPTIONAL_BLUETOOTH_OPERATION_TIMEOUT_MS } from '../constants';
+import {
+	BATTERY,
+	BLUETOOTH_GATT_CONNECTION_TIMEOUT_MS,
+	HEART_RATE,
+	HEART_RATE_RECONNECT_PROBE_TIMEOUT_MS,
+	OPTIONAL_BLUETOOTH_OPERATION_TIMEOUT_MS,
+} from '../constants';
 import { connectGatt } from './bluetooth';
 import { startBluetoothNotifications } from './bluetooth-notifications';
 import { withBluetoothOperationTimeout } from './bluetooth-operation';
@@ -18,6 +24,11 @@ export interface HeartRateDeviceConnection {
 	cleanup: () => void;
 }
 
+interface HeartRateDeviceConnectionTiming {
+	operationTimeoutMs?: number;
+	reconnectProbeTimeoutMs?: number;
+}
+
 async function readBatteryLevel(server: BluetoothRemoteGATTServer): Promise<number> {
 	const batteryValue = await (
 		await (await server.getPrimaryService(BATTERY)).getCharacteristic(BATTERY_LEVEL)
@@ -29,9 +40,15 @@ export async function connectHeartRateDevice(
 	device: BluetoothDevice,
 	rediscover: boolean,
 	{ onBattery, onDisconnect, onHeartRate }: HeartRateDeviceCallbacks,
-	operationTimeoutMs?: number
+	{
+		operationTimeoutMs,
+		reconnectProbeTimeoutMs = HEART_RATE_RECONNECT_PROBE_TIMEOUT_MS,
+	}: HeartRateDeviceConnectionTiming = {}
 ): Promise<HeartRateDeviceConnection> {
-	const server = await connectGatt(device, rediscover);
+	const server = await connectGatt(device, rediscover, {
+		directTimeoutMs: BLUETOOTH_GATT_CONNECTION_TIMEOUT_MS,
+		reconnectProbeTimeoutMs,
+	});
 	const service = await withBluetoothOperationTimeout(
 		server.getPrimaryService(HEART_RATE),
 		'Heart rate service discovery',
