@@ -79,7 +79,7 @@ describe('linked session continuations', () => {
 		).toBe(15.5);
 	});
 
-	test('combines only the selected ancestry into one complete journey view', () => {
+	test('combines and navigates the complete continuation path without crossing branches', () => {
 		const second = linkedSession({
 			distance: 2,
 			elapsedSeconds: 3,
@@ -109,7 +109,11 @@ describe('linked session continuations', () => {
 		if (!journey) {
 			throw new Error('Expected a combined journey');
 		}
-		expect(journey).toMatchObject({ partCount: 3, partNumber: 3 });
+		expect(journey).toMatchObject({
+			partCount: 3,
+			partNumber: 3,
+			previousSessionId: second.id,
+		});
 		expect(journey.session).toMatchObject({
 			calories: savedSessionFixture.calories + 200 + 300,
 			distance: 6.5,
@@ -125,5 +129,30 @@ describe('linked session continuations', () => {
 		expect(journey.session.history.map((sample) => sample.elapsedSeconds)).toEqual([
 			1, 2, 5, 9,
 		]);
+
+		const middleJourney = combineSessionJourney(
+			[branch, third, savedSessionFixture, second],
+			second.id
+		);
+		expect(middleJourney).toMatchObject({
+			nextSessionId: third.id,
+			partCount: 3,
+			partNumber: 2,
+			previousSessionId: savedSessionFixture.id,
+			session: { distance: 6.5, elapsedSeconds: 9 },
+		});
+
+		const branchedJourney = combineSessionJourney(
+			[branch, third, savedSessionFixture, second],
+			branch.id
+		);
+		expect(branchedJourney).toMatchObject({
+			partCount: 2,
+			partNumber: 2,
+			previousSessionId: savedSessionFixture.id,
+			session: {
+				distance: savedSessionFixture.distance + branch.distance,
+			},
+		});
 	});
 });

@@ -11,8 +11,10 @@ import { nonNegativeNumber } from './numbers';
 import { isFiniteNumber, isRecord, isString } from './type-guards';
 
 export interface CombinedSessionJourney {
+	nextSessionId?: string;
 	partCount: number;
 	partNumber: number;
+	previousSessionId?: string;
 	session: SavedSession;
 }
 
@@ -95,6 +97,38 @@ function ancestryForSession(
 	return ancestry;
 }
 
+function journeyPathForSession(
+	sessions: readonly SavedSession[],
+	selected: SavedSession
+): SavedSession[] {
+	const path = ancestryForSession(sessions, selected);
+	const visited = new Set(path.map((session) => session.id));
+	let journeyId = selected.id;
+	if (selected.continuation) {
+		({ journeyId } = selected.continuation);
+	}
+	let current = selected;
+	const nextSession = () => {
+		const [next] = sessions
+			.filter(
+				(session) =>
+					!visited.has(session.id) &&
+					session.continuation?.journeyId === journeyId &&
+					session.continuation.previousSessionId === current.id
+			)
+			.sort((left, right) => left.startedAt - right.startedAt);
+		return next;
+	};
+	let next = nextSession();
+	while (next) {
+		path.push(next);
+		visited.add(next.id);
+		current = next;
+		next = nextSession();
+	}
+	return path;
+}
+
 export function combineSessionJourney(
 	sessions: readonly SavedSession[],
 	selectedId: string
@@ -103,14 +137,12 @@ export function combineSessionJourney(
 	if (!selected) {
 		return;
 	}
-	const ancestry = ancestryForSession(sessions, selected).sort(
-		(left, right) => left.startedAt - right.startedAt
-	);
-	if (ancestry.length < 2) {
+	const journeyPath = journeyPathForSession(sessions, selected);
+	if (journeyPath.length < 2) {
 		return;
 	}
 	let elapsedOffset = 0;
-	const history = ancestry.flatMap((session) => {
+	const history = journeyPath.flatMap((session) => {
 		const shifted = session.history.map((sample) => ({
 			...sample,
 			elapsedSeconds: elapsedOffset + sample.elapsedSeconds,
@@ -118,29 +150,34 @@ export function combineSessionJourney(
 		elapsedOffset += session.elapsedSeconds;
 		return shifted;
 	});
-	const first = ancestry[0] ?? selected;
-	const last = ancestry.at(-1) ?? selected;
+	const first = journeyPath[0] ?? selected;
+	const last = journeyPath.at(-1) ?? selected;
+	const selectedIndex = journeyPath.findIndex((session) => session.id === selected.id);
 	const maximumKeys = ['cadence', 'heartRate', 'power', 'speed'] as const;
 	const combined: SavedSession = {
 		...selected,
 		aggregates: {
-			cadence: combinedAggregate(ancestry.map((session) => session.aggregates.cadence)),
-			gear: combinedAggregate(ancestry.map((session) => session.aggregates.gear)),
-			heartRate: combinedAggregate(ancestry.map((session) => session.aggregates.heartRate)),
-			power: combinedAggregate(ancestry.map((session) => session.aggregates.power)),
-			resistance: combinedAggregate(ancestry.map((session) => session.aggregates.resistance)),
+			cadence: combinedAggregate(journeyPath.map((session) => session.aggregates.cadence)),
+			gear: combinedAggregate(journeyPath.map((session) => session.aggregates.gear)),
+			heartRate: combinedAggregate(
+				journeyPath.map((session) => session.aggregates.heartRate)
+			),
+			power: combinedAggregate(journeyPath.map((session) => session.aggregates.power)),
+			resistance: combinedAggregate(
+				journeyPath.map((session) => session.aggregates.resistance)
+			),
 		},
-		calories: ancestry.reduce((sum, session) => sum + session.calories, 0),
+		calories: journeyPath.reduce((sum, session) => sum + session.calories, 0),
 		comments: '',
 		continuation: undefined,
-		controlMode: ancestry.some((session) => session.controlMode === CONTROL_MODE.GEAR)
+		controlMode: journeyPath.some((session) => session.controlMode === CONTROL_MODE.GEAR)
 			? CONTROL_MODE.GEAR
 			: CONTROL_MODE.RESISTANCE,
-		distance: ancestry.reduce((sum, session) => sum + session.distance, 0),
-		elapsedSeconds: ancestry.reduce((sum, session) => sum + session.elapsedSeconds, 0),
+		distance: journeyPath.reduce((sum, session) => sum + session.distance, 0),
+		elapsedSeconds: journeyPath.reduce((sum, session) => sum + session.elapsedSeconds, 0),
 		elevationTotals: {
-			ascent: ancestry.reduce((sum, session) => sum + session.elevationTotals.ascent, 0),
-			descent: ancestry.reduce((sum, session) => sum + session.elevationTotals.descent, 0),
+			ascent: journeyPath.reduce((sum, session) => sum + session.elevationTotals.ascent, 0),
+			descent: journeyPath.reduce((sum, session) => sum + session.elevationTotals.descent, 0),
 		},
 		endedAt: last.endedAt,
 		feeling: undefined,
@@ -152,7 +189,7 @@ export function combineSessionJourney(
 			...Object.fromEntries(
 				maximumKeys.map((key) => [
 					key,
-					Math.max(...ancestry.map((session) => session.maximums[key])),
+					Math.max(...journeyPath.map((session) => session.maximums[key])),
 				])
 			),
 		},
@@ -161,8 +198,10 @@ export function combineSessionJourney(
 		workout: last.workout ?? first.workout,
 	};
 	return {
-		partCount: ancestry.length,
-		partNumber: ancestry.findIndex((session) => session.id === selected.id) + 1,
+		nextSessionId: journeyPath[selectedIndex + 1]?.id,
+		partCount: journeyPath.length,
+		partNumber: selectedIndex + 1,
+		previousSessionId: journeyPath[selectedIndex - 1]?.id,
 		session: combined,
 	};
 }

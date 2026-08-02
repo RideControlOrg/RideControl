@@ -397,6 +397,11 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	gap: 0.75rem;
 }
 
+.workout-distance-laps-stats > :first-child > :last-child {
+	font-size: clamp(1.5rem, 8cqi, 2.25rem);
+	letter-spacing: -0.025em;
+}
+
 .workout-state-stats {
 	gap: 0.5rem;
 }

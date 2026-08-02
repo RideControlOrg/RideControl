@@ -139,17 +139,44 @@ export function DeleteSessionDialog({
 function JourneyMetricScope({
 	journey,
 	onChange,
+	onSelectSession,
 	showCombined,
 }: {
 	journey: CombinedSessionJourney;
 	onChange: (showCombined: boolean) => void;
+	onSelectSession?: (sessionId: string) => void;
 	showCombined: boolean;
 }) {
+	const selectSession = (sessionId: string | undefined) => {
+		if (sessionId) {
+			onSelectSession?.(sessionId);
+		}
+	};
 	return (
 		<div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-line border-y py-2">
-			<p className="text-slate-400 text-xs">
-				Course journey · Part {journey.partNumber} of {journey.partCount}
-			</p>
+			<div className="flex flex-wrap items-center gap-2">
+				<p className="text-slate-400 text-xs">
+					Course journey · Part {journey.partNumber} of {journey.partCount}
+				</p>
+				<div className="inline-flex border border-line">
+					<button
+						className="px-2.5 py-1 font-semibold text-slate-400 text-xs hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-slate-400"
+						disabled={!(journey.previousSessionId && onSelectSession)}
+						onClick={() => selectSession(journey.previousSessionId)}
+						type="button"
+					>
+						Previous
+					</button>
+					<button
+						className="border-line border-l px-2.5 py-1 font-semibold text-slate-400 text-xs hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-slate-400"
+						disabled={!(journey.nextSessionId && onSelectSession)}
+						onClick={() => selectSession(journey.nextSessionId)}
+						type="button"
+					>
+						Next
+					</button>
+				</div>
+			</div>
 			<fieldset className="flex items-center border border-line">
 				<legend className="sr-only">Session metric scope</legend>
 				<button
@@ -186,6 +213,7 @@ export function SessionDetail({
 	onConfirmDelete,
 	onDelete,
 	onSelectChartMode,
+	onSelectLinkedSession,
 	onStartNew,
 	selectedChartMode,
 	session,
@@ -199,6 +227,7 @@ export function SessionDetail({
 	onConfirmDelete?: () => void;
 	onDelete?: () => void;
 	onSelectChartMode?: (mode: ChartMode) => void;
+	onSelectLinkedSession?: (sessionId: string) => void;
 	onStartNew?: () => void;
 	selectedChartMode?: ChartMode;
 	session: SavedSession;
@@ -407,6 +436,7 @@ export function SessionDetail({
 				<JourneyMetricScope
 					journey={combinedJourney}
 					onChange={setShowCombinedJourney}
+					onSelectSession={onSelectLinkedSession}
 					showCombined={showCombinedJourney}
 				/>
 			) : null}
