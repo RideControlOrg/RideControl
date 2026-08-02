@@ -1633,7 +1633,7 @@ describe('view components', () => {
 		expect(html).toContain('class="ts-chart__rule ts-chart__rule-x"');
 		expect(html).toContain('stroke-dasharray="2.5 2.5"');
 		expect(html).toContain('aria-roledescription="chart"');
-		expect(html).toContain('data-ts-chart-focus=""');
+		expect(html).toContain('data-ts-focus-layer="over"');
 		expect(html).toContain('Hover over the plot or use the arrow keys');
 		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
 		const gearModeWithoutSamples = render(
