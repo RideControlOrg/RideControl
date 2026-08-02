@@ -89,12 +89,11 @@ describe('paired device protocols', () => {
 			gatt: {
 				connect: () => {
 					attempts += 1;
-					return attempts === 1
-						? Promise.reject(new Error('stale browser connection'))
-						: Promise.resolve(server);
+					return attempts === 1 ? new Promise(() => undefined) : Promise.resolve(server);
 				},
 				disconnect: () => undefined,
 			},
+			id: 'remembered-heart-rate',
 			removeEventListener: () => undefined,
 		} as unknown as BluetoothDevice;
 		const callbacks = {
@@ -102,9 +101,9 @@ describe('paired device protocols', () => {
 			onDisconnect: () => undefined,
 			onHeartRate: () => undefined,
 		};
-		await expect(connectHeartRateDevice(device, true, callbacks)).rejects.toThrow(
-			'stale browser connection'
-		);
+		await expect(
+			connectHeartRateDevice(device, true, callbacks, { reconnectProbeTimeoutMs: 1 })
+		).rejects.toThrow('Bluetooth device connection timed out.');
 		const connection = await connectHeartRateDevice(device, true, callbacks);
 		expect(attempts).toBe(2);
 		expect(notificationsStarted).toBe(1);
@@ -143,12 +142,14 @@ describe('paired device protocols', () => {
 			onHeartRate: () => undefined,
 		};
 
-		await expect(connectHeartRateDevice(device, false, callbacks, 1)).rejects.toThrow(
-			'Bluetooth notification setup timed out.'
-		);
+		await expect(
+			connectHeartRateDevice(device, false, callbacks, { operationTimeoutMs: 1 })
+		).rejects.toThrow('Bluetooth notification setup timed out.');
 		expect(listeners.size).toBe(0);
 
-		const connection = await connectHeartRateDevice(device, false, callbacks, 100);
+		const connection = await connectHeartRateDevice(device, false, callbacks, {
+			operationTimeoutMs: 100,
+		});
 		expect(notificationAttempts).toBe(2);
 		expect(listeners.size).toBe(1);
 		connection.cleanup();

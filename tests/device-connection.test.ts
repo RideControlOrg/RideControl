@@ -114,13 +114,13 @@ describe('reconnect controller', () => {
 		expect(advertisementWatches).toBe(0);
 	});
 
-	test('retries until connected and then clears its pending work', async () => {
+	test('keeps retrying through a long absence until the device connects', async () => {
 		const callbacks: Array<() => void | Promise<void>> = [];
 		let attempts = 0;
 		const controller = createReconnectController<string>({
 			attempt: () => {
 				attempts += 1;
-				return Promise.resolve(attempts === 2);
+				return Promise.resolve(attempts === 8);
 			},
 			canRetry: () => true,
 			clearTimer: () => undefined,
@@ -132,11 +132,37 @@ describe('reconnect controller', () => {
 		});
 		controller.start('device', 'target');
 		expect(controller.isPending('device')).toBeTrue();
-		await callbacks.shift()?.();
-		expect(attempts).toBe(1);
-		expect(controller.isPending('device')).toBeTrue();
-		await callbacks.shift()?.();
-		expect(attempts).toBe(2);
+		for (let attempt = 1; attempt <= 8; attempt += 1) {
+			await callbacks.shift()?.();
+			expect(attempts).toBe(attempt);
+			expect(controller.isPending('device')).toBe(attempt < 8);
+		}
+		expect(controller.isPending('device')).toBeFalse();
+	});
+
+	test('does not restart after cancellation during an in-flight attempt', async () => {
+		const callbacks: Array<() => void | Promise<void>> = [];
+		let finishAttempt: ((connected: boolean) => void) | undefined;
+		const controller = createReconnectController<string>({
+			attempt: () =>
+				new Promise<boolean>((resolve) => {
+					finishAttempt = resolve;
+				}),
+			canRetry: () => true,
+			delayForAttempt: () => 100,
+			setTimer: ((callback: () => void) => {
+				callbacks.push(callback);
+				return callbacks.length;
+			}) as typeof setTimeout,
+		});
+
+		controller.start('device', 'target');
+		const attempt = callbacks.shift()?.();
+		controller.cancel('device', true);
+		finishAttempt?.(false);
+		await attempt;
+
+		expect(callbacks).toHaveLength(0);
 		expect(controller.isPending('device')).toBeFalse();
 	});
 

@@ -356,7 +356,7 @@ export function useTrainerConnection(
 		setConnectionPhase(pairedDevice.current ? 'offline' : 'unpaired');
 	}, [setConnectionPhase, setMetrics, store]);
 
-	function reconnect() {
+	const reconnect = useCallback(() => {
 		if (!pairedDevice.current) {
 			return;
 		}
@@ -367,7 +367,7 @@ export function useTrainerConnection(
 		autoReconnect.current = true;
 		reconnectController.current.reset(selected.id);
 		reconnectBluetoothDeviceNow(reconnectController.current, selected);
-	}
+	}, []);
 
 	const forget = useCallback(async () => {
 		const selected = pairedDevice.current;
