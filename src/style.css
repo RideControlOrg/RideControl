@@ -406,7 +406,7 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	gap: 0.5rem;
 }
 
-@container (min-width: 20rem) {
+@container (min-width: 34rem) {
 	.workout-map-summary-session {
 		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
 		column-gap: 1rem;

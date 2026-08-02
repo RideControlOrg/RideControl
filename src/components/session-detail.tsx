@@ -152,54 +152,48 @@ function JourneyMetricScope({
 			onSelectSession?.(sessionId);
 		}
 	};
+	const canSelectPrevious = Boolean(journey.previousSessionId && onSelectSession);
+	const canSelectNext = Boolean(journey.nextSessionId && onSelectSession);
 	return (
-		<div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-line border-y py-2">
-			<div className="flex flex-wrap items-center gap-2">
-				<p className="text-slate-400 text-xs">
-					Course journey · Part {journey.partNumber} of {journey.partCount}
+		<div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1">
+			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+				<p className="text-xs">
+					<span className="text-slate-500">Journey </span>
+					<strong className="text-slate-200">
+						{journey.partNumber}/{journey.partCount}
+					</strong>
 				</p>
-				<div className="inline-flex border border-line">
-					<button
-						className="px-2.5 py-1 font-semibold text-slate-400 text-xs hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-slate-400"
-						disabled={!(journey.previousSessionId && onSelectSession)}
-						onClick={() => selectSession(journey.previousSessionId)}
-						type="button"
-					>
-						Previous
-					</button>
-					<button
-						className="border-line border-l px-2.5 py-1 font-semibold text-slate-400 text-xs hover:text-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-slate-400"
-						disabled={!(journey.nextSessionId && onSelectSession)}
-						onClick={() => selectSession(journey.nextSessionId)}
-						type="button"
-					>
-						Next
-					</button>
-				</div>
+				<nav aria-label="Connected journey sessions" className="flex items-center gap-3">
+					{canSelectPrevious ? (
+						<button
+							className="py-1 font-semibold text-slate-400 text-xs hover:text-white"
+							onClick={() => selectSession(journey.previousSessionId)}
+							type="button"
+						>
+							← Part {journey.partNumber - 1}
+						</button>
+					) : null}
+					{canSelectNext ? (
+						<button
+							className="py-1 font-semibold text-slate-400 text-xs hover:text-white"
+							onClick={() => selectSession(journey.nextSessionId)}
+							type="button"
+						>
+							Part {journey.partNumber + 1} →
+						</button>
+					) : null}
+				</nav>
 			</div>
-			<fieldset className="flex items-center border border-line">
-				<legend className="sr-only">Session metric scope</legend>
-				<button
-					aria-pressed={!showCombined}
-					className={`px-3 py-1.5 font-semibold text-xs ${
-						showCombined ? 'text-slate-400 hover:text-white' : 'bg-slate-700 text-white'
-					}`}
-					onClick={() => onChange(false)}
-					type="button"
-				>
-					This session
-				</button>
-				<button
-					aria-pressed={showCombined}
-					className={`border-line border-l px-3 py-1.5 font-semibold text-xs ${
-						showCombined ? 'bg-mint/10 text-mint' : 'text-slate-400 hover:text-white'
-					}`}
-					onClick={() => onChange(true)}
-					type="button"
-				>
-					Full journey
-				</button>
-			</fieldset>
+			<button
+				aria-pressed={showCombined}
+				className={`px-2 py-1 font-semibold text-xs ${
+					showCombined ? 'bg-mint/10 text-mint' : 'text-slate-400 hover:text-white'
+				}`}
+				onClick={() => onChange(!showCombined)}
+				type="button"
+			>
+				All parts
+			</button>
 		</div>
 	);
 }

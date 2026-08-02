@@ -1,9 +1,17 @@
 import type { RecordMesg, SessionMesg } from '@garmin/fitsdk';
 import { emptyMetrics, emptySession } from '../constants';
-import type { MetricAggregate, MetricSample, SavedSession, SessionAggregates } from '../types';
+import type {
+	MetricAggregate,
+	MetricSample,
+	SavedSession,
+	SessionAggregates,
+	SessionWorkout,
+	WorkoutCourse,
+} from '../types';
 import { IMPORTED_FIT_ID_PREFIX, sessionImportFingerprint } from './activity-file';
 import { CONTROL_MODE } from './control-mode';
 import { elevationTotalsForSamples } from './elevation';
+import { restoreFitWorkoutMetadata } from './fit-workout-metadata';
 import { nonNegativeNumber } from './numbers';
 import { clampResistance } from './resistance';
 import { addMetricAggregates } from './session';
@@ -12,6 +20,7 @@ import {
 	kilometersForMeters,
 	secondsForMilliseconds,
 } from './units';
+import { workoutLap } from './workouts';
 
 function timestampValue(value: unknown): number | undefined {
 	if (value instanceof Date) {
@@ -64,10 +73,19 @@ function sessionRecords(records: RecordMesg[], startedAt: number, endedAt?: numb
 	});
 }
 
-function recordSample(record: RecordMesg, startedAt: number): MetricSample {
+function recordSample(
+	record: RecordMesg,
+	startedAt: number,
+	workout: SessionWorkout | undefined,
+	workoutStartDistance: number
+): MetricSample {
 	const timestamp = recordTimestamp(record) ?? startedAt;
 	const speed = record.enhancedSpeed ?? record.speed ?? 0;
 	const elevation = record.enhancedAltitude ?? record.altitude;
+	const workoutDistance =
+		workout && record.distance !== undefined
+			? workoutStartDistance + kilometersForMeters(nonNegativeNumber(record.distance))
+			: undefined;
 	return {
 		cadence: nonNegativeNumber(record.cadence),
 		elapsedSeconds: Math.max(0, secondsForMilliseconds(timestamp - startedAt)),
@@ -78,10 +96,20 @@ function recordSample(record: RecordMesg, startedAt: number): MetricSample {
 		resistance:
 			record.resistance === undefined ? undefined : clampResistance(record.resistance),
 		speed: nonNegativeNumber(speed) * KILOMETERS_PER_HOUR_PER_METER_PER_SECOND,
+		workoutDistance,
+		workoutLap:
+			workout && workoutDistance !== undefined
+				? workoutLap(workout.course, workoutDistance)
+				: undefined,
 	};
 }
 
-function parseFitSession(session: SessionMesg | undefined, allRecords: RecordMesg[]): SavedSession {
+function parseFitSession(
+	session: SessionMesg | undefined,
+	allRecords: RecordMesg[],
+	workoutCourses: readonly WorkoutCourse[],
+	isRideControlExport: boolean
+): SavedSession {
 	const firstRecordTimestamp = allRecords
 		.map(recordTimestamp)
 		.find((value) => value !== undefined);
@@ -91,7 +119,18 @@ function parseFitSession(session: SessionMesg | undefined, allRecords: RecordMes
 	}
 	const recordedEnd = timestampValue(session?.timestamp);
 	const records = session ? sessionRecords(allRecords, startedAt, recordedEnd) : allRecords;
-	const samples = records.map((record) => recordSample(record, startedAt));
+	const workoutMetadata = isRideControlExport ? restoreFitWorkoutMetadata(session) : undefined;
+	const workoutCourse = workoutMetadata
+		? workoutCourses.find((course) => course.id === workoutMetadata.courseId)
+		: undefined;
+	const workout = workoutCourse ? { course: workoutCourse } : undefined;
+	let workoutStartDistance = 0;
+	if (workoutMetadata) {
+		workoutStartDistance = workoutMetadata.startDistance;
+	}
+	const samples = records.map((record) =>
+		recordSample(record, startedAt, workout, workoutStartDistance)
+	);
 	const lastRecordTimestamp = records
 		.map(recordTimestamp)
 		.findLast((value) => value !== undefined);
@@ -154,14 +193,23 @@ function parseFitSession(session: SessionMesg | undefined, allRecords: RecordMes
 			),
 		},
 		startedAt,
+		workout,
 	};
+	const id = `${IMPORTED_FIT_ID_PREFIX}${sessionImportFingerprint(sessionWithoutId)}`;
 	return {
 		...sessionWithoutId,
-		id: `${IMPORTED_FIT_ID_PREFIX}${sessionImportFingerprint(sessionWithoutId)}`,
+		continuation:
+			workout && workoutStartDistance > 0
+				? { journeyId: id, workoutStartDistance }
+				: undefined,
+		id,
 	};
 }
 
-export async function parseFitSessions(contents: Uint8Array): Promise<SavedSession[]> {
+export async function parseFitSessions(
+	contents: Uint8Array,
+	workoutCourses: readonly WorkoutCourse[] = []
+): Promise<SavedSession[]> {
 	const { Decoder, Stream } = await import('@garmin/fitsdk');
 	const stream = Stream.fromArrayBuffer(contents.slice().buffer);
 	const decoder = new Decoder(stream);
@@ -181,10 +229,13 @@ export async function parseFitSessions(contents: Uint8Array): Promise<SavedSessi
 	}
 	const records = messages.recordMesgs ?? [];
 	const sessions = messages.sessionMesgs ?? [];
+	const isRideControlExport = messages.fileIdMesgs?.[0]?.productName === 'Ride Control';
 	if (sessions.length === 0 && records.length === 0) {
 		throw new Error('The FIT file contains no activity sessions.');
 	}
 	return sessions.length > 0
-		? sessions.map((session) => parseFitSession(session, records))
-		: [parseFitSession(undefined, records)];
+		? sessions.map((session) =>
+				parseFitSession(session, records, workoutCourses, isRideControlExport)
+			)
+		: [parseFitSession(undefined, records, workoutCourses, isRideControlExport)];
 }
