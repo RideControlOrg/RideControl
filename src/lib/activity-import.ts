@@ -1,5 +1,5 @@
 import { strFromU8, unzip } from 'fflate';
-import type { SavedSession } from '../types';
+import type { SavedSession, WorkoutCourse } from '../types';
 import {
 	ACTIVITY_FILE_FORMAT,
 	type ActivityFileFormat,
@@ -9,6 +9,8 @@ import { errorMessage } from './errors';
 import { parseFitSessions } from './fit-import';
 import { listAllSavedSessions, saveSession } from './saved-sessions';
 import { parseTcxSessions } from './tcx-import';
+import { loadCustomWorkouts } from './workout-file';
+import { WORKOUT_COURSES } from './workouts';
 
 const ACTIVITY_FILE_EXTENSION = /\.(fit|tcx)$/i;
 const ZIP_FILE_EXTENSION = /\.zip$/i;
@@ -24,6 +26,7 @@ interface NamedActivityFile {
 
 interface ImportDependencies {
 	listSessions: () => Promise<SavedSession[]>;
+	listWorkoutCourses?: () => readonly WorkoutCourse[];
 	saveSession: (session: SavedSession) => Promise<void>;
 }
 
@@ -41,6 +44,7 @@ export interface ActivityImportResult {
 
 const DEFAULT_IMPORT_DEPENDENCIES: ImportDependencies = {
 	listSessions: listAllSavedSessions,
+	listWorkoutCourses: () => [...WORKOUT_COURSES, ...loadCustomWorkouts()],
 	saveSession,
 };
 
@@ -121,10 +125,13 @@ async function uploadedActivityFiles(file: File): Promise<NamedActivityFile[]> {
 	return entries;
 }
 
-function parseActivityFile(file: NamedActivityFile): Promise<SavedSession[]> | SavedSession[] {
+function parseActivityFile(
+	file: NamedActivityFile,
+	workoutCourses: readonly WorkoutCourse[]
+): Promise<SavedSession[]> | SavedSession[] {
 	switch (file.format) {
 		case ACTIVITY_FILE_FORMAT.FIT:
-			return parseFitSessions(file.contents);
+			return parseFitSessions(file.contents, workoutCourses);
 		case ACTIVITY_FILE_FORMAT.TCX:
 			return parseTcxSessions(strFromU8(file.contents));
 		default:
@@ -139,6 +146,7 @@ export async function importActivityUpload(
 	const activityFiles = await uploadedActivityFiles(file);
 	const importedAt = Date.now();
 	const savedSessions = await dependencies.listSessions();
+	const workoutCourses = dependencies.listWorkoutCourses?.() ?? [];
 	const savedIds = new Set(savedSessions.map((session) => session.id));
 	const savedFingerprints = new Set(savedSessions.map(sessionImportFingerprint));
 	const result: ActivityImportResult = {
@@ -149,7 +157,7 @@ export async function importActivityUpload(
 	};
 	for (const activityFile of activityFiles) {
 		try {
-			const sessions = await parseActivityFile(activityFile);
+			const sessions = await parseActivityFile(activityFile, workoutCourses);
 			for (const session of sessions) {
 				const fingerprint = sessionImportFingerprint(session);
 				if (savedIds.has(session.id) || savedFingerprints.has(fingerprint)) {

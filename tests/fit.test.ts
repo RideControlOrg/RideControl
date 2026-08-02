@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { Decoder, Stream } from '@garmin/fitsdk';
+import { importActivityUpload } from '../src/lib/activity-import';
 import { sessionFitFilename, sessionToFit } from '../src/lib/fit';
 import { parseFitSessions } from '../src/lib/fit-import';
+import { WORKOUT_COURSES } from '../src/lib/workouts';
+import type { SavedSession } from '../src/types';
 import { savedSessionFixture as session } from './fixtures/saved-session';
 
 const FIT_FILENAME = /^ride-control-2026-07-18T16-00-00\.000Z-[a-z0-9]+\.fit$/;
@@ -76,6 +79,55 @@ describe('FIT activity files', () => {
 			resistance: 45,
 		});
 		expect(first?.history[1]?.speed).toBeCloseTo(30, 2);
+	});
+
+	test('reconnects an exported workout and its course position to a saved route', async () => {
+		const course = WORKOUT_COURSES.find((workout) => workout.id === 'highland-loop');
+		if (!course) {
+			throw new Error('Expected Highland Loop workout fixture.');
+		}
+		const fit = await sessionToFit({
+			...session,
+			continuation: {
+				journeyId: session.id,
+				workoutStartDistance: 12.5,
+			},
+			workout: { course },
+		});
+		const decoder = new Decoder(Stream.fromArrayBuffer(fit.slice().buffer));
+		const { messages } = decoder.read();
+		expect(messages.sessionMesgs?.[0]?.developerFields).toEqual({
+			0: course.id,
+			1: 12.5,
+		});
+
+		const [imported] = await parseFitSessions(fit, [course]);
+		if (!imported) {
+			throw new Error('Expected an imported workout session.');
+		}
+		expect(imported.workout?.course).toBe(course);
+		expect(imported.continuation).toEqual({
+			journeyId: imported.id,
+			workoutStartDistance: 12.5,
+		});
+		expect(imported.history.at(-1)).toMatchObject({
+			workoutDistance: 14,
+			workoutLap: 2,
+		});
+
+		const saved: SavedSession[] = [];
+		const fitBuffer = new ArrayBuffer(fit.byteLength);
+		new Uint8Array(fitBuffer).set(fit);
+		const result = await importActivityUpload(new File([fitBuffer], 'ride.fit'), {
+			listSessions: () => Promise.resolve([]),
+			listWorkoutCourses: () => [course],
+			saveSession: (importedSession) => {
+				saved.push(importedSession);
+				return Promise.resolve();
+			},
+		});
+		expect(result.importedSessions).toHaveLength(1);
+		expect(saved[0]?.workout?.course).toBe(course);
 	});
 
 	test('imports every FIT record from a ride longer than the former sample limit', async () => {

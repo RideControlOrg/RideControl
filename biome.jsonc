@@ -44,7 +44,9 @@
 			},
 			"suspicious": {
 				// Bluetooth FTMS and CSC payloads are defined as packed bit fields.
-				"noBitwiseOperators": "off"
+				"noBitwiseOperators": "off",
+				// Mutable React refs can change outside Biome's local control-flow analysis.
+				"noUnnecessaryConditions": "off"
 			}
 		}
 	}

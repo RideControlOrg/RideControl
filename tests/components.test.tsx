@@ -1633,7 +1633,7 @@ describe('view components', () => {
 		expect(html).toContain('class="ts-chart__rule ts-chart__rule-x"');
 		expect(html).toContain('stroke-dasharray="2.5 2.5"');
 		expect(html).toContain('aria-roledescription="chart"');
-		expect(html).toContain('data-ts-chart-focus=""');
+		expect(html).toContain('data-ts-focus-layer="over"');
 		expect(html).toContain('Hover over the plot or use the arrow keys');
 		expect(html).not.toContain('absolute top-[11%] bottom-[8%] left-1');
 		const gearModeWithoutSamples = render(
@@ -2352,13 +2352,10 @@ describe('view components', () => {
 				speedUnit="mph"
 			/>
 		);
-		expect(html).toContain('Course journey · Part 2 of 2');
-		expect(html).toContain('aria-pressed="true"');
 		expect(html).toContain('aria-pressed="false"');
-		expect(html).toContain('This session');
-		expect(html).toContain('Full journey');
-		expect(html).toContain('>Previous</button>');
-		expect(html).toContain('disabled="" type="button">Next</button>');
+		expect(html).toContain('2/2');
+		expect(html).toContain('← Part 1');
+		expect(html).not.toContain('Part 3 →');
 	});
 
 	test('shows the rider weight captured with the session in the selected units', () => {

@@ -1,7 +1,11 @@
 import {
 	areaY,
 	barY,
+	type ChartDefinition,
+	type ChartDefinitionOptions,
+	type ChartPoint,
 	type ChartTheme,
+	type ChartValue,
 	defineChart,
 	dot,
 	lineY,
@@ -10,9 +14,10 @@ import {
 } from '@tanstack/charts';
 import { focusNearestX } from '@tanstack/charts/focus';
 import { focusDisabled } from '@tanstack/charts/focus/disabled';
-import { Chart, type DynamicChartProps } from '@tanstack/react-charts';
+import { tooltip } from '@tanstack/charts/tooltip';
+import { Chart, type ChartProps } from '@tanstack/react-charts';
 import { scaleBand, scaleLinear } from 'd3-scale';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const BASE_CHART_THEME: ChartTheme = {
 	background: 'var(--chart-surface)',
@@ -39,21 +44,32 @@ interface LabeledChartDatum {
 	label: string;
 }
 
-const INTERACTION_PROPS = {
-	focus: focusNearestX,
-	maxFocusDistance: Number.POSITIVE_INFINITY,
-	tooltip: {
-		className: 'ride-control-chart-tooltip',
-		format: (point: { datum: LabeledChartDatum }) => point.datum.label,
-	},
-} as const;
-const NON_INTERACTIVE_PROPS = {
-	focus: focusDisabled,
-	keyboard: false,
-} as const;
-
 function chartTheme(background: string): ChartTheme {
 	return { ...BASE_CHART_THEME, background };
+}
+
+function interactionOptions<
+	TDatum extends LabeledChartDatum,
+	TXValue extends ChartValue,
+	TYValue extends ChartValue,
+>(interactive: boolean): ChartDefinitionOptions<TDatum, TXValue, TYValue> {
+	return interactive
+		? {
+				animate: false,
+				focus: focusNearestX,
+				maxFocusDistance: Number.POSITIVE_INFINITY,
+				tooltip: {
+					className: 'ride-control-chart-tooltip',
+					format: (point) => point.datum.label,
+					use: tooltip,
+				},
+			}
+		: {
+				animate: false,
+				focus: focusDisabled,
+				keyboard: false,
+				tooltip: false,
+			};
 }
 
 function MeasuredChartFrame({
@@ -100,36 +116,34 @@ export interface InteractiveChartDatum<TValue> extends LabeledChartDatum {
 	value: TValue;
 }
 
-type InteractiveChartSurfaceProps<TDatum, TInput> = Pick<
-	DynamicChartProps<TDatum, TInput>,
-	'ariaDescription' | 'ariaLabel' | 'className' | 'definition' | 'input' | 'onFocusChange'
+type InteractiveChartSurfaceProps<
+	TDatum,
+	TXValue extends ChartValue,
+	TYValue extends ChartValue,
+> = Pick<
+	ChartProps<TDatum, TXValue, TYValue>,
+	'ariaDescription' | 'ariaLabel' | 'className' | 'definition' | 'onFocusChange'
 > & {
 	height?: number;
-	interactive?: boolean;
 };
 
-function InteractiveChartSurface<TDatum extends LabeledChartDatum, TInput>({
+function InteractiveChartSurface<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>({
 	ariaDescription,
 	ariaLabel,
 	className,
 	definition,
 	height,
-	input,
-	interactive = true,
 	onFocusChange,
-}: InteractiveChartSurfaceProps<TDatum, TInput>) {
+}: InteractiveChartSurfaceProps<TDatum, TXValue, TYValue>) {
 	return (
 		<MeasuredChartFrame height={height}>
 			{(chartHeight) => (
-				<Chart<TDatum, TInput>
-					{...(interactive ? INTERACTION_PROPS : NON_INTERACTIVE_PROPS)}
-					animate={false}
+				<Chart<TDatum, TXValue, TYValue>
 					ariaDescription={ariaDescription}
 					ariaLabel={ariaLabel}
 					className={className}
 					definition={definition}
 					height={chartHeight}
-					input={input}
 					onFocusChange={onFocusChange}
 					style={{ height: '100%' }}
 				/>
@@ -154,7 +168,10 @@ interface InteractiveLineInput {
 	xMinimum: number;
 }
 
-const interactiveLineDefinition = defineChart<InteractiveLineInput>()(({ input }) => {
+function interactiveLineDefinition(
+	input: InteractiveLineInput,
+	interactive: boolean
+): ChartDefinition<InteractiveLineDatum, number, number> {
 	const xSpan = input.xMaximum - input.xMinimum;
 	const resolvedXMaximum = xSpan > 0 ? input.xMaximum : input.xMinimum + 1;
 	const ySpan = input.maximum - input.minimum;
@@ -175,7 +192,8 @@ const interactiveLineDefinition = defineChart<InteractiveLineInput>()(({ input }
 		input.focusedX === undefined
 			? []
 			: input.rows.filter((row) => row.x === input.focusedX && row.value !== undefined);
-	return {
+	return defineChart({
+		...interactionOptions<InteractiveLineDatum, number, number>(interactive),
 		marks: [
 			...horizontalGuides.map((guide, index) =>
 				ruleY([guide], {
@@ -230,15 +248,15 @@ const interactiveLineDefinition = defineChart<InteractiveLineInput>()(({ input }
 		],
 		theme: chartTheme(input.background),
 		x: {
-			guide: false,
+			axis: false,
 			scale: scaleLinear().domain([input.xMinimum, resolvedXMaximum]),
 		},
 		y: {
-			guide: false,
+			axis: false,
 			scale: scaleLinear().domain([yDomainMinimum, yDomainMaximum]),
 		},
-	};
-});
+	});
+}
 
 export function InteractiveLineChart({
 	area = false,
@@ -269,13 +287,31 @@ export function InteractiveLineChart({
 }) {
 	const xMinimum = rows[0]?.x ?? 0;
 	const xMaximum = rows.at(-1)?.x ?? xMinimum;
+	const definition = useMemo(
+		() =>
+			interactiveLineDefinition(
+				{
+					area,
+					background,
+					color,
+					focusedX: interactive ? focusedX : undefined,
+					maximum,
+					minimum,
+					rows,
+					xMaximum,
+					xMinimum,
+				},
+				interactive
+			),
+		[area, background, color, focusedX, interactive, maximum, minimum, rows, xMaximum, xMinimum]
+	);
 	const handleFocusChange = useCallback(
-		(point: { datum: InteractiveLineDatum } | null) =>
+		(point: ChartPoint<InteractiveLineDatum, number, number> | null) =>
 			onFocusXChange?.(point === null ? undefined : point.datum.x),
 		[onFocusXChange]
 	);
 	return (
-		<InteractiveChartSurface<InteractiveLineDatum, InteractiveLineInput>
+		<InteractiveChartSurface<InteractiveLineDatum, number, number>
 			ariaDescription={
 				interactive
 					? 'Hover over the plot or use the arrow keys to inspect exact values.'
@@ -283,20 +319,8 @@ export function InteractiveLineChart({
 			}
 			ariaLabel={ariaLabel}
 			className={className}
-			definition={interactiveLineDefinition}
+			definition={definition}
 			height={height}
-			input={{
-				area,
-				background,
-				color,
-				focusedX: interactive ? focusedX : undefined,
-				maximum,
-				minimum,
-				rows,
-				xMaximum,
-				xMinimum,
-			}}
-			interactive={interactive}
 			onFocusChange={interactive && onFocusXChange ? handleFocusChange : undefined}
 		/>
 	);
@@ -311,9 +335,12 @@ interface InteractiveBarInput {
 	rows: readonly InteractiveBarDatum[];
 }
 
-const interactiveBarDefinition = defineChart<InteractiveBarInput>()(({ input }) => {
+function interactiveBarDefinition(
+	input: InteractiveBarInput
+): ChartDefinition<InteractiveBarDatum, string, number> {
 	const maximum = input.maximum > 0 ? input.maximum : 1;
-	return {
+	return defineChart({
+		...interactionOptions<InteractiveBarDatum, string, number>(true),
 		marks: [
 			ruleY([{ value: maximum / 2 }], {
 				...GUIDE_STYLE,
@@ -334,17 +361,17 @@ const interactiveBarDefinition = defineChart<InteractiveBarInput>()(({ input }) 
 		],
 		theme: chartTheme(input.background),
 		x: {
-			guide: false,
+			axis: false,
 			scale: scaleBand<string>()
 				.domain(input.rows.map((row) => row.key))
 				.padding(0.12),
 		},
 		y: {
-			guide: false,
+			axis: false,
 			scale: scaleLinear().domain([0, maximum]),
 		},
-	};
-});
+	});
+}
 
 export function InteractiveBarChart({
 	ariaLabel,
@@ -363,14 +390,17 @@ export function InteractiveBarChart({
 	maximum: number;
 	rows: readonly InteractiveBarDatum[];
 }) {
+	const definition = useMemo(
+		() => interactiveBarDefinition({ background, color, maximum, rows }),
+		[background, color, maximum, rows]
+	);
 	return (
-		<InteractiveChartSurface<InteractiveBarDatum, InteractiveBarInput>
+		<InteractiveChartSurface<InteractiveBarDatum, string, number>
 			ariaDescription="Hover over a bar or use the arrow keys to inspect exact values."
 			ariaLabel={ariaLabel}
 			className={className}
-			definition={interactiveBarDefinition}
+			definition={definition}
 			height={height}
-			input={{ background, color, maximum, rows }}
 		/>
 	);
 }

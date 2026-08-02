@@ -1,7 +1,9 @@
 import type {
 	ActivityMesg,
+	DeveloperDataIdMesg,
 	DeviceInfoMesg,
 	EventMesg,
+	FieldDescriptionMesg,
 	FileIdMesg,
 	LapMesg,
 	RecordMesg,
@@ -14,6 +16,11 @@ import {
 	sessionSampleDistances,
 } from './activity-file';
 import { downloadBrowserFile } from './download';
+import {
+	fitWorkoutDeveloperDataId,
+	fitWorkoutDeveloperFieldDefinitions,
+	fitWorkoutDeveloperFields,
+} from './fit-workout-metadata';
 import { aggregateAverage } from './format';
 import { nonNegativeNumber } from './numbers';
 import { metersForKilometers, metersPerSecond, millisecondsForSeconds } from './units';
@@ -131,6 +138,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 	);
 	const distances = sessionSampleDistances(session);
 	const summary = summaryFields(session, elapsedSeconds);
+	const workoutDeveloperFields = fitWorkoutDeveloperFields(session.workout, session.continuation);
 
 	const fileIdMessage: FileIdMesg = {
 		manufacturer: 'development',
@@ -148,6 +156,25 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 		timestamp: startedAt,
 	};
 	encoder.onMesg(fitMessageNumber(Profile.MesgNum.DEVICE_INFO, 'DEVICE_INFO'), deviceInfoMessage);
+	if (workoutDeveloperFields) {
+		const developerDataIdMessage: DeveloperDataIdMesg = fitWorkoutDeveloperDataId();
+		encoder.onMesg(
+			fitMessageNumber(Profile.MesgNum.DEVELOPER_DATA_ID, 'DEVELOPER_DATA_ID'),
+			developerDataIdMessage
+		);
+		for (const definition of fitWorkoutDeveloperFieldDefinitions()) {
+			const fieldDescriptionMessage: FieldDescriptionMesg = definition.fieldDescriptionMesg;
+			encoder.addDeveloperField(
+				definition.key,
+				developerDataIdMessage,
+				fieldDescriptionMessage
+			);
+			encoder.onMesg(
+				fitMessageNumber(Profile.MesgNum.FIELD_DESCRIPTION, 'FIELD_DESCRIPTION'),
+				fieldDescriptionMessage
+			);
+		}
+	}
 	const startEventMessage: EventMesg = {
 		event: 'timer',
 		eventType: 'start',
@@ -186,6 +213,7 @@ export async function sessionToFit(session: SavedSession): Promise<Uint8Array> {
 	encoder.onMesg(fitMessageNumber(Profile.MesgNum.LAP, 'LAP'), lapMessage);
 	const sessionMessage: SessionMesg = {
 		...summary,
+		developerFields: workoutDeveloperFields,
 		event: 'session',
 		eventType: 'stop',
 		messageIndex: 0,
