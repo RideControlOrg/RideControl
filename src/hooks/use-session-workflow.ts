@@ -12,6 +12,7 @@ import {
 	SESSION_WORKFLOW_PHASE,
 	type SessionWorkflowController,
 	type SessionWorkflowIntent,
+	sessionHistorySelectionAfterSave,
 } from '../lib/session-workflow';
 import { createSessionWorkflowStore } from '../stores/session-workflow-store';
 import type { SavedSession, SessionMetadata, SessionSnapshot } from '../types';
@@ -19,7 +20,8 @@ import type { SavedSession, SessionMetadata, SessionSnapshot } from '../types';
 export function useSessionWorkflow(
 	session: SessionWorkflowController,
 	setNotice: (notice: string) => void,
-	settleTrainerResistance: () => void
+	settleTrainerResistance: () => void,
+	onEndedSessionSaved: (sessionId: string) => void
 ) {
 	const sessionIsResolved = Boolean(session.savedSessionId) || session.discarded;
 	const storeRef = useRef<ReturnType<typeof createSessionWorkflowStore> | undefined>(undefined);
@@ -77,6 +79,7 @@ export function useSessionWorkflow(
 
 	const completeIntent = useCallback(
 		(intent: SessionWorkflowIntent, savedSession?: SavedSession) => {
+			const historySelection = sessionHistorySelectionAfterSave(intent, savedSession);
 			switch (intent.kind) {
 				case SESSION_WORKFLOW_INTENT.EXTEND:
 					session.extendFrom(intent.session, intent.session.id);
@@ -111,8 +114,12 @@ export function useSessionWorkflow(
 					unreachable(intent);
 			}
 			store.actions.close();
+			if (historySelection) {
+				onEndedSessionSaved(historySelection);
+			}
 		},
 		[
+			onEndedSessionSaved,
 			session.extendFrom,
 			session.markDiscarded,
 			session.savedSessionId,
