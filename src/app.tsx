@@ -72,7 +72,11 @@ import { activeRiderPhysicsProfile, type RiderPhysicsProfile } from './lib/profi
 import type { ProfileTab } from './lib/profile-tab';
 import { sessionHasRecordedData, sessionNeedsUnloadWarning } from './lib/session';
 import { createSessionDeviceReconnectController } from './lib/session-device-reconnect';
-import { loadSessionHistoryView, type SessionHistoryView } from './lib/session-history-view';
+import {
+	loadSessionHistoryView,
+	SESSION_HISTORY_VIEW,
+	type SessionHistoryView,
+} from './lib/session-history-view';
 import { requestUnloadConfirmation } from './lib/unload';
 import { rememberWelcomeDismissal, shouldShowWelcome } from './lib/welcome';
 import {
@@ -559,7 +563,22 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		onRestoreResistance: trainer.restoreManualResistance,
 		resistance: workoutResistance,
 	});
-	const workflow = useSessionWorkflow(session, trainer.setNotice, trainer.settleAfterRide);
+	const openEndedSession = useCallback(
+		(sessionId: string) => {
+			navigateToAppRoute({
+				historyView: SESSION_HISTORY_VIEW.LIST,
+				kind: APP_ROUTE_KIND.SESSION,
+				sessionId,
+			});
+		},
+		[navigateToAppRoute]
+	);
+	const workflow = useSessionWorkflow(
+		session,
+		trainer.setNotice,
+		trainer.settleAfterRide,
+		openEndedSession
+	);
 	const workoutLocked = workoutSelectionLocked(session);
 	const clickConnectionActive = clickConnectionActiveForSession(session);
 	useEffect(() => {

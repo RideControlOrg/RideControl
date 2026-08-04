@@ -3,6 +3,7 @@ import {
 	finishRideSession,
 	SESSION_WORKFLOW_INTENT,
 	SESSION_WORKFLOW_PHASE,
+	sessionHistorySelectionAfterSave,
 } from '../src/lib/session-workflow';
 import {
 	createSessionWorkflowStore,
@@ -28,6 +29,22 @@ describe('session workflow store', () => {
 		expect(initialSessionWorkflowState(false)).toEqual({
 			phase: SESSION_WORKFLOW_PHASE.CLOSED,
 		});
+	});
+
+	test('selects a saved ended session without interrupting new or extended ride flows', () => {
+		const savedSession = { id: 'saved-session' } as SavedSession;
+		expect(
+			sessionHistorySelectionAfterSave({ kind: SESSION_WORKFLOW_INTENT.END }, savedSession)
+		).toBe(savedSession.id);
+		expect(
+			sessionHistorySelectionAfterSave({ kind: SESSION_WORKFLOW_INTENT.NEW }, savedSession)
+		).toBeUndefined();
+		expect(
+			sessionHistorySelectionAfterSave(
+				{ kind: SESSION_WORKFLOW_INTENT.EXTEND, session: savedSession },
+				savedSession
+			)
+		).toBeUndefined();
 	});
 
 	test('preserves the requested next session while saving', () => {

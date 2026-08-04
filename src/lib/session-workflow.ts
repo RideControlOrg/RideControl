@@ -36,6 +36,13 @@ export type SessionWorkflowIntent =
 	| { kind: typeof SESSION_WORKFLOW_INTENT.NEW }
 	| { kind: typeof SESSION_WORKFLOW_INTENT.EXTEND; session: SavedSession };
 
+export function sessionHistorySelectionAfterSave(
+	intent: SessionWorkflowIntent,
+	savedSession?: SavedSession
+): string | undefined {
+	return intent.kind === SESSION_WORKFLOW_INTENT.END ? savedSession?.id : undefined;
+}
+
 export type SessionWorkflowState =
 	| { phase: typeof SESSION_WORKFLOW_PHASE.CLOSED }
 	| {
