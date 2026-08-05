@@ -100,7 +100,7 @@ export function SessionHistory({
 		selectSession: selectHistorySession,
 		summaries,
 		total,
-	} = useSessionHistory(open, requestedSessionId);
+	} = useSessionHistory(open, requestedSessionId, onSelectSessionId);
 	const [storedHistoryView, setStoredHistoryView] =
 		useState<SessionHistoryView>(loadSessionHistoryView);
 	const historyView = requestedView ?? storedHistoryView;
@@ -127,12 +127,6 @@ export function SessionHistory({
 	const transferring = exporting || importing;
 	const navigationSummaries =
 		historyView === SESSION_HISTORY_VIEW.CALENDAR ? calendarSummaries : summaries;
-
-	useEffect(() => {
-		if (open && selected) {
-			onSelectSessionId?.(selected.id);
-		}
-	}, [onSelectSessionId, open, selected]);
 
 	useEffect(() => {
 		if (!open) {
