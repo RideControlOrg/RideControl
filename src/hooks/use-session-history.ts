@@ -19,7 +19,11 @@ import type { SavedSession, SavedSessionSummary } from '../types';
 
 const PAGE_SIZE = 30;
 
-export function useSessionHistory(open: boolean, preferredSessionId?: string) {
+export function useSessionHistory(
+	open: boolean,
+	preferredSessionId?: string,
+	onSelectSessionId?: (sessionId: string) => void
+) {
 	const [summaries, setSummaries] = useState<SavedSessionSummary[]>([]);
 	const [total, setTotal] = useState(0);
 	const [selected, setSelected] = useState<SavedSession>();
@@ -40,11 +44,17 @@ export function useSessionHistory(open: boolean, preferredSessionId?: string) {
 	const historyLoadGeneration = useRef(0);
 	const historyInitialized = useRef(false);
 
-	const rememberSelectedSession = useCallback((id: string | undefined) => {
-		selectedIdRef.current = id;
-		setSelectedId(id);
-		saveSelectedSessionId(id);
-	}, []);
+	const rememberSelectedSession = useCallback(
+		(id: string | undefined) => {
+			selectedIdRef.current = id;
+			setSelectedId(id);
+			saveSelectedSessionId(id);
+			if (id) {
+				onSelectSessionId?.(id);
+			}
+		},
+		[onSelectSessionId]
+	);
 
 	const selectSession = useCallback(
 		async (id: string) => {
