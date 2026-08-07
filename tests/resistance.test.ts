@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	resistanceAdjustmentDirection,
-	resistanceDirectionForKey,
+	resistanceDirectionForKeyboardEvent,
 	resistanceRampDuration,
 	smoothedResistance,
 } from '../src/lib/resistance';
@@ -13,10 +13,25 @@ describe('resistance smoothing', () => {
 		expect(resistanceAdjustmentDirection(20, 20)).toBeUndefined();
 	});
 
-	test('maps arrow keys to resistance adjustment directions', () => {
-		expect(resistanceDirectionForKey('ArrowUp')).toBe('increase');
-		expect(resistanceDirectionForKey('ArrowDown')).toBe('decrease');
-		expect(resistanceDirectionForKey('Enter')).toBeUndefined();
+	test('maps arrow and right-side keyboard keys to adjustment directions', () => {
+		expect(resistanceDirectionForKeyboardEvent({ code: 'ArrowUp', key: 'ArrowUp' })).toBe(
+			'increase'
+		);
+		expect(resistanceDirectionForKeyboardEvent({ code: 'Enter', key: 'Enter' })).toBe(
+			'increase'
+		);
+		expect(resistanceDirectionForKeyboardEvent({ code: 'NumpadEnter', key: 'Enter' })).toBe(
+			'increase'
+		);
+		expect(resistanceDirectionForKeyboardEvent({ code: 'ArrowDown', key: 'ArrowDown' })).toBe(
+			'decrease'
+		);
+		expect(resistanceDirectionForKeyboardEvent({ code: 'ShiftRight', key: 'Shift' })).toBe(
+			'decrease'
+		);
+		expect(
+			resistanceDirectionForKeyboardEvent({ code: 'ShiftLeft', key: 'Shift' })
+		).toBeUndefined();
 	});
 
 	test('scales and clamps the ramp duration', () => {

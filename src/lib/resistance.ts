@@ -21,11 +21,14 @@ export function resistanceAdjustmentDirection(
 	}
 }
 
-export function resistanceDirectionForKey(key: string): ResistanceAdjustmentDirection | undefined {
-	if (key === 'ArrowUp') {
+export function resistanceDirectionForKeyboardEvent({
+	code,
+	key,
+}: Pick<KeyboardEvent, 'code' | 'key'>): ResistanceAdjustmentDirection | undefined {
+	if (key === 'ArrowUp' || key === 'Enter') {
 		return 'increase';
 	}
-	if (key === 'ArrowDown') {
+	if (key === 'ArrowDown' || code === 'ShiftRight') {
 		return 'decrease';
 	}
 }

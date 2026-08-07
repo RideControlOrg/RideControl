@@ -2,7 +2,11 @@ import { useSelector } from '@tanstack/react-store';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { CONTROL_FLASH_MS } from '../constants';
 import { deviceConnectionView } from '../lib/device-connection';
-import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
+import {
+	eventTargetsEditableControl,
+	keyboardEventHasModifiers,
+	keyboardEventUsesNativeEnterAction,
+} from '../lib/dom';
 import { errorMessage } from '../lib/errors';
 import { resistanceAfterGearShift } from '../lib/gears';
 import { scheduleNoticeDismissal } from '../lib/notification';
@@ -12,7 +16,7 @@ import type { RememberedBluetoothDeviceCatalog } from '../lib/remembered-bluetoo
 import {
 	clampResistance,
 	DEFAULT_RESISTANCE,
-	resistanceDirectionForKey,
+	resistanceDirectionForKeyboardEvent,
 	resistanceRampDuration,
 	smoothedResistance,
 } from '../lib/resistance';
@@ -203,13 +207,14 @@ export function useTrainer(
 			if (
 				event.defaultPrevented ||
 				keyboardEventHasModifiers(event) ||
+				keyboardEventUsesNativeEnterAction(event) ||
 				(!isResistanceControl && eventTargetsEditableControl(event)) ||
 				!keyboardControlsEnabled.current ||
 				gearControlsEnabled.current
 			) {
 				return;
 			}
-			const direction = resistanceDirectionForKey(event.key);
+			const direction = resistanceDirectionForKeyboardEvent(event);
 			if (!direction) {
 				return;
 			}
@@ -219,7 +224,7 @@ export function useTrainer(
 			updateResistance(resistanceTarget.current + (direction === 'increase' ? 1 : -1));
 		};
 		const handleKeyUp = (event: KeyboardEvent) => {
-			if (!resistanceDirectionForKey(event.key)) {
+			if (!resistanceDirectionForKeyboardEvent(event)) {
 				return;
 			}
 			window.clearTimeout(resistanceKeyFlashTimer.current);

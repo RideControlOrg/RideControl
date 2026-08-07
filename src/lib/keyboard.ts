@@ -27,18 +27,23 @@ export const dashboardKeyboardShortcuts: KeyboardShortcutDescription[] = [
 	{ group: 'Session', keys: ['q'], label: 'End the current session' },
 	{ group: 'Session', keys: ['n'], label: 'Start a new session after ending' },
 	{ group: 'Session', keys: ['h'], label: 'Open session history' },
-	{ group: 'Ride controls', keys: ['↑', '↓'], label: 'Increase or decrease resistance' },
+	{ group: 'Ride controls', keys: ['↑', 'Return'], label: 'Increase resistance' },
+	{ group: 'Ride controls', keys: ['↓', 'Right Shift'], label: 'Decrease resistance' },
 	{ group: 'Ride controls', keys: ['←', '→'], label: 'Change the chart view' },
 	{ group: 'General', keys: ['?'], label: 'Show keyboard shortcuts' },
 	{ group: 'General', keys: ['Esc'], label: 'Close an open dialog' },
 ];
 
 export const gearingKeyboardShortcuts: KeyboardShortcutDescription[] =
-	dashboardKeyboardShortcuts.map((shortcut) =>
-		shortcut.label === 'Increase or decrease resistance'
-			? { ...shortcut, label: 'Shift to a harder or easier gear' }
-			: shortcut
-	);
+	dashboardKeyboardShortcuts.map((shortcut) => {
+		if (shortcut.label === 'Increase resistance') {
+			return { ...shortcut, label: 'Shift to a harder gear' };
+		}
+		if (shortcut.label === 'Decrease resistance') {
+			return { ...shortcut, label: 'Shift to an easier gear' };
+		}
+		return shortcut;
+	});
 
 export const historyKeyboardShortcuts: KeyboardShortcutDescription[] = [
 	{ group: 'Navigation', keys: ['↑', '↓'], label: 'Select the previous or next session' },

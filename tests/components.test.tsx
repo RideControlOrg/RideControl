@@ -1562,7 +1562,10 @@ describe('view components', () => {
 		expect(html).toContain('Open session history');
 		expect(html).toContain('End the current session');
 		expect(html).toContain('Start a new session after ending');
-		expect(html).toContain('Increase or decrease resistance');
+		expect(html).toContain('Increase resistance');
+		expect(html).toContain('Decrease resistance');
+		expect(html).toContain('Return');
+		expect(html).toContain('Right Shift');
 		expect(html).toContain('Change the chart view');
 		expect(html).toContain('SESSION');
 		expect(html).toContain('RIDE CONTROLS');

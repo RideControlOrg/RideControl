@@ -16,3 +16,7 @@ export function eventTargetsInteractiveControl(event: Event): boolean {
 export function keyboardEventHasModifiers(event: KeyboardEvent): boolean {
 	return event.altKey || event.ctrlKey || event.metaKey;
 }
+
+export function keyboardEventUsesNativeEnterAction(event: KeyboardEvent): boolean {
+	return event.key === 'Enter' && eventTargetsInteractiveControl(event);
+}
