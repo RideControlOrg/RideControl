@@ -44,7 +44,14 @@ describe('keyboard shortcuts', () => {
 	});
 
 	test('describes gear keys when Click is paired', () => {
-		expect(gearingKeyboardShortcuts[4]?.label).toBe('Shift to a harder or easier gear');
+		expect(gearingKeyboardShortcuts.slice(4, 6)).toEqual([
+			{ group: 'Ride controls', keys: ['↑', 'Return'], label: 'Shift to a harder gear' },
+			{
+				group: 'Ride controls',
+				keys: ['↓', 'Right Shift'],
+				label: 'Shift to an easier gear',
+			},
+		]);
 	});
 
 	test('maps history navigation keys', () => {

@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CONTROL_FLASH_MS } from '../constants';
-import { eventTargetsEditableControl, keyboardEventHasModifiers } from '../lib/dom';
+import {
+	eventTargetsEditableControl,
+	keyboardEventHasModifiers,
+	keyboardEventUsesNativeEnterAction,
+} from '../lib/dom';
 import {
 	GEAR_STORAGE_KEY,
 	SHIFTING_CONNECTION_MESSAGE,
 	shiftedGear,
 	storedGear,
 } from '../lib/gears';
-import { resistanceDirectionForKey } from '../lib/resistance';
+import { resistanceDirectionForKeyboardEvent } from '../lib/resistance';
 import type { ResistanceAdjustmentDirection } from '../types';
 
 export function useGearControl({
@@ -83,12 +87,13 @@ export function useGearControl({
 			if (
 				event.defaultPrevented ||
 				keyboardEventHasModifiers(event) ||
+				keyboardEventUsesNativeEnterAction(event) ||
 				!keyboardControlsEnabled.current ||
 				(!isGearControl && eventTargetsEditableControl(event))
 			) {
 				return;
 			}
-			const direction = resistanceDirectionForKey(event.key);
+			const direction = resistanceDirectionForKeyboardEvent(event);
 			if (!direction) {
 				return;
 			}
