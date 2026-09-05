@@ -393,6 +393,152 @@ describe('session store', () => {
 		expect(store.get().savedSessionId).toBeUndefined();
 	});
 
+	test('cancels a provisional finish without recording prompt time or losing the ride', () => {
+		const [course] = WORKOUT_COURSES;
+		if (!course) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const store = createSessionStore(
+			restoredSession({
+				continuation: {
+					journeyId: 'journey',
+					previousSessionId: 'previous',
+					workoutStartDistance: 5,
+				},
+				workout: { course },
+			}),
+			1000
+		);
+		const tick = {
+			control: { gear: 1, mode: CONTROL_MODE.RESISTANCE, resistance: 45 },
+			metrics: liveMetrics,
+			seconds: 1,
+		};
+		store.actions.syncRiding(true);
+		store.actions.recordTick(tick);
+		const before = sessionSnapshotFromState(store.get());
+
+		store.actions.prepareToEnd(2000);
+		store.actions.syncRiding(true);
+		store.actions.recordTick({ ...tick, seconds: 30 });
+		expect(store.get()).toMatchObject({ ended: true, isRiding: false });
+		store.actions.cancelEnd();
+		expect(sessionSnapshotFromState(store.get())).toEqual(before);
+		expect(store.get()).toMatchObject({
+			ended: false,
+			isRiding: false,
+			manuallyPaused: false,
+			plannedWorkout: undefined,
+		});
+
+		store.actions.syncRiding(true);
+		store.actions.recordTick(tick);
+		expect(store.get().elapsedSeconds).toBe(2);
+		expect(store.get().distance).toBeCloseTo(0.02);
+		expect(store.get().history.map((sample) => sample.elapsedSeconds)).toEqual([1, 2]);
+		expect(store.get().continuation).toEqual(before.continuation);
+	});
+
+	test('retains manual pause after repeated finish prompts are cancelled', () => {
+		const store = createSessionStore(restoredSession({ elapsedSeconds: 10 }), 1000);
+		store.actions.togglePause(true);
+		store.actions.prepareToEnd(2000);
+		store.actions.prepareToEnd(3000);
+		store.actions.cancelEnd();
+		store.actions.syncRiding(true);
+		expect(store.get()).toMatchObject({
+			elapsedSeconds: 10,
+			ended: false,
+			endedAt: 0,
+			isRiding: false,
+			manuallyPaused: true,
+		});
+		store.actions.togglePause(true);
+		expect(store.get().isRiding).toBe(true);
+	});
+
+	test('does not resume an auto-paused ride until pedaling resumes', () => {
+		const store = createSessionStore(restoredSession({ elapsedSeconds: 10 }), 1000);
+		store.actions.prepareToEnd(2000);
+		store.actions.cancelEnd();
+		store.actions.syncRiding(false);
+		expect(store.get()).toMatchObject({
+			ended: false,
+			isRiding: false,
+			manuallyPaused: false,
+		});
+		store.actions.syncRiding(true);
+		expect(store.get().isRiding).toBe(true);
+	});
+
+	test('never reopens a committed or restored ended ride when cancelling a prompt', () => {
+		const store = createSessionStore(restoredSession(), 1000);
+		store.actions.prepareToEnd(2000);
+		store.actions.endSession(3000);
+		store.actions.cancelEnd();
+		expect(store.get()).toMatchObject({ ended: true, endedAt: 2000, isRiding: false });
+
+		const restored = createSessionStore(storedSessionFromState(store.get()), 4000);
+		restored.actions.prepareToEnd(5000);
+		restored.actions.cancelEnd();
+		expect(restored.get()).toMatchObject({ ended: true, endedAt: 2000, isRiding: false });
+	});
+
+	test('starts the selected course over without carrying continuation history or saved identity', () => {
+		const [course] = WORKOUT_COURSES;
+		if (!course) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const store = createSessionStore(
+			restoredSession({
+				calories: 100,
+				continuation: {
+					journeyId: 'journey',
+					previousSessionId: 'previous',
+					workoutStartDistance: 5,
+				},
+				distance: 1,
+				elapsedSeconds: 60,
+				history: [{ ...liveMetrics, elapsedSeconds: 60, resistance: 45 }],
+				savedSessionId: 'saved',
+				workout: { course },
+			}),
+			1000
+		);
+		store.actions.endSession(2000);
+		store.actions.reset(CONTROL_MODE.RESISTANCE, 3000);
+		expect(sessionSnapshotFromState(store.get())).toEqual({
+			aggregates: emptySession.aggregates,
+			calories: 0,
+			continuation: undefined,
+			controlMode: CONTROL_MODE.RESISTANCE,
+			distance: 0,
+			elapsedSeconds: 0,
+			elevationTotals: emptySession.elevationTotals,
+			endedAt: 0,
+			history: [],
+			maximums: emptyMetrics,
+			profileSnapshot: undefined,
+			startedAt: 3000,
+			workout: { course },
+		});
+		expect(store.get()).toMatchObject({
+			discarded: false,
+			ended: false,
+		});
+		expect(store.get().savedSessionId).toBeUndefined();
+	});
+
+	test('keeps an unstarted selected course when resetting directly', () => {
+		const [course] = WORKOUT_COURSES;
+		if (!course) {
+			throw new Error('Expected a built-in workout course');
+		}
+		const store = createSessionStore(restoredSession({ workout: { course } }), 1000);
+		store.actions.reset(CONTROL_MODE.RESISTANCE, 2000);
+		expect(store.get().workout?.course.id).toBe(course.id);
+	});
+
 	test('plans a workout for the next session without changing the completed ride', () => {
 		const [completedCourse, plannedCourse] = WORKOUT_COURSES;
 		if (!(completedCourse && plannedCourse)) {

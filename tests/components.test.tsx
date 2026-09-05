@@ -72,6 +72,10 @@ const renderApp = async (initialSession?: StoredSession) => {
 	return render(<RouterProvider router={router} />);
 };
 const enabledEndSessionButton = /<button(?![^>]*disabled)[^>]*>End session<\/button>/;
+const disabledSaveDialogCloseButton =
+	/<button[^>]*aria-label="Close save session dialog"[^>]*disabled=""/;
+const disabledSaveDialogBackdrop =
+	/<button[^>]*aria-label="Dismiss save session dialog"[^>]*disabled=""/;
 const gearProgressStyle = /style="width:([^"]+)"/;
 const noCustomWorkoutIds = new Set<string>();
 
@@ -1876,6 +1880,23 @@ describe('view components', () => {
 		);
 		expect(newSession).toContain('Start new without saving');
 		expect(newSession).toContain('Save &amp; start new');
+	});
+
+	test('prevents dismissing the save dialog while a session is being saved', () => {
+		const html = render(
+			<SessionSaveDialog
+				intent={SESSION_WORKFLOW_INTENT.END}
+				onClose={() => undefined}
+				onSave={async () => undefined}
+				onStartWithoutSaving={() => undefined}
+				open
+				saving
+				session={{ ...emptySession, maximums: emptyMetrics }}
+				speedUnit="kmh"
+			/>
+		);
+		expect(html).toMatch(disabledSaveDialogCloseButton);
+		expect(html).toMatch(disabledSaveDialogBackdrop);
 	});
 
 	test('places workout planning after starting a new session', () => {

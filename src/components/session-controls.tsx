@@ -57,7 +57,7 @@ export function SessionControls({
 					onClick={onRequestNew}
 					title={
 						workoutName
-							? 'Start a fresh linked session from this course position'
+							? 'Start a fresh session from the beginning of this course'
 							: undefined
 					}
 					type="button"

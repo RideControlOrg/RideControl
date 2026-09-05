@@ -40,6 +40,7 @@ interface SessionControlState {
 
 interface SessionController {
 	aggregates: SessionAggregates;
+	cancelEnd: () => void;
 	continuation: StoredSession['continuation'];
 	controlMode: ControlMode;
 	discarded: boolean;
@@ -54,6 +55,7 @@ interface SessionController {
 	markDiscarded: () => void;
 	markSaved: (id: string) => void;
 	maximums: Metrics;
+	prepareToEnd: () => void;
 	profileSnapshot?: RiderPhysicsProfile;
 	rideCalories: number;
 	rideDistance: number;
@@ -180,6 +182,15 @@ export function useSession(
 		store.actions.togglePause(recentlyPedaling);
 	}, [lastPedalingAt, store]);
 
+	const prepareToEnd = useCallback(() => {
+		store.actions.prepareToEnd(Date.now());
+	}, [store]);
+
+	const cancelEnd = useCallback(() => {
+		lastTrainerDistance.current = latestMetrics.current.distance;
+		store.actions.cancelEnd();
+	}, [store]);
+
 	const endSession = useCallback(() => {
 		store.actions.endSession(Date.now());
 	}, [store]);
@@ -226,6 +237,7 @@ export function useSession(
 
 	return {
 		aggregates: state.aggregates,
+		cancelEnd,
 		continuation: state.continuation,
 		controlMode: state.controlMode,
 		discarded: state.discarded,
@@ -240,6 +252,7 @@ export function useSession(
 		markDiscarded,
 		markSaved,
 		maximums: state.maximums,
+		prepareToEnd,
 		profileSnapshot: state.profileSnapshot,
 		rideCalories: state.calories,
 		rideDistance: state.distance,

@@ -40,6 +40,10 @@ interface RecordSessionTick {
 export interface SessionStoreState extends StoredSession {
 	isRiding: boolean;
 	manuallyPaused: boolean;
+	pendingEnd?: {
+		manuallyPaused: boolean;
+		plannedWorkout?: SessionWorkout;
+	};
 }
 
 function initialSessionState(restored: StoredSession, now: number): SessionStoreState {
@@ -49,6 +53,19 @@ function initialSessionState(restored: StoredSession, now: number): SessionStore
 		manuallyPaused: false,
 		startedAt: restored.startedAt || now,
 	};
+}
+
+function endedSessionState(current: SessionStoreState, endedAt: number): SessionStoreState {
+	return current.ended
+		? current
+		: {
+				...current,
+				ended: true,
+				endedAt,
+				isRiding: false,
+				manuallyPaused: false,
+				plannedWorkout: current.workout,
+			};
 }
 
 function sameWorkout(workout: SessionWorkout | undefined, course: WorkoutCourse | undefined) {
@@ -171,14 +188,24 @@ export function storedSessionFromState(state: SessionStoreState): StoredSession 
 
 export function createSessionStore(restored: StoredSession, now = Date.now()) {
 	return createStore(initialSessionState(restored, now), ({ setState }) => ({
+		cancelEnd: () => {
+			setState((current) =>
+				current.pendingEnd
+					? {
+							...current,
+							...current.pendingEnd,
+							ended: false,
+							endedAt: 0,
+							isRiding: false,
+							pendingEnd: undefined,
+						}
+					: current
+			);
+		},
 		endSession: (endedAt: number) => {
 			setState((current) => ({
-				...current,
-				ended: true,
-				endedAt,
-				isRiding: false,
-				manuallyPaused: false,
-				plannedWorkout: current.workout,
+				...endedSessionState(current, endedAt),
+				pendingEnd: undefined,
 			}));
 		},
 		extendFrom: (
@@ -200,10 +227,20 @@ export function createSessionStore(restored: StoredSession, now = Date.now()) {
 			}));
 		},
 		markDiscarded: () => {
-			setState((current) => ({ ...current, discarded: true, savedSessionId: undefined }));
+			setState((current) => ({
+				...current,
+				discarded: true,
+				pendingEnd: undefined,
+				savedSessionId: undefined,
+			}));
 		},
 		markSaved: (savedSessionId: string) => {
-			setState((current) => ({ ...current, discarded: false, savedSessionId }));
+			setState((current) => ({
+				...current,
+				discarded: false,
+				pendingEnd: undefined,
+				savedSessionId,
+			}));
 		},
 		observeControlMode: (controlMode: ControlMode) => {
 			setState((current) =>
@@ -242,6 +279,19 @@ export function createSessionStore(restored: StoredSession, now = Date.now()) {
 				!sameRiderPhysicsProfile(current.profileSnapshot, profile)
 					? { ...current, profileSnapshot: snapshotRiderPhysicsProfile(profile) }
 					: current
+			);
+		},
+		prepareToEnd: (endedAt: number) => {
+			setState((current) =>
+				current.ended
+					? current
+					: {
+							...endedSessionState(current, endedAt),
+							pendingEnd: {
+								manuallyPaused: current.manuallyPaused,
+								plannedWorkout: current.plannedWorkout,
+							},
+						}
 			);
 		},
 		recordTick: ({
@@ -294,7 +344,7 @@ export function createSessionStore(restored: StoredSession, now = Date.now()) {
 		},
 		reset: (controlMode: ControlMode, startedAt: number) => {
 			setState((current) => {
-				const workout = current.plannedWorkout;
+				const workout = current.ended ? current.plannedWorkout : current.workout;
 				return {
 					...emptySession,
 					aggregates: emptySession.aggregates,

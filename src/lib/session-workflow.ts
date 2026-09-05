@@ -1,6 +1,7 @@
-import type { SavedSession, SessionSnapshot, SessionWorkout } from '../types';
+import type { SavedSession, SessionMetadata, SessionSnapshot } from '../types';
 
 export interface SessionWorkflowController {
+	cancelEnd: () => void;
 	discarded: boolean;
 	elapsedSeconds: number;
 	ended: boolean;
@@ -8,15 +9,10 @@ export interface SessionWorkflowController {
 	extendFrom: (snapshot: SessionSnapshot, previousSessionId?: string) => void;
 	markDiscarded: () => void;
 	markSaved: (id: string) => void;
+	prepareToEnd: () => void;
 	savedSessionId?: string;
-	selectedWorkout?: SessionWorkout;
 	snapshot: SessionSnapshot;
 	startNew: () => void;
-}
-
-export function finishRideSession(endSession: () => void, settleTrainerResistance: () => void) {
-	endSession();
-	settleTrainerResistance();
 }
 
 export const SESSION_WORKFLOW_INTENT = {
@@ -35,6 +31,21 @@ export type SessionWorkflowIntent =
 	| { kind: typeof SESSION_WORKFLOW_INTENT.END }
 	| { kind: typeof SESSION_WORKFLOW_INTENT.NEW }
 	| { kind: typeof SESSION_WORKFLOW_INTENT.EXTEND; session: SavedSession };
+
+export interface SessionWorkflow {
+	closeSaveDialog: () => void;
+	endSession: () => void;
+	openSaveDialog: () => void;
+	proceedWithoutSaving: () => void;
+	requestExtension: (session: SavedSession) => void;
+	requestNewSession: () => void;
+	requestPersistentStorage: () => Promise<boolean>;
+	saveCurrentSession: (metadata: SessionMetadata) => Promise<void>;
+	saveDialogIntent: SessionWorkflowIntent['kind'];
+	saveDialogOpen: boolean;
+	saving: boolean;
+	sessionIsResolved: boolean;
+}
 
 export function sessionHistorySelectionAfterSave(
 	intent: SessionWorkflowIntent,
