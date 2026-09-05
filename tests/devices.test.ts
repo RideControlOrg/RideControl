@@ -35,6 +35,44 @@ function view(bytes: number[]) {
 	return new DataView(new Uint8Array(bytes).buffer);
 }
 
+function heartRateMonitor(id: string) {
+	const deviceEvents = new EventTarget();
+	const measurement = Object.assign(new EventTarget(), {
+		startNotifications: (): Promise<BluetoothRemoteGATTCharacteristic> => {
+			emitMeasurement([0, 135]);
+			return Promise.resolve(measurement as unknown as BluetoothRemoteGATTCharacteristic);
+		},
+		value: undefined as DataView | undefined,
+	});
+	const emitMeasurement = (bytes: number[]) => {
+		measurement.value = view(bytes);
+		measurement.dispatchEvent(new Event('characteristicvaluechanged'));
+	};
+	const service = {
+		getCharacteristic: (): Promise<BluetoothRemoteGATTCharacteristic> =>
+			Promise.resolve(measurement as unknown as BluetoothRemoteGATTCharacteristic),
+	};
+	const server = {
+		connect: (): Promise<BluetoothRemoteGATTServer> => {
+			server.connected = true;
+			return Promise.resolve(server as unknown as BluetoothRemoteGATTServer);
+		},
+		connected: false,
+		disconnect: () => {
+			if (server.connected) {
+				server.connected = false;
+				deviceEvents.dispatchEvent(new Event('gattserverdisconnected'));
+			}
+		},
+		getPrimaryService: (uuid: BluetoothServiceUUID): Promise<BluetoothRemoteGATTService> =>
+			uuid === HEART_RATE
+				? Promise.resolve(service as unknown as BluetoothRemoteGATTService)
+				: Promise.reject(new Error('Battery unavailable')),
+	};
+	const device = Object.assign(deviceEvents, { gatt: server, id }) as unknown as BluetoothDevice;
+	return { device, emitMeasurement, measurement, server, service };
+}
+
 function bufferSourceBytes(value: BufferSource): number[] {
 	return ArrayBuffer.isView(value)
 		? [...new Uint8Array(value.buffer, value.byteOffset, value.byteLength)]
@@ -64,96 +102,219 @@ describe('paired device protocols', () => {
 	});
 
 	test('retries a remembered heart rate monitor in separate bounded cycles', async () => {
+		const monitor = heartRateMonitor('remembered-heart-rate');
+		const { connect } = monitor.server;
 		let attempts = 0;
-		let notificationsStarted = 0;
-		const measurement = {
-			addEventListener: () => undefined,
-			removeEventListener: () => undefined,
-			startNotifications: () => {
-				notificationsStarted += 1;
-				return Promise.resolve(measurement);
-			},
-		} as unknown as BluetoothRemoteGATTCharacteristic;
-		const server = {
-			getPrimaryService: (service: BluetoothServiceUUID) => {
-				if (service !== HEART_RATE) {
-					return Promise.reject(new Error('Battery unavailable'));
-				}
-				return Promise.resolve({
-					getCharacteristic: () => Promise.resolve(measurement),
-				} as unknown as BluetoothRemoteGATTService);
-			},
-		} as BluetoothRemoteGATTServer;
-		const device = {
-			addEventListener: () => undefined,
-			gatt: {
-				connect: () => {
-					attempts += 1;
-					return attempts === 1 ? new Promise(() => undefined) : Promise.resolve(server);
-				},
-				disconnect: () => undefined,
-			},
-			id: 'remembered-heart-rate',
-			removeEventListener: () => undefined,
-		} as unknown as BluetoothDevice;
+		monitor.server.connect = () => {
+			attempts += 1;
+			return attempts === 1 ? new Promise(() => undefined) : connect();
+		};
+		const readings: number[] = [];
 		const callbacks = {
 			onBattery: () => undefined,
 			onDisconnect: () => undefined,
-			onHeartRate: () => undefined,
+			onHeartRate: (heartRate: number) => readings.push(heartRate),
 		};
 		await expect(
-			connectHeartRateDevice(device, true, callbacks, { reconnectProbeTimeoutMs: 1 })
+			connectHeartRateDevice(monitor.device, true, callbacks, { reconnectProbeTimeoutMs: 1 })
 		).rejects.toThrow('Bluetooth device connection timed out.');
-		const connection = await connectHeartRateDevice(device, true, callbacks);
+		const connection = await connectHeartRateDevice(monitor.device, true, callbacks);
 		expect(attempts).toBe(2);
-		expect(notificationsStarted).toBe(1);
+		expect(readings).toEqual([135]);
 		connection.cleanup();
 	});
 
-	test('releases a stalled heart rate notification attempt so it can be retried', async () => {
-		const listeners = new Set<EventListenerOrEventListenerObject>();
-		let notificationAttempts = 0;
-		const measurement = {
-			addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) =>
-				listeners.add(listener),
-			removeEventListener: (_type: string, listener: EventListenerOrEventListenerObject) =>
-				listeners.delete(listener),
-			startNotifications: () => {
-				notificationAttempts += 1;
-				return notificationAttempts === 1
-					? new Promise(() => undefined)
-					: Promise.resolve(measurement);
-			},
-		} as unknown as BluetoothRemoteGATTCharacteristic;
-		const server = {
-			getPrimaryService: () =>
-				Promise.resolve({
-					getCharacteristic: () => Promise.resolve(measurement),
-				} as unknown as BluetoothRemoteGATTService),
-		} as unknown as BluetoothRemoteGATTServer;
-		const device = {
-			addEventListener: () => undefined,
-			gatt: { connect: () => Promise.resolve(server) },
-			removeEventListener: () => undefined,
-		} as unknown as BluetoothDevice;
+	test('releases a stalled notification attempt without allowing late callbacks into its retry', async () => {
+		const monitor = heartRateMonitor('stalled-notifications');
+		const { startNotifications } = monitor.measurement;
+		let finishNotifications: (() => void) | undefined;
+		monitor.measurement.startNotifications = () =>
+			new Promise((resolve) => {
+				finishNotifications = () =>
+					resolve(monitor.measurement as unknown as BluetoothRemoteGATTCharacteristic);
+			});
+		const obsoleteReadings: number[] = [];
+		await expect(
+			connectHeartRateDevice(
+				monitor.device,
+				true,
+				{
+					onBattery: () => undefined,
+					onDisconnect: () => undefined,
+					onHeartRate: (heartRate) => obsoleteReadings.push(heartRate),
+				},
+				{ operationTimeoutMs: 1 }
+			)
+		).rejects.toThrow('Bluetooth notification setup timed out.');
+		monitor.measurement.startNotifications = startNotifications;
+		const readings: number[] = [];
+		const connection = await connectHeartRateDevice(monitor.device, true, {
+			onBattery: () => undefined,
+			onDisconnect: () => undefined,
+			onHeartRate: (heartRate) => readings.push(heartRate),
+		});
+		finishNotifications?.();
+		await Promise.resolve();
+		monitor.emitMeasurement([0, 142]);
+		expect(monitor.server.connected).toBeTrue();
+		expect(obsoleteReadings).toEqual([]);
+		expect(readings).toEqual([135, 142]);
+		connection.cleanup();
+		monitor.emitMeasurement([0, 150]);
+		expect(readings).toEqual([135, 142]);
+	});
+
+	test('requires a valid measurement before reporting a remembered monitor ready', async () => {
+		const monitor = heartRateMonitor('silent-notification-setup');
+		monitor.measurement.startNotifications = () =>
+			Promise.resolve(monitor.measurement as unknown as BluetoothRemoteGATTCharacteristic);
+		const readings: number[] = [];
+		const callbacks = {
+			onBattery: () => undefined,
+			onDisconnect: () => undefined,
+			onHeartRate: (heartRate: number) => readings.push(heartRate),
+		};
+		await expect(
+			connectHeartRateDevice(monitor.device, true, callbacks, { measurementTimeoutMs: 1 })
+		).rejects.toThrow('Heart rate measurement timed out.');
+		expect(monitor.server.connected).toBeFalse();
+		monitor.measurement.startNotifications = () => {
+			monitor.emitMeasurement([1, 44]);
+			monitor.emitMeasurement([0, 148]);
+			return Promise.resolve(
+				monitor.measurement as unknown as BluetoothRemoteGATTCharacteristic
+			);
+		};
+		const connection = await connectHeartRateDevice(monitor.device, true, callbacks);
+		expect(readings).toEqual([148]);
+		connection.cleanup();
+	});
+
+	test('rejects a disconnect during notification setup and reconnects without pairing again', async () => {
+		const monitor = heartRateMonitor('disconnect-during-setup');
+		const { startNotifications } = monitor.measurement;
+		monitor.measurement.startNotifications = () => {
+			monitor.server.disconnect();
+			return new Promise(() => undefined);
+		};
 		const callbacks = {
 			onBattery: () => undefined,
 			onDisconnect: () => undefined,
 			onHeartRate: () => undefined,
 		};
-
-		await expect(
-			connectHeartRateDevice(device, false, callbacks, { operationTimeoutMs: 1 })
-		).rejects.toThrow('Bluetooth notification setup timed out.');
-		expect(listeners.size).toBe(0);
-
-		const connection = await connectHeartRateDevice(device, false, callbacks, {
-			operationTimeoutMs: 100,
-		});
-		expect(notificationAttempts).toBe(2);
-		expect(listeners.size).toBe(1);
+		await expect(connectHeartRateDevice(monitor.device, true, callbacks)).rejects.toThrow();
+		monitor.measurement.startNotifications = startNotifications;
+		const connection = await connectHeartRateDevice(monitor.device, true, callbacks);
+		expect(monitor.server.connected).toBeTrue();
 		connection.cleanup();
-		expect(listeners.size).toBe(0);
+	});
+
+	test('recovers a silent stream and cancels its watchdog on deliberate cleanup', async () => {
+		const monitor = heartRateMonitor('silent-active-stream');
+		const timers = new Map<number, () => void>();
+		let nextTimer = 0;
+		const timing = {
+			clearTimer: ((timer: number) => timers.delete(timer)) as unknown as typeof clearTimeout,
+			setTimer: ((callback: () => void) => {
+				nextTimer += 1;
+				timers.set(nextTimer, callback);
+				return nextTimer;
+			}) as typeof setTimeout,
+		};
+		let disconnected = 0;
+		const readings: number[] = [];
+		const callbacks = {
+			onBattery: () => undefined,
+			onDisconnect: () => {
+				disconnected += 1;
+			},
+			onHeartRate: (heartRate: number) => readings.push(heartRate),
+		};
+		await connectHeartRateDevice(monitor.device, true, callbacks, timing);
+		monitor.emitMeasurement([0, 145]);
+		const expireStream = timers.get(nextTimer);
+		expireStream?.();
+		expect(disconnected).toBe(1);
+		expect(monitor.server.connected).toBeFalse();
+		monitor.emitMeasurement([0, 150]);
+		expect(readings).toEqual([135, 145]);
+		const recovered = await connectHeartRateDevice(monitor.device, true, callbacks, timing);
+		expireStream?.();
+		expect(monitor.server.connected).toBeTrue();
+		expect(readings).toEqual([135, 145, 135]);
+		const stoppedWatchdog = timers.get(nextTimer);
+		recovered.cleanup();
+		expect(timers.size).toBe(0);
+		stoppedWatchdog?.();
+		expect(disconnected).toBe(1);
+		expect(monitor.server.connected).toBeFalse();
+	});
+
+	test('cancels stalled discovery before a new attempt and ignores its late completion', async () => {
+		const monitor = heartRateMonitor('cancelled-discovery');
+		const { getPrimaryService } = monitor.server;
+		let finishDiscovery: (() => void) | undefined;
+		let discoveryStarted: () => void = () => undefined;
+		const started = new Promise<void>((resolve) => {
+			discoveryStarted = resolve;
+		});
+		monitor.server.getPrimaryService = () => {
+			discoveryStarted();
+			return new Promise((resolve) => {
+				finishDiscovery = () =>
+					resolve(monitor.service as unknown as BluetoothRemoteGATTService);
+			});
+		};
+		const cancellation = new AbortController();
+		const obsoleteReadings: number[] = [];
+		const obsolete = connectHeartRateDevice(
+			monitor.device,
+			true,
+			{
+				onBattery: () => undefined,
+				onDisconnect: () => undefined,
+				onHeartRate: (heartRate) => obsoleteReadings.push(heartRate),
+			},
+			{ signal: cancellation.signal }
+		);
+		const rejected = obsolete.catch((error: unknown) => error);
+		await started;
+		cancellation.abort();
+		monitor.server.getPrimaryService = getPrimaryService;
+		const readings: number[] = [];
+		const connection = await connectHeartRateDevice(monitor.device, true, {
+			onBattery: () => undefined,
+			onDisconnect: () => undefined,
+			onHeartRate: (heartRate) => readings.push(heartRate),
+		});
+		expect(await rejected).toMatchObject({ name: 'AbortError' });
+		finishDiscovery?.();
+		await Promise.resolve();
+		monitor.emitMeasurement([0, 151]);
+		expect(monitor.server.connected).toBeTrue();
+		expect(obsoleteReadings).toEqual([]);
+		expect(readings).toEqual([135, 151]);
+		connection.cleanup();
+	});
+
+	test('does not let an already canceled request disconnect a live measurement stream', async () => {
+		const monitor = heartRateMonitor('already-canceled-request');
+		const readings: number[] = [];
+		const callbacks = {
+			onBattery: () => undefined,
+			onDisconnect: () => undefined,
+			onHeartRate: (heartRate: number) => readings.push(heartRate),
+		};
+		const connection = await connectHeartRateDevice(monitor.device, true, callbacks);
+		const cancellation = new AbortController();
+		cancellation.abort();
+		await expect(
+			connectHeartRateDevice(monitor.device, true, callbacks, { signal: cancellation.signal })
+		).rejects.toThrow();
+		monitor.emitMeasurement([0, 146]);
+		expect(monitor.server.connected).toBeTrue();
+		expect(readings).toEqual([135, 146]);
+		connection.cleanup();
 	});
 
 	test('starts a Click V2 session with its RideOn command', () => {

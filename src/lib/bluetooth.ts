@@ -15,6 +15,7 @@ export interface CrankReading {
 interface GattConnectionTiming {
 	directTimeoutMs: number;
 	reconnectProbeTimeoutMs: number;
+	signal?: AbortSignal;
 }
 
 const ADVERTISEMENT_DISCOVERY_WARMUP_MS = 250;
@@ -218,6 +219,7 @@ export function connectGatt(
 	return bluetoothGattCoordinator.connect(
 		device,
 		rediscover ? timing.reconnectProbeTimeoutMs : timing.directTimeoutMs,
-		'Bluetooth device connection timed out.'
+		'Bluetooth device connection timed out.',
+		timing.signal
 	);
 }

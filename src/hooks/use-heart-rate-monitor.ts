@@ -28,7 +28,7 @@ export function useHeartRateMonitor(
 	const [heartRate, setHeartRate] = useState(0);
 	const [battery, setBattery] = useState<number>();
 	const autoReconnect = useRef(true);
-	const connecting = useRef(false);
+	const connectionAttempt = useRef<AbortController | undefined>(undefined);
 	const connectionGeneration = useRef(0);
 	const forgotten = useRef(false);
 	const connectionCleanup = useRef<() => void>(() => undefined);
@@ -45,6 +45,9 @@ export function useHeartRateMonitor(
 		})
 	);
 	const handleDisconnect = useCallback((selected: BluetoothDevice) => {
+		connectionGeneration.current += 1;
+		connectionAttempt.current?.abort();
+		connectionAttempt.current = undefined;
 		connectionCleanup.current();
 		setHeartRate(0);
 		if (autoReconnect.current && !forgotten.current) {
@@ -71,40 +74,45 @@ export function useHeartRateMonitor(
 
 	const connectDevice = useCallback(
 		async (selected: BluetoothDevice, reconnecting = false): Promise<boolean> => {
-			if (forgotten.current || connecting.current) {
+			if (forgotten.current || connectionAttempt.current) {
 				return false;
 			}
 			const generation = connectionGeneration.current + 1;
 			connectionGeneration.current = generation;
-			connecting.current = true;
+			const attempt = new AbortController();
+			connectionAttempt.current = attempt;
 			setPhase(reconnecting ? 'reconnecting' : 'connecting');
 			connectionCleanup.current();
 			setBattery(undefined);
 			try {
-				const connection = await connectHeartRateDevice(selected, reconnecting, {
-					onBattery: (nextBattery) => {
-						if (generation === connectionGeneration.current) {
-							setBattery(nextBattery);
-						}
+				const connection = await connectHeartRateDevice(
+					selected,
+					reconnecting,
+					{
+						onBattery: (nextBattery) => {
+							if (generation === connectionGeneration.current) {
+								setBattery(nextBattery);
+							}
+						},
+						onDisconnect: () => {
+							if (generation === connectionGeneration.current) {
+								handleDisconnect(selected);
+							}
+						},
+						onHeartRate: (nextHeartRate) => {
+							if (generation === connectionGeneration.current) {
+								setHeartRate(nextHeartRate);
+							}
+						},
 					},
-					onDisconnect: () => {
-						if (generation === connectionGeneration.current) {
-							handleDisconnect(selected);
-						}
-					},
-					onHeartRate: (nextHeartRate) => {
-						if (generation === connectionGeneration.current) {
-							setHeartRate(nextHeartRate);
-						}
-					},
-				});
+					{ signal: attempt.signal }
+				);
 				if (
 					generation !== connectionGeneration.current ||
 					forgotten.current ||
 					!autoReconnect.current
 				) {
 					connection.cleanup();
-					selected.gatt?.disconnect();
 					return false;
 				}
 				connectionCleanup.current = connection.cleanup;
@@ -119,7 +127,9 @@ export function useHeartRateMonitor(
 				}
 				return false;
 			} finally {
-				connecting.current = false;
+				if (connectionAttempt.current === attempt) {
+					connectionAttempt.current = undefined;
+				}
 			}
 		},
 		[handleConnectionFailure, handleDisconnect]
@@ -136,6 +146,8 @@ export function useHeartRateMonitor(
 		}
 		const generation = connectionGeneration.current + 1;
 		connectionGeneration.current = generation;
+		connectionAttempt.current?.abort();
+		connectionAttempt.current = undefined;
 		setPhase('pairing');
 		try {
 			const selected = await navigator.bluetooth.requestDevice({
@@ -143,7 +155,7 @@ export function useHeartRateMonitor(
 				optionalServices: [BATTERY],
 			});
 			if (generation !== connectionGeneration.current) {
-				selected.gatt?.disconnect();
+				// A stale chooser result does not own the selected device's current connection.
 				return;
 			}
 			autoReconnect.current = true;
@@ -174,6 +186,8 @@ export function useHeartRateMonitor(
 
 	const disconnect = useCallback(() => {
 		connectionGeneration.current += 1;
+		connectionAttempt.current?.abort();
+		connectionAttempt.current = undefined;
 		autoReconnect.current = false;
 		if (device) {
 			reconnectController.current.cancel(device.id, true);
@@ -186,6 +200,8 @@ export function useHeartRateMonitor(
 
 	const cancelConnection = useCallback(() => {
 		connectionGeneration.current += 1;
+		connectionAttempt.current?.abort();
+		connectionAttempt.current = undefined;
 		autoReconnect.current = false;
 		if (device) {
 			reconnectController.current.cancel(device.id, true);
@@ -200,6 +216,8 @@ export function useHeartRateMonitor(
 	const forget = useCallback(async () => {
 		const selected = device;
 		connectionGeneration.current += 1;
+		connectionAttempt.current?.abort();
+		connectionAttempt.current = undefined;
 		autoReconnect.current = false;
 		forgotten.current = true;
 		if (selected) {
@@ -221,6 +239,9 @@ export function useHeartRateMonitor(
 	}, [device]);
 
 	usePageHide(() => {
+		connectionGeneration.current += 1;
+		connectionAttempt.current?.abort();
+		connectionAttempt.current = undefined;
 		autoReconnect.current = false;
 		reconnectController.current.cancelAll();
 		connectionCleanup.current();
@@ -253,6 +274,9 @@ export function useHeartRateMonitor(
 
 	useEffect(
 		() => () => {
+			connectionGeneration.current += 1;
+			connectionAttempt.current?.abort();
+			connectionAttempt.current = undefined;
 			autoReconnect.current = false;
 			reconnectController.current.cancelAll();
 			connectionCleanup.current();

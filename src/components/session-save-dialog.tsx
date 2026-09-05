@@ -1,5 +1,10 @@
 import { useForm, useSelector } from '@tanstack/react-form';
 import { useEffect } from 'react';
+import {
+	useBodyScrollLock,
+	useCloseOnEscape,
+	useDialogInitialFocus,
+} from '../hooks/use-dialog-behavior';
 import { unreachable } from '../lib/errors';
 import { formatSessionTime, SESSION_FEELING_OPTIONS } from '../lib/saved-sessions';
 import { MAXIMUM_SESSION_DESCRIPTION_LENGTH } from '../lib/session-description';
@@ -70,6 +75,10 @@ export function SessionSaveDialog({
 	});
 	const canSubmit = useSelector(form.store, (state) => state.canSubmit);
 	const isSubmitting = useSelector(form.store, (state) => state.isSubmitting);
+	const busy = saving || isSubmitting;
+	const closeButtonRef = useDialogInitialFocus<HTMLButtonElement>(open);
+	useCloseOnEscape(open && !busy, onClose);
+	useBodyScrollLock(open);
 
 	useEffect(() => {
 		if (open) {
@@ -83,10 +92,18 @@ export function SessionSaveDialog({
 
 	return (
 		<div className="fixed inset-0 z-40 grid place-items-center bg-black/65 p-4 backdrop-blur-sm">
+			<button
+				aria-label="Dismiss save session dialog"
+				className="absolute inset-0 h-full w-full cursor-default"
+				disabled={busy}
+				onClick={onClose}
+				tabIndex={-1}
+				type="button"
+			/>
 			<form
 				aria-labelledby="save-session-title"
 				aria-modal="true"
-				className="w-full max-w-xl rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/50 sm:p-6"
+				className="relative w-full max-w-xl rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/50 sm:p-6"
 				onSubmit={(event) => {
 					event.preventDefault();
 					event.stopPropagation();
@@ -107,7 +124,9 @@ export function SessionSaveDialog({
 					<button
 						aria-label="Close save session dialog"
 						className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
+						disabled={busy}
 						onClick={onClose}
+						ref={closeButtonRef}
 						type="button"
 					>
 						×
@@ -178,7 +197,7 @@ export function SessionSaveDialog({
 				<div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 					<button
 						className={`rounded-lg px-4 py-2.5 font-semibold text-sm ${labels.secondaryClass}`}
-						disabled={saving || isSubmitting}
+						disabled={busy}
 						onClick={onStartWithoutSaving}
 						type="button"
 					>
@@ -186,10 +205,10 @@ export function SessionSaveDialog({
 					</button>
 					<button
 						className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c] disabled:opacity-50"
-						disabled={saving || isSubmitting || !canSubmit}
+						disabled={busy || !canSubmit}
 						type="submit"
 					>
-						{saving || isSubmitting ? 'Saving…' : labels.primary}
+						{busy ? 'Saving…' : labels.primary}
 					</button>
 				</div>
 			</form>
