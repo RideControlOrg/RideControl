@@ -86,4 +86,99 @@ describe('Bluetooth GATT coordinator', () => {
 		expect(operations).toContain('disconnect-click-minus');
 		expect(operations.slice(0, 2)).toEqual(['connect-click-minus', 'connect-trainer']);
 	});
+
+	test('cancels an obsolete handshake without its late success disconnecting the replacement', async () => {
+		const coordinator = createBluetoothGattCoordinator();
+		const oldHandshake = Promise.withResolvers<BluetoothRemoteGATTServer>();
+		let attempts = 0;
+		let disconnects = 0;
+		const server = {
+			connected: false,
+			disconnect: () => {
+				disconnects += 1;
+				Object.assign(server, { connected: false });
+			},
+		} as BluetoothRemoteGATTServer;
+		const device = bluetoothDevice(
+			'remembered-heart-rate',
+			() => {
+				attempts += 1;
+				if (attempts === 1) {
+					return oldHandshake.promise;
+				}
+				Object.assign(server, { connected: true });
+				return Promise.resolve(server);
+			},
+			server.disconnect
+		);
+		const cancellation = new AbortController();
+		const obsolete = coordinator.connect(device, 1000, 'timeout', cancellation.signal);
+		const rejected = obsolete.catch((error: unknown) => error);
+		cancellation.abort();
+		const replacement = coordinator.connect(device, 1000, 'timeout');
+		expect(await rejected).toMatchObject({ name: 'AbortError' });
+		expect(await replacement).toBe(server);
+		const disconnectsAfterRecovery = disconnects;
+		oldHandshake.resolve(server);
+		await Promise.resolve();
+		expect(server.connected).toBeTrue();
+		expect(disconnects).toBe(disconnectsAfterRecovery);
+		expect(attempts).toBe(2);
+	});
+
+	test('closes a canceled handshake that settles late when no replacement owns the device', async () => {
+		const coordinator = createBluetoothGattCoordinator();
+		const handshake = Promise.withResolvers<BluetoothRemoteGATTServer>();
+		const server = {
+			connected: false,
+			disconnect: () => {
+				Object.assign(server, { connected: false });
+			},
+		} as BluetoothRemoteGATTServer;
+		const device = bluetoothDevice(
+			'stopped-heart-rate',
+			() => handshake.promise,
+			server.disconnect
+		);
+		const cancellation = new AbortController();
+		const rejected = coordinator
+			.connect(device, 1000, 'timeout', cancellation.signal)
+			.catch((error: unknown) => error);
+		cancellation.abort();
+		expect(await rejected).toMatchObject({ name: 'AbortError' });
+		Object.assign(server, { connected: true });
+		handshake.resolve(server);
+		await Promise.resolve();
+		expect(server.connected).toBeFalse();
+	});
+
+	test('ignores a timed-out handshake settling after another attempt has connected', async () => {
+		const coordinator = createBluetoothGattCoordinator();
+		const handshake = Promise.withResolvers<BluetoothRemoteGATTServer>();
+		let attempts = 0;
+		const server = {
+			connected: false,
+			disconnect: () => {
+				Object.assign(server, { connected: false });
+			},
+		} as BluetoothRemoteGATTServer;
+		const device = bluetoothDevice(
+			'timed-out-heart-rate',
+			() => {
+				attempts += 1;
+				if (attempts === 1) {
+					return handshake.promise;
+				}
+				Object.assign(server, { connected: true });
+				return Promise.resolve(server);
+			},
+			server.disconnect
+		);
+		await expect(coordinator.connect(device, 1, 'timeout')).rejects.toThrow('timeout');
+		await coordinator.connect(device, 1000, 'timeout');
+		handshake.reject(new Error('Old connection closed'));
+		await Promise.resolve();
+		expect(server.connected).toBeTrue();
+		expect(attempts).toBe(2);
+	});
 });

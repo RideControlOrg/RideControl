@@ -24,11 +24,13 @@ export function recoverableBluetoothOperationError(error: unknown): boolean {
 export function withBluetoothOperationTimeout<T>(
 	operation: Promise<T>,
 	description: string,
-	timeoutMs = BLUETOOTH_OPERATION_TIMEOUT_MS
+	timeoutMs = BLUETOOTH_OPERATION_TIMEOUT_MS,
+	signal?: AbortSignal
 ): Promise<T> {
 	return withPromiseTimeout(
 		operation,
 		timeoutMs,
-		() => new BluetoothOperationTimeoutError(description)
+		() => new BluetoothOperationTimeoutError(description),
+		signal
 	);
 }

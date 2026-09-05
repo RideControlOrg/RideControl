@@ -166,6 +166,31 @@ describe('reconnect controller', () => {
 		expect(controller.isPending('device')).toBeFalse();
 	});
 
+	test('does not let an obsolete queued timer remove a newer recovery attempt', async () => {
+		const timers: Array<() => Promise<void>> = [];
+		const attempted: string[] = [];
+		const controller = createReconnectController<string>({
+			attempt: (target) => {
+				attempted.push(target);
+				return Promise.resolve(true);
+			},
+			canRetry: () => true,
+			clearTimer: () => undefined,
+			delayForAttempt: () => 100,
+			setTimer: ((callback: () => Promise<void>) => {
+				timers.push(callback);
+				return timers.length;
+			}) as typeof setTimeout,
+		});
+		controller.start('heart-rate', 'old');
+		controller.cancel('heart-rate', true);
+		controller.start('heart-rate', 'recovered');
+		await timers[0]?.();
+		await timers[1]?.();
+		expect(attempted).toEqual(['recovered']);
+		expect(controller.isPending('heart-rate')).toBeFalse();
+	});
+
 	test('cancels retries and ignores duplicate scheduling', () => {
 		const callbacks: Array<() => void> = [];
 		const cleared: number[] = [];

@@ -53,7 +53,10 @@ export function createReconnectController<T>({
 		onWaiting?.(entry.target);
 		entry.timer = setTimer(async () => {
 			entry.timer = undefined;
-			if (entries.get(key) !== entry || !canRetry(entry.target)) {
+			if (entries.get(key) !== entry) {
+				return;
+			}
+			if (!canRetry(entry.target)) {
 				entries.delete(key);
 				return;
 			}
