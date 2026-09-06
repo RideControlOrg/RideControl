@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSessionHistory } from '../hooks/use-session-history';
 import { useSessionInsights } from '../hooks/use-session-insights';
-import { ACTIVITY_FILE_FORMAT, type ActivityFileFormat } from '../lib/activity-file';
+import type { ActivityFileFormat } from '../lib/activity-file';
 import { APP_OVERLAY } from '../lib/app-overlay';
 import {
 	eventTargetsEditableControl,
 	eventTargetsInteractiveControl,
 	keyboardEventHasModifiers,
 } from '../lib/dom';
+import { errorMessage } from '../lib/errors';
 import {
 	type HistoryShortcut,
 	historyKeyboardShortcuts,
@@ -22,10 +23,6 @@ import {
 	sessionCalendarMonthKey,
 } from '../lib/session-calendar';
 import {
-	loadSessionDownloadFormat,
-	saveSessionDownloadFormat,
-} from '../lib/session-history-preferences';
-import {
 	loadSessionHistoryView,
 	SESSION_HISTORY_VIEW,
 	SESSION_HISTORY_VIEW_OPTIONS,
@@ -35,9 +32,9 @@ import {
 import { preferencesStore } from '../stores/preferences-store';
 import type { ChartMode, SavedSession, SpeedUnit } from '../types';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
-import { SelectMenu } from './select-menu';
 import { SessionCalendar } from './session-calendar';
 import { SessionDetail } from './session-detail';
+import { SessionDownloadDialog } from './session-download-dialog';
 import { SessionHistoryList } from './session-history-list';
 import { SessionImportResultDialog } from './session-import-dialog';
 import { SessionStatistics } from './session-statistics';
@@ -51,11 +48,6 @@ function shouldIgnoreHistoryAction(event: KeyboardEvent) {
 		eventTargetsEditableControl(event)
 	);
 }
-
-const SESSION_DOWNLOAD_FORMAT_OPTIONS = [
-	{ label: 'FIT', value: ACTIVITY_FILE_FORMAT.FIT },
-	{ label: 'TCX', value: ACTIVITY_FILE_FORMAT.TCX },
-] as const;
 
 function SessionHistoryStatus({ status, total }: { status: string; total: number }) {
 	const count = total.toLocaleString();
@@ -141,8 +133,12 @@ export function SessionHistory({
 	const [selectedChartMode, setSelectedChartMode] = useState<ChartMode>(
 		() => preferencesStore.get().chartMode
 	);
-	const [downloadFormat, setDownloadFormat] =
-		useState<ActivityFileFormat>(loadSessionDownloadFormat);
+	const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+	const [downloadError, setDownloadError] = useState('');
+	const downloadButton = useRef<HTMLButtonElement>(null);
+	const downloadInProgress = useRef(false);
+	const downloadGeneration = useRef(0);
+	const restoreDownloadFocus = useRef(false);
 	const importInput = useRef<HTMLInputElement>(null);
 	const importButton = useRef<HTMLButtonElement>(null);
 	const restoreImportFocus = useRef(false);
@@ -154,6 +150,10 @@ export function SessionHistory({
 		if (!open) {
 			setDeleteConfirmationOpen(false);
 			setHistoryHelpOpen(false);
+			setDownloadDialogOpen(false);
+			setDownloadError('');
+			downloadGeneration.current += 1;
+			restoreDownloadFocus.current = false;
 		}
 	}, [open]);
 
@@ -172,6 +172,49 @@ export function SessionHistory({
 			importButton.current?.focus();
 		}
 	}, [importResult, open]);
+
+	const closeDownloadDialog = useCallback(() => {
+		if (downloadInProgress.current) {
+			return;
+		}
+		restoreDownloadFocus.current = true;
+		setDownloadDialogOpen(false);
+	}, []);
+
+	const downloadAllSessions = useCallback(
+		async (format: ActivityFileFormat) => {
+			if (downloadInProgress.current) {
+				return;
+			}
+			downloadInProgress.current = true;
+			const generation = downloadGeneration.current;
+			setDownloadError('');
+			try {
+				await downloadAllActivityFiles(format);
+				if (generation === downloadGeneration.current) {
+					restoreDownloadFocus.current = true;
+					setDownloadDialogOpen(false);
+				}
+			} catch (preparationError) {
+				if (generation === downloadGeneration.current) {
+					setDownloadError(errorMessage(preparationError));
+				}
+			} finally {
+				downloadInProgress.current = false;
+			}
+		},
+		[downloadAllActivityFiles]
+	);
+
+	useEffect(() => {
+		if (downloadDialogOpen || !restoreDownloadFocus.current) {
+			return;
+		}
+		restoreDownloadFocus.current = false;
+		if (open) {
+			downloadButton.current?.focus();
+		}
+	}, [downloadDialogOpen, open]);
 
 	const selectSession = useCallback(
 		(id: string) => {
@@ -193,7 +236,7 @@ export function SessionHistory({
 	}, [deleteHistorySession]);
 
 	useEffect(() => {
-		if (!open || importResult) {
+		if (!open || importResult || downloadDialogOpen) {
 			return;
 		}
 		const selectAdjacent = (event: KeyboardEvent, direction: 'next' | 'previous') => {
@@ -266,6 +309,7 @@ export function SessionHistory({
 	}, [
 		deleteConfirmationOpen,
 		deleteSelectedSession,
+		downloadDialogOpen,
 		historyHelpOpen,
 		historyView,
 		importResult,
@@ -306,7 +350,13 @@ export function SessionHistory({
 		detail = (
 			<SessionDetail
 				chartKeyboardEnabled={
-					open && !(deleteConfirmationOpen || historyHelpOpen || importResult)
+					open &&
+					!(
+						deleteConfirmationOpen ||
+						historyHelpOpen ||
+						importResult ||
+						downloadDialogOpen
+					)
 				}
 				combinedJourney={combinedJourney}
 				deleteConfirmationOpen={deleteConfirmationOpen}
@@ -384,35 +434,21 @@ export function SessionHistory({
 						>
 							{importing ? 'Importing…' : 'Import FIT/TCX'}
 						</button>
-						<fieldset
-							aria-label="Download all sessions"
-							className="m-0 inline-flex min-w-0 border-0 p-0"
+						<button
+							className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 							data-testid="download-all-sessions"
+							disabled={transferring || total === 0}
+							onClick={() => {
+								setDownloadError('');
+								setDeleteConfirmationOpen(false);
+								setHistoryHelpOpen(false);
+								setDownloadDialogOpen(true);
+							}}
+							ref={downloadButton}
+							type="button"
 						>
-							<button
-								aria-label={`Download all sessions as ${downloadFormat.toUpperCase()}`}
-								className="h-9 rounded-l-lg border border-line border-r-0 px-3 font-semibold text-slate-300 text-xs hover:z-10 hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-								disabled={transferring || total === 0}
-								onClick={() => downloadAllActivityFiles(downloadFormat)}
-								type="button"
-							>
-								{exporting ? 'Preparing…' : 'Download all'}
-							</button>
-							<SelectMenu
-								align="end"
-								ariaLabel="Download all format"
-								disabled={transferring}
-								onChange={(format) => {
-									setDownloadFormat(format);
-									saveSessionDownloadFormat(format);
-								}}
-								options={SESSION_DOWNLOAD_FORMAT_OPTIONS}
-								size="compact"
-								triggerClassName="border-l-0"
-								value={downloadFormat}
-								width="compact"
-							/>
-						</fieldset>
+							{exporting ? 'Preparing…' : 'Download all'}
+						</button>
 						<button
 							aria-label="Show history keyboard controls"
 							className="absolute top-2 right-14 grid h-9 w-9 place-items-center rounded-lg font-bold text-slate-400 text-sm hover:bg-slate-700 hover:text-white sm:static"
@@ -494,6 +530,14 @@ export function SessionHistory({
 				shortcuts={historyKeyboardShortcuts}
 				title="History keyboard controls"
 			/>
+			{open && downloadDialogOpen ? (
+				<SessionDownloadDialog
+					downloading={exporting}
+					error={downloadError}
+					onClose={closeDownloadDialog}
+					onDownload={downloadAllSessions}
+				/>
+			) : null}
 			{open && importResult ? (
 				<SessionImportResultDialog
 					error={importResult.error}
