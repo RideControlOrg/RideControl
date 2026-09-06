@@ -31,6 +31,7 @@ export function useGearControl({
 	const [shiftFlash, setShiftFlash] = useState<ResistanceAdjustmentDirection | undefined>();
 	const gearRef = useRef(gear);
 	const keyboardControlsEnabled = useRef(true);
+	const sessionOpen = useRef(false);
 	const shiftFlashTimer = useRef<number | undefined>(undefined);
 	const maximumGearRef = useRef(maximumGear);
 
@@ -87,7 +88,7 @@ export function useGearControl({
 			if (
 				event.defaultPrevented ||
 				keyboardEventHasModifiers(event) ||
-				keyboardEventUsesNativeEnterAction(event) ||
+				(!sessionOpen.current && keyboardEventUsesNativeEnterAction(event)) ||
 				!keyboardControlsEnabled.current ||
 				(!isGearControl && eventTargetsEditableControl(event))
 			) {
@@ -113,8 +114,9 @@ export function useGearControl({
 		[]
 	);
 
-	const setKeyboardControlsEnabled = useCallback((enabled: boolean) => {
+	const setKeyboardControlsEnabled = useCallback((enabled: boolean, open: boolean) => {
 		keyboardControlsEnabled.current = enabled;
+		sessionOpen.current = open;
 	}, []);
 
 	return { gear, setKeyboardControlsEnabled, shiftFlash, shiftGear };

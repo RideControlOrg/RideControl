@@ -633,12 +633,19 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	}, [warnBeforeUnload]);
 
 	useEffect(() => {
-		trainer.setKeyboardControlsEnabled(dashboardKeyboardEnabled && !dashboardWorkout.workout);
+		trainer.setKeyboardControlsEnabled(
+			dashboardKeyboardEnabled && !dashboardWorkout.workout,
+			!session.ended
+		);
 		trainer.setGearControlsEnabled(virtualShiftingActive);
-		gearControl.setKeyboardControlsEnabled(dashboardKeyboardEnabled && virtualShiftingActive);
+		gearControl.setKeyboardControlsEnabled(
+			dashboardKeyboardEnabled && virtualShiftingActive,
+			!session.ended
+		);
 	}, [
 		dashboardKeyboardEnabled,
 		gearControl.setKeyboardControlsEnabled,
+		session.ended,
 		trainer.setGearControlsEnabled,
 		trainer.setKeyboardControlsEnabled,
 		dashboardWorkout.workout,
