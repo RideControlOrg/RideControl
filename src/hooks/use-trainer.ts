@@ -38,6 +38,7 @@ export function useTrainer(
 	const rememberedResistance = useRef(store.get().resistance);
 	const resistanceTarget = useRef(store.get().resistance);
 	const keyboardControlsEnabled = useRef(true);
+	const sessionOpen = useRef(false);
 	const gearControlsEnabled = useRef(false);
 	const trainerConnection = useTrainerConnection(
 		store,
@@ -207,7 +208,7 @@ export function useTrainer(
 			if (
 				event.defaultPrevented ||
 				keyboardEventHasModifiers(event) ||
-				keyboardEventUsesNativeEnterAction(event) ||
+				(!sessionOpen.current && keyboardEventUsesNativeEnterAction(event)) ||
 				(!isResistanceControl && eventTargetsEditableControl(event)) ||
 				!keyboardControlsEnabled.current ||
 				gearControlsEnabled.current
@@ -247,8 +248,9 @@ export function useTrainer(
 		};
 	}, [setResistanceKeyFlash, updateResistance]);
 
-	const setKeyboardControlsEnabled = useCallback((enabled: boolean) => {
+	const setKeyboardControlsEnabled = useCallback((enabled: boolean, open: boolean) => {
 		keyboardControlsEnabled.current = enabled;
+		sessionOpen.current = open;
 	}, []);
 
 	const setGearControlsEnabled = useCallback((enabled: boolean) => {
