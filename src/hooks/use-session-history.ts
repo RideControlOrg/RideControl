@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ACTIVITY_FILE_FORMAT, type ActivityFileFormat } from '../lib/activity-file';
-import { activityImportResultMessage, importActivityUpload } from '../lib/activity-import';
+import {
+	type ActivityImportResult,
+	activityImportResultMessage,
+	importActivityUpload,
+} from '../lib/activity-import';
 import { errorMessage } from '../lib/errors';
 import { downloadSessionFitArchive } from '../lib/fit-archive';
 import {
@@ -36,11 +40,18 @@ export function useSessionHistory(
 	const [deleting, setDeleting] = useState(false);
 	const [exporting, setExporting] = useState(false);
 	const [importing, setImporting] = useState(false);
+	const [importResult, setImportResult] = useState<{
+		error?: string;
+		fileName: string;
+		result?: ActivityImportResult;
+	}>();
 	const [historyStatus, setHistoryStatus] = useState('');
 	const [highlightedSessionIds, setHighlightedSessionIds] = useState<string[]>([]);
 	const [error, setError] = useState('');
 	const [revision, setRevision] = useState(0);
 	const deleteInProgress = useRef(false);
+	const importGeneration = useRef(0);
+	const historyOpen = useRef(open);
 	const historyLoadGeneration = useRef(0);
 	const historyInitialized = useRef(false);
 
@@ -106,8 +117,15 @@ export function useSessionHistory(
 		},
 		[rememberSelectedSession, selectSession]
 	);
+	useEffect(
+		() => () => {
+			importGeneration.current += 1;
+		},
+		[]
+	);
 
 	useEffect(() => {
+		historyOpen.current = open;
 		if (!open) {
 			historyLoadGeneration.current += 1;
 			historyInitialized.current = false;
@@ -129,31 +147,59 @@ export function useSessionHistory(
 			.catch((loadError: unknown) => setError(errorMessage(loadError)));
 	}, [loadHistory, open, preferredSessionId]);
 
+	const clearImportResult = useCallback(() => setImportResult(undefined), []);
+
+	const refreshImportedHistory = useCallback(
+		async (result: ActivityImportResult, generation: number) => {
+			const newestImported = result.importedSessions.reduce<SavedSession | undefined>(
+				(newest, session) =>
+					!newest || session.endedAt > newest.endedAt ? session : newest,
+				undefined
+			);
+			if (!(newestImported && historyOpen.current)) {
+				return;
+			}
+			try {
+				await loadHistory(newestImported.id, true);
+			} catch (loadError) {
+				if (generation === importGeneration.current) {
+					setError(errorMessage(loadError));
+				}
+			}
+		},
+		[loadHistory]
+	);
+
 	const importActivityFile = useCallback(
 		async (file: File) => {
+			const generation = importGeneration.current + 1;
+			importGeneration.current = generation;
 			setImporting(true);
+			setImportResult(undefined);
 			setHistoryStatus('');
 			setHighlightedSessionIds([]);
 			try {
 				const result = await importActivityUpload(file);
+				if (generation !== importGeneration.current) {
+					return;
+				}
 				setHistoryStatus(activityImportResultMessage(result));
 				setHighlightedSessionIds(result.importedSessions.map((session) => session.id));
-				const newestImported = result.importedSessions.reduce<SavedSession | undefined>(
-					(newest, session) =>
-						!newest || session.endedAt > newest.endedAt ? session : newest,
-					undefined
-				);
-				if (newestImported) {
-					await loadHistory(newestImported.id, true);
+				await refreshImportedHistory(result, generation);
+				if (generation === importGeneration.current && result.failures.length > 0) {
+					setImportResult({ fileName: file.name, result });
 				}
-				setError('');
 			} catch (importError) {
-				setError(errorMessage(importError));
+				if (generation === importGeneration.current) {
+					setImportResult({ error: errorMessage(importError), fileName: file.name });
+				}
 			} finally {
-				setImporting(false);
+				if (generation === importGeneration.current) {
+					setImporting(false);
+				}
 			}
 		},
-		[loadHistory]
+		[refreshImportedHistory]
 	);
 
 	const downloadAllActivityFiles = useCallback(async (format: ActivityFileFormat) => {
@@ -224,6 +270,7 @@ export function useSessionHistory(
 	}, [summaries]);
 
 	return {
+		clearImportResult,
 		combinedJourney,
 		deleteSelectedSession,
 		deleting,
@@ -234,6 +281,7 @@ export function useSessionHistory(
 		historyStatus,
 		importActivityFile,
 		importing,
+		importResult,
 		loading,
 		loadMore,
 		revision,
