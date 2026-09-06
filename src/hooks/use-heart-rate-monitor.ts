@@ -41,7 +41,6 @@ export function useHeartRateMonitor(
 				connectDeviceRef.current?.(selected, true) ?? Promise.resolve(false),
 			canRetry: () => autoReconnect.current && !forgotten.current,
 			onWaiting: () => setPhase('reconnecting'),
-			watchAdvertisements: false,
 		})
 	);
 	const handleDisconnect = useCallback((selected: BluetoothDevice) => {
