@@ -83,36 +83,101 @@ describe('reconnect controller', () => {
 		expect([1, 2, 3, 4, 5].map(bluetoothReconnectDelay)).toEqual([250, 500, 1000, 2000, 2000]);
 	});
 
-	test('connects an HRM directly without starting advertisement discovery', async () => {
+	test('rediscovers a remembered HRM before reconnecting its out-of-range GATT device', async () => {
 		const callbacks: Array<() => void | Promise<void>> = [];
-		let attempts = 0;
-		let advertisementWatches = 0;
+		let advertisementListener: EventListener | undefined;
+		let watchSignal: AbortSignal | undefined;
+		let observedBroadcast = false;
+		const gatt = {
+			connect: () => {
+				if (!observedBroadcast) {
+					return Promise.reject(
+						new DOMException('Bluetooth Device is no longer in range.', 'NetworkError')
+					);
+				}
+				gatt.connected = true;
+				return Promise.resolve(gatt);
+			},
+			connected: false,
+		};
 		const device = {
+			addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+				advertisementListener = listener as EventListener;
+			},
+			gatt,
 			id: 'heart-rate',
-			watchAdvertisements: () => {
-				advertisementWatches += 1;
+			removeEventListener: () => {
+				advertisementListener = undefined;
+			},
+			watchAdvertisements: ({ signal }: { signal?: AbortSignal }) => {
+				watchSignal = signal;
 				return Promise.resolve();
 			},
+			watchingAdvertisements: false,
 		} as unknown as BluetoothDevice;
 		const controller = createBluetoothReconnectController<BluetoothDevice>({
-			attempt: () => {
-				attempts += 1;
-				return Promise.resolve(true);
-			},
+			attempt: async (remembered) => (await remembered.gatt?.connect())?.connected ?? false,
 			canRetry: () => true,
+			clearTimer: () => undefined,
 			setTimer: ((callback: () => void) => {
 				callbacks.push(callback);
 				return callbacks.length;
 			}) as typeof setTimeout,
-			watchAdvertisements: false,
 		});
 
 		reconnectBluetoothDeviceNow(controller, device);
 		await callbacks[0]?.();
+		expect(gatt.connected).toBeFalse();
+		expect(controller.isPending(device.id)).toBeTrue();
 
-		expect(attempts).toBe(1);
-		expect(advertisementWatches).toBe(0);
+		if (watchSignal && !watchSignal.aborted && advertisementListener) {
+			observedBroadcast = true;
+			advertisementListener({} as Event);
+		}
+		await callbacks.at(-1)?.();
+		expect(gatt.connected).toBeTrue();
+		expect(controller.isPending(device.id)).toBeFalse();
 	});
+
+	test.each(['rejects', 'emits no events'] as const)(
+		'keeps directly retrying a remembered device when advertisement discovery %s',
+		async (watchOutcome) => {
+			const callbacks: Array<() => void | Promise<void>> = [];
+			let attempts = 0;
+			const device = {
+				addEventListener: () => undefined,
+				id: 'heart-rate',
+				removeEventListener: () => undefined,
+				watchAdvertisements: () =>
+					watchOutcome === 'rejects'
+						? Promise.reject(
+								new DOMException('Discovery unavailable', 'NotSupportedError')
+							)
+						: Promise.resolve(),
+				watchingAdvertisements: false,
+			} as unknown as BluetoothDevice;
+			const controller = createBluetoothReconnectController<BluetoothDevice>({
+				attempt: () => {
+					attempts += 1;
+					return Promise.resolve(attempts === 3);
+				},
+				canRetry: () => true,
+				clearTimer: () => undefined,
+				setTimer: ((callback: () => void) => {
+					callbacks.push(callback);
+					return callbacks.length;
+				}) as typeof setTimeout,
+			});
+
+			reconnectBluetoothDeviceNow(controller, device);
+			for (let attempt = 1; attempt <= 3; attempt += 1) {
+				await callbacks.shift()?.();
+				expect(attempts).toBe(attempt);
+				expect(controller.isPending(device.id)).toBe(attempt < 3);
+			}
+			expect(callbacks).toHaveLength(0);
+		}
+	);
 
 	test('keeps retrying through a long absence until the device connects', async () => {
 		const callbacks: Array<() => void | Promise<void>> = [];
