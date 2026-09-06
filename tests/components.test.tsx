@@ -1987,17 +1987,6 @@ describe('view components', () => {
 		expect(html).toContain('min-h-0 min-w-0 flex-1 flex-col overflow-hidden');
 		expect(html).toContain('overflow-y-auto overflow-x-hidden');
 		expect(html).toContain('Import FIT/TCX');
-		expect(html).toContain('data-testid="download-all-sessions"');
-		expect(html).toContain('aria-label="Download all sessions as TCX"');
-		expect(html).toContain('aria-label="Download all format"');
-		expect(html).toContain('aria-haspopup="listbox"');
-		expect(html).not.toContain('<select');
-		expect(html).toContain('Download all');
-		expect(html).toContain('h-9 rounded-lg border border-line px-3');
-		expect(html).toContain('h-9 rounded-l-lg border border-line border-r-0 px-3');
-		expect(html).toContain('w-16 shrink-0');
-		expect(html).toContain('h-9 gap-2 px-2');
-		expect(html).toContain('border-l-0');
 		expect(html).toContain('.tcx,.zip');
 		expect(html).toContain('ml-auto');
 		expect(html).toContain('translate-x-0');

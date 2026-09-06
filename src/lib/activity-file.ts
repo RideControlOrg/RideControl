@@ -11,10 +11,6 @@ export type ActivityFileFormat = (typeof ACTIVITY_FILE_FORMAT)[keyof typeof ACTI
 
 export const IMPORTED_FIT_ID_PREFIX = 'fit:';
 
-export function isActivityFileFormat(value: string): value is ActivityFileFormat {
-	return value === ACTIVITY_FILE_FORMAT.FIT || value === ACTIVITY_FILE_FORMAT.TCX;
-}
-
 export function sessionActivityFilename(
 	session: Pick<SavedSession, 'startedAt'>,
 	format: ActivityFileFormat

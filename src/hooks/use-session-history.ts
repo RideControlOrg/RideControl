@@ -217,8 +217,6 @@ export function useSessionHistory(
 				`Downloaded ${sessions.length} ${label} ${sessions.length === 1 ? 'file' : 'files'} in one ZIP`
 			);
 			setError('');
-		} catch (downloadError) {
-			setError(errorMessage(downloadError));
 		} finally {
 			setExporting(false);
 		}
