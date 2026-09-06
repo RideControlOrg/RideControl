@@ -39,6 +39,7 @@ import { SelectMenu } from './select-menu';
 import { SessionCalendar } from './session-calendar';
 import { SessionDetail } from './session-detail';
 import { SessionHistoryList } from './session-history-list';
+import { SessionImportResultDialog } from './session-import-dialog';
 import { SessionStatistics } from './session-statistics';
 import { SideTray } from './side-tray';
 import { Tabs } from './tabs';
@@ -55,6 +56,23 @@ const SESSION_DOWNLOAD_FORMAT_OPTIONS = [
 	{ label: 'FIT', value: ACTIVITY_FILE_FORMAT.FIT },
 	{ label: 'TCX', value: ACTIVITY_FILE_FORMAT.TCX },
 ] as const;
+
+function SessionHistoryStatus({ status, total }: { status: string; total: number }) {
+	const count = total.toLocaleString();
+	const sessions = `${count} ${total === 1 ? 'session' : 'sessions'}`;
+	return (
+		<p
+			aria-label={`${sessions}${status ? `, ${status}` : ''}`}
+			aria-live="polite"
+			className="max-w-xl truncate text-slate-500 text-xs"
+			role="status"
+			title={`${sessions}${status ? ` · ${status}` : ''}`}
+		>
+			{count}
+			{status ? <span className="text-cyan-300"> · {status}</span> : null}
+		</p>
+	);
+}
 
 export function SessionHistory({
 	onClose,
@@ -82,6 +100,7 @@ export function SessionHistory({
 	weightHistory?: readonly RiderWeightEntry[];
 }) {
 	const {
+		clearImportResult,
 		combinedJourney,
 		deleteSelectedSession: deleteHistorySession,
 		deleting,
@@ -92,6 +111,7 @@ export function SessionHistory({
 		highlightedSessionIds,
 		importActivityFile,
 		importing,
+		importResult,
 		loading,
 		loadMore,
 		revision,
@@ -124,6 +144,8 @@ export function SessionHistory({
 	const [downloadFormat, setDownloadFormat] =
 		useState<ActivityFileFormat>(loadSessionDownloadFormat);
 	const importInput = useRef<HTMLInputElement>(null);
+	const importButton = useRef<HTMLButtonElement>(null);
+	const restoreImportFocus = useRef(false);
 	const transferring = exporting || importing;
 	const navigationSummaries =
 		historyView === SESSION_HISTORY_VIEW.CALENDAR ? calendarSummaries : summaries;
@@ -134,6 +156,22 @@ export function SessionHistory({
 			setHistoryHelpOpen(false);
 		}
 	}, [open]);
+
+	const closeImportResult = useCallback(() => {
+		restoreImportFocus.current = true;
+		clearImportResult();
+	}, [clearImportResult]);
+
+	useEffect(() => {
+		if (importResult || !restoreImportFocus.current) {
+			return;
+		}
+		restoreImportFocus.current = false;
+		// The disabled upload button loses focus before the dialog can remember it.
+		if (open) {
+			importButton.current?.focus();
+		}
+	}, [importResult, open]);
 
 	const selectSession = useCallback(
 		(id: string) => {
@@ -155,7 +193,7 @@ export function SessionHistory({
 	}, [deleteHistorySession]);
 
 	useEffect(() => {
-		if (!open) {
+		if (!open || importResult) {
 			return;
 		}
 		const selectAdjacent = (event: KeyboardEvent, direction: 'next' | 'previous') => {
@@ -230,6 +268,7 @@ export function SessionHistory({
 		deleteSelectedSession,
 		historyHelpOpen,
 		historyView,
+		importResult,
 		onClose,
 		open,
 		selectSession,
@@ -266,7 +305,9 @@ export function SessionHistory({
 	} else if (selected) {
 		detail = (
 			<SessionDetail
-				chartKeyboardEnabled={open && !(deleteConfirmationOpen || historyHelpOpen)}
+				chartKeyboardEnabled={
+					open && !(deleteConfirmationOpen || historyHelpOpen || importResult)
+				}
 				combinedJourney={combinedJourney}
 				deleteConfirmationOpen={deleteConfirmationOpen}
 				deleting={deleting}
@@ -318,18 +359,7 @@ export function SessionHistory({
 						<h2 className="font-bold text-xl" id="session-history-title">
 							Sessions
 						</h2>
-						<p
-							aria-label={`${total.toLocaleString()} ${total === 1 ? 'session' : 'sessions'}${historyStatus ? `, ${historyStatus}` : ''}`}
-							aria-live="polite"
-							className="max-w-xl truncate text-slate-500 text-xs"
-							role="status"
-							title={`${total.toLocaleString()} ${total === 1 ? 'session' : 'sessions'}${historyStatus ? ` · ${historyStatus}` : ''}`}
-						>
-							{total.toLocaleString()}
-							{historyStatus ? (
-								<span className="text-cyan-300"> · {historyStatus}</span>
-							) : null}
-						</p>
+						<SessionHistoryStatus status={historyStatus} total={total} />
 					</div>
 					<div className="flex flex-wrap items-center gap-1">
 						<input
@@ -349,6 +379,7 @@ export function SessionHistory({
 							className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
 							disabled={transferring}
 							onClick={() => importInput.current?.click()}
+							ref={importButton}
 							type="button"
 						>
 							{importing ? 'Importing…' : 'Import FIT/TCX'}
@@ -463,6 +494,14 @@ export function SessionHistory({
 				shortcuts={historyKeyboardShortcuts}
 				title="History keyboard controls"
 			/>
+			{open && importResult ? (
+				<SessionImportResultDialog
+					error={importResult.error}
+					fileName={importResult.fileName}
+					onClose={closeImportResult}
+					result={importResult.result}
+				/>
+			) : null}
 		</>
 	);
 }
