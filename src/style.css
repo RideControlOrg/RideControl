@@ -113,6 +113,27 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	--chart-surface: #f3f3ef;
 }
 
+.session-chart-plot [data-chart-surface] {
+	position: relative;
+}
+
+.session-chart-plot [data-chart-surface]::after {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	content: "";
+	border-top: 1px solid var(--chart-grid);
+}
+
+.session-chart-plot:last-child [data-chart-surface]::after {
+	border-bottom: 1px solid var(--chart-grid);
+}
+
+.session-chart-plot [data-ts-key="horizontal-0"],
+.session-chart-plot [data-ts-key="horizontal-2"] {
+	display: none;
+}
+
 .ts-chart-host {
 	--ts-chart-focus-fill: var(--chart-surface);
 }
