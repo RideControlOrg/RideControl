@@ -123,7 +123,7 @@ export function ChartPlot({
 		[decimals, label, positions, unit, values]
 	);
 	return (
-		<div className={`flex w-full ${heightClass}`}>
+		<div className={`session-chart-plot flex w-full ${heightClass}`}>
 			<ChartScale decimals={decimals} maximum={maximum} minimum={minimum} unit={unit} />
 			<div className="relative h-full min-w-0 flex-1 overflow-hidden">
 				{showLabel ? (
