@@ -14,10 +14,10 @@ import {
 } from '@tanstack/charts';
 import { focusNearestX } from '@tanstack/charts/focus';
 import { focusDisabled } from '@tanstack/charts/focus/disabled';
-import { tooltip } from '@tanstack/charts/tooltip';
 import { Chart, type ChartProps } from '@tanstack/react-charts';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { chartTooltip } from '../lib/chart-tooltip';
 
 const BASE_CHART_THEME: ChartTheme = {
 	background: 'var(--chart-surface)',
@@ -61,7 +61,7 @@ function interactionOptions<
 				tooltip: {
 					className: 'ride-control-chart-tooltip',
 					format: (point) => point.datum.label,
-					use: tooltip,
+					use: chartTooltip,
 				},
 			}
 		: {

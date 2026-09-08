@@ -16,6 +16,11 @@
 		"indentWidth": 4,
 		"lineWidth": 100
 	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
 	"javascript": {
 		"globals": ["WebSocketPair"],
 		"formatter": {
@@ -36,6 +41,9 @@
 		"rules": {
 			"a11y": {
 				"noAutofocus": "error"
+			},
+			"complexity": {
+				"noImportantStyles": "error"
 			},
 			"performance": {
 				// Reconnect attempts must be sequential, and these leaf event handlers are not memoized consumers.

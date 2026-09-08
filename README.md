@@ -51,6 +51,16 @@ bun run dev
 
 Open <http://localhost:4200> in current Chrome.
 
+Open this repository directory as an editor project root so Biome uses the installed version and
+`biome.jsonc`, rather than an editor-bundled fallback. When editing the sibling backend as well,
+add it as a separate project root. For Zed, run `zed --new . ../backend` from this directory instead
+of opening their shared parent directory.
+
+`bun run ci` checks Biome diagnostics, Tailwind CSS diagnostics, tests, types, and the production
+build. The Biome configuration explicitly enables Tailwind directives and rejects `!important`;
+chart tooltip presentation is stylesheet-owned while TanStack retains its native interaction and
+positioning behavior.
+
 ## Architecture
 
 Ride session data is held in a per-app TanStack Store and changed through atomic domain actions.
