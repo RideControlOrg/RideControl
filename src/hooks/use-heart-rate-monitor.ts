@@ -19,7 +19,8 @@ const STORAGE_KEY = 'heart-rate-device-id';
 
 export function useHeartRateMonitor(
 	rememberedDevices: RememberedBluetoothDeviceCatalog,
-	setNotice: (notice: string) => void
+	setNotice: (notice: string) => void,
+	devicesOpen: boolean
 ) {
 	const [device, setDevice] = useState<BluetoothDevice>();
 	const [phase, setPhase] = useState<DeviceConnectionPhase>(() =>
@@ -137,6 +138,12 @@ export function useHeartRateMonitor(
 	useEffect(() => {
 		connectDeviceRef.current = connectDevice;
 	}, [connectDevice]);
+
+	useEffect(() => {
+		if (devicesOpen && device) {
+			reconnectController.current.restartDiscovery(device.id, device);
+		}
+	}, [device, devicesOpen]);
 
 	const pair = useCallback(async () => {
 		if (!navigator.bluetooth) {
