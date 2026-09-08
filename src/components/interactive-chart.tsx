@@ -1,7 +1,6 @@
 import {
 	areaY,
 	barY,
-	type ChartDefinition,
 	type ChartDefinitionOptions,
 	type ChartPoint,
 	type ChartTheme,
@@ -14,7 +13,7 @@ import {
 } from '@tanstack/charts';
 import { focusNearestX } from '@tanstack/charts/focus';
 import { focusDisabled } from '@tanstack/charts/focus/disabled';
-import { Chart, type ChartProps } from '@tanstack/react-charts';
+import { Chart, type ChartDefinition, type ChartProps } from '@tanstack/react-charts';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { chartTooltip } from '../lib/chart-tooltip';
@@ -52,12 +51,12 @@ function interactionOptions<
 	TDatum extends LabeledChartDatum,
 	TXValue extends ChartValue,
 	TYValue extends ChartValue,
->(interactive: boolean): ChartDefinitionOptions<TDatum, TXValue, TYValue> {
+>(interactive: boolean): ChartDefinitionOptions<TDatum, TXValue, TYValue, 'dom'> {
 	return interactive
 		? {
-				animate: false,
 				focus: focusNearestX,
 				maxFocusDistance: Number.POSITIVE_INFINITY,
+				svgAnimation: false,
 				tooltip: {
 					className: 'ride-control-chart-tooltip',
 					format: (point) => point.datum.label,
@@ -65,9 +64,9 @@ function interactionOptions<
 				},
 			}
 		: {
-				animate: false,
 				focus: focusDisabled,
 				keyboard: false,
+				svgAnimation: false,
 				tooltip: false,
 			};
 }
@@ -246,15 +245,17 @@ function interactiveLineDefinition(
 					]
 				: []),
 		],
+		scales: {
+			x: {
+				axis: false,
+				scale: scaleLinear().domain([input.xMinimum, resolvedXMaximum]),
+			},
+			y: {
+				axis: false,
+				scale: scaleLinear().domain([yDomainMinimum, yDomainMaximum]),
+			},
+		},
 		theme: chartTheme(input.background),
-		x: {
-			axis: false,
-			scale: scaleLinear().domain([input.xMinimum, resolvedXMaximum]),
-		},
-		y: {
-			axis: false,
-			scale: scaleLinear().domain([yDomainMinimum, yDomainMaximum]),
-		},
 	});
 }
 
@@ -359,17 +360,19 @@ function interactiveBarDefinition(
 				y: 'value',
 			}),
 		],
+		scales: {
+			x: {
+				axis: false,
+				scale: scaleBand<string>()
+					.domain(input.rows.map((row) => row.key))
+					.padding(0.12),
+			},
+			y: {
+				axis: false,
+				scale: scaleLinear().domain([0, maximum]),
+			},
+		},
 		theme: chartTheme(input.background),
-		x: {
-			axis: false,
-			scale: scaleBand<string>()
-				.domain(input.rows.map((row) => row.key))
-				.padding(0.12),
-		},
-		y: {
-			axis: false,
-			scale: scaleLinear().domain([0, maximum]),
-		},
 	});
 }
 

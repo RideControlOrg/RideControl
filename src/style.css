@@ -413,6 +413,10 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	align-items: start;
 }
 
+.minimal-summary-grid > * > :last-child {
+	justify-content: center;
+}
+
 .workout-distance-laps-stats {
 	grid-template-columns: minmax(0, 4.5fr) minmax(3rem, 1fr);
 	gap: 0.75rem;
@@ -514,10 +518,6 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	align-items: center;
 	padding: 0.5rem 0.75rem;
 	text-align: center;
-}
-
-.minimal-summary-grid > * > :last-child {
-	justify-content: center;
 }
 
 @container session-detail (min-width: 24rem) {

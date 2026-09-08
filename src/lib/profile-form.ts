@@ -53,12 +53,13 @@ function imageSchema(label: 'bike' | 'profile') {
 export const profileImageSchema = imageSchema('profile');
 export const bikeImageSchema = imageSchema('bike');
 
+// Match persisted text and HTML maxLength bounds, which count UTF-16 code units.
 const bikeFormSchema = z.object({
 	bikeWeight: z.string(),
 	color: z
 		.string()
-		.max(
-			MAXIMUM_BIKE_COLOR_LENGTH,
+		.refine(
+			(value) => value.length <= MAXIMUM_BIKE_COLOR_LENGTH,
 			`Bike color must be at most ${MAXIMUM_BIKE_COLOR_LENGTH} characters.`
 		),
 	frontChainrings: z.string(),
@@ -66,21 +67,21 @@ const bikeFormSchema = z.object({
 	image: bikeImageSchema,
 	manufacturer: z
 		.string()
-		.max(
-			MAXIMUM_BIKE_MANUFACTURER_LENGTH,
+		.refine(
+			(value) => value.length <= MAXIMUM_BIKE_MANUFACTURER_LENGTH,
 			`Manufacturer must be at most ${MAXIMUM_BIKE_MANUFACTURER_LENGTH} characters.`
 		),
 	model: z
 		.string()
-		.max(
-			MAXIMUM_BIKE_MODEL_LENGTH,
+		.refine(
+			(value) => value.length <= MAXIMUM_BIKE_MODEL_LENGTH,
 			`Bike model must be at most ${MAXIMUM_BIKE_MODEL_LENGTH} characters.`
 		),
 	name: z
 		.string()
 		.min(1, 'Enter a bike name.')
-		.max(
-			MAXIMUM_BIKE_NAME_LENGTH,
+		.refine(
+			(value) => value.length <= MAXIMUM_BIKE_NAME_LENGTH,
 			`Bike name must be at most ${MAXIMUM_BIKE_NAME_LENGTH} characters.`
 		),
 	purchasedOn: z
@@ -161,16 +162,25 @@ export const profileFormSchema = z
 			.max(MAXIMUM_PROFILE_BIKES, `Add no more than ${MAXIMUM_PROFILE_BIKES} bikes.`),
 		identity: z
 			.string()
-			.max(
-				MAXIMUM_PROFILE_IDENTITY_LENGTH,
+			.refine(
+				(value) => value.length <= MAXIMUM_PROFILE_IDENTITY_LENGTH,
 				`Identity must be at most ${MAXIMUM_PROFILE_IDENTITY_LENGTH} characters.`
 			),
-		identityHistory: z.array(z.string().trim().min(1).max(MAXIMUM_PROFILE_IDENTITY_LENGTH)),
+		identityHistory: z.array(
+			z
+				.string()
+				.trim()
+				.min(1)
+				.refine(
+					(value) => value.length <= MAXIMUM_PROFILE_IDENTITY_LENGTH,
+					`Identity must be at most ${MAXIMUM_PROFILE_IDENTITY_LENGTH} characters.`
+				)
+		),
 		image: profileImageSchema,
 		name: z
 			.string()
-			.max(
-				MAXIMUM_PROFILE_NAME_LENGTH,
+			.refine(
+				(value) => value.length <= MAXIMUM_PROFILE_NAME_LENGTH,
 				`Name must be at most ${MAXIMUM_PROFILE_NAME_LENGTH} characters.`
 			),
 		riderWeight: z.string(),
