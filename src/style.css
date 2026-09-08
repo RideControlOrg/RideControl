@@ -145,19 +145,18 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 }
 
 .ride-control-chart-tooltip {
-	z-index: 20 !important;
-	padding: 0.5rem 0.65rem !important;
+	z-index: 20;
+	padding: 0.5rem 0.65rem;
 	font:
 		600 0.75rem / 1.35 Inter,
 		ui-sans-serif,
 		system-ui,
-		sans-serif !important;
-	font-variant-numeric: tabular-nums;
-	color: var(--content-strong) !important;
-	background: var(--color-panel) !important;
-	border: 1px solid color-mix(in srgb, var(--color-line) 72%, transparent) !important;
-	border-radius: 0 !important;
-	box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 22%) !important;
+		sans-serif;
+	color: var(--content-strong);
+	background: var(--color-panel);
+	border: 1px solid color-mix(in srgb, var(--color-line) 72%, transparent);
+	border-radius: 0;
+	box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 22%);
 	transition:
 		top 140ms ease-out,
 		left 45ms linear;
@@ -250,29 +249,30 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 }
 
 .app-shell [class*="rounded-"] {
-	border-radius: 0 !important;
+	border-radius: 0;
 }
 
 .app-shell [class*="shadow-"] {
-	box-shadow: none !important;
+	box-shadow: none;
 }
 
 .app-shell [class*="backdrop-blur"] {
-	backdrop-filter: none !important;
+	backdrop-filter: none;
 }
 
 .app-shell [class*="border-2"] {
-	border-width: 1px !important;
+	border-width: 1px;
 }
 
 .app-shell button {
-	box-shadow: none !important;
-	transform: none !important;
+	box-shadow: none;
+	transform: none;
 }
 
+.app-shell .ts-chart-host svg:focus-visible,
 .app-shell :is(:focus, :focus-visible) {
-	outline: none !important;
-	box-shadow: none !important;
+	outline: none;
+	box-shadow: none;
 }
 
 .dashboard-session-summary > * {
@@ -413,6 +413,10 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	align-items: start;
 }
 
+.minimal-summary-grid > * > :last-child {
+	justify-content: center;
+}
+
 .workout-distance-laps-stats {
 	grid-template-columns: minmax(0, 4.5fr) minmax(3rem, 1fr);
 	gap: 0.75rem;
@@ -516,10 +520,6 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 	text-align: center;
 }
 
-.minimal-summary-grid > * > :last-child {
-	justify-content: center;
-}
-
 @container session-detail (min-width: 24rem) {
 	.minimal-summary-grid > :not(:first-child)::before {
 		display: block;
@@ -606,7 +606,7 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 }
 
 .minimal-workout-card {
-	background-color: transparent !important;
+	background-color: transparent;
 	border-color: transparent;
 }
 
@@ -657,7 +657,7 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 		.minimal-profile-section,
 		.minimal-device-card
 	) {
-	background-color: transparent !important;
+	background-color: transparent;
 }
 
 .dashboard-workout-pane {
@@ -689,7 +689,7 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 .app-shell :is(input, select, textarea) {
 	color: var(--content-strong);
 	background-color: var(--surface-muted);
-	border-radius: 0 !important;
+	border-radius: 0;
 }
 
 .app-shell
@@ -698,7 +698,7 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 		[class*="bg-[#10151a]"],
 		[class*="bg-[#20262e]"]
 	) {
-	background-color: var(--surface-muted) !important;
+	background-color: var(--surface-muted);
 }
 
 .app-shell
@@ -707,11 +707,11 @@ html[data-theme="light"] .session-chart[data-variant="session"] {
 		[class*="bg-[#0d1217]"],
 		[class*="bg-[#0b1118]"]
 	) {
-	background-color: var(--surface-deep) !important;
+	background-color: var(--surface-deep);
 }
 
 html[data-theme="light"] .app-shell .text-white {
-	color: var(--content-strong) !important;
+	color: var(--content-strong);
 }
 
 html[data-theme="light"]
@@ -722,17 +722,17 @@ html[data-theme="light"]
 		[class~="focus-visible:text-white"]:focus-visible,
 		[class~="active:text-white"]:active
 	) {
-	color: var(--content-strong) !important;
+	color: var(--content-strong);
 }
 
 html[data-theme="light"]
 	.app-shell
 	:is([class*="hover:text-cyan-"]:hover, [class*="hover:text-sky-"]:hover) {
-	color: var(--color-cyan-700) !important;
+	color: var(--color-cyan-700);
 }
 
 html[data-theme="light"] .app-shell [class*="hover:text-rose-"]:hover {
-	color: var(--color-rose-700) !important;
+	color: var(--color-rose-700);
 }
 
 html[data-theme="light"]
@@ -741,33 +741,33 @@ html[data-theme="light"]
 		[class*="hover:border-cyan-"]:hover,
 		[class*="focus:border-cyan-"]:focus
 	) {
-	border-color: var(--color-cyan-700) !important;
+	border-color: var(--color-cyan-700);
 }
 
 html[data-theme="light"]
 	.app-shell
 	[class*="focus-visible:outline-cyan-"]:focus-visible {
-	outline-color: var(--color-cyan-700) !important;
+	outline-color: var(--color-cyan-700);
 }
 
 html[data-theme="light"] .app-shell [class~="hover:bg-white/5"]:hover {
-	background-color: rgb(23 26 24 / 5%) !important;
+	background-color: rgb(23 26 24 / 5%);
 }
 
 html[data-theme="light"] .app-shell [class~="bg-mint"][class~="text-ink"] {
-	color: #fff !important;
+	color: #fff;
 }
 
 html[data-theme="light"]
 	.app-shell
 	[class~="bg-rose-700"][class~="text-white"] {
-	color: #fff !important;
+	color: #fff;
 }
 
 html[data-theme="light"]
 	.app-shell
 	:is([class~="bg-lime"], [class*="bg-[#e4ff9c]"]) {
-	color: #11151a !important;
+	color: #11151a;
 }
 
 @property --ramp-progress {
@@ -937,14 +937,4 @@ html[data-theme="light"]
 
 .functional-status-pulse {
 	animation: functional-status-pulse 1.4s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.connection-status-pulse {
-		animation: connection-status-pulse 1.1s ease-in-out infinite !important;
-	}
-
-	.functional-status-pulse {
-		animation: functional-status-pulse 1.4s ease-in-out infinite !important;
-	}
 }

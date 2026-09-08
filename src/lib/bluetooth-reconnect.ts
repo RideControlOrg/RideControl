@@ -15,6 +15,11 @@ interface BluetoothReconnectControllerOptions<T extends BluetoothDevice>
 	watchAdvertisements?: boolean;
 }
 
+export interface BluetoothReconnectController<T extends BluetoothDevice>
+	extends ReconnectController<T> {
+	restartDiscovery: (key: string, target: T) => void;
+}
+
 export function bluetoothReconnectDelay(attempt: number): number {
 	return Math.min(MAX_RECONNECT_DELAY_MS, FIRST_RECONNECT_DELAY_MS * 2 ** (attempt - 1));
 }
@@ -23,13 +28,13 @@ export function createBluetoothReconnectController<T extends BluetoothDevice>({
 	onAdvertisement,
 	watchAdvertisements = true,
 	...options
-}: BluetoothReconnectControllerOptions<T>): ReconnectController<T> {
+}: BluetoothReconnectControllerOptions<T>): BluetoothReconnectController<T> {
 	const advertisementWatches = new Map<string, BluetoothAdvertisementWatch>();
 	const stopWatching = (key: string) => {
 		advertisementWatches.get(key)?.stop();
 		advertisementWatches.delete(key);
 	};
-	let controller: ReconnectController<T>;
+	let controller: BluetoothReconnectController<T>;
 	const ensureWatching = (key: string, target: T) => {
 		if (!watchAdvertisements) {
 			return;
@@ -93,6 +98,16 @@ export function createBluetoothReconnectController<T extends BluetoothDevice>({
 		reset: (key) => {
 			stopWatching(key);
 			reconnectController.reset(key);
+		},
+		restartDiscovery: (key, target) => {
+			if (
+				!(reconnectController.isPending(key) && options.canRetry(target)) ||
+				target.gatt?.connected
+			) {
+				return;
+			}
+			stopWatching(key);
+			ensureWatching(key, target);
 		},
 		start: (key, target, initialDelay) => {
 			ensureWatching(key, target);

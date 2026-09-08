@@ -13,11 +13,12 @@ const sessionFeelingSchema = z
 	)
 	.optional();
 
+// Match the UTF-16 bound used by the textarea and normalizeSessionDescription.
 export const sessionSaveFormSchema = z.object({
 	comments: z
 		.string()
-		.max(
-			MAXIMUM_SESSION_DESCRIPTION_LENGTH,
+		.refine(
+			(value) => value.length <= MAXIMUM_SESSION_DESCRIPTION_LENGTH,
 			`Description must be at most ${MAXIMUM_SESSION_DESCRIPTION_LENGTH} characters.`
 		),
 	feeling: sessionFeelingSchema,

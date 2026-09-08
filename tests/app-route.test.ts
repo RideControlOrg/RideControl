@@ -14,10 +14,12 @@ async function loadedRoute(pathname: string) {
 	const router = createAppRouter({
 		history: createMemoryHistory({ initialEntries: [pathname] }),
 	});
+	// Exercise browser navigation rather than the server's redirect response path.
+	router.update({ isServer: false, origin: 'http://localhost' });
 	await router.load();
 	return {
 		match: router.state.matches.at(-1),
-		redirectHref: router.state.redirect?.options.href,
+		pathname: router.state.location.pathname,
 	};
 }
 
@@ -109,8 +111,12 @@ describe('application deep links', () => {
 			calendarMonth: '2025-12',
 			kind: APP_ROUTE_KIND.SESSION,
 		});
-		expect((await loadedRoute('/unknown/path')).redirectHref).toBe(APP_ROUTE_PATH.HOME);
-		expect((await loadedRoute('/devices/trainer')).redirectHref).toBe(APP_ROUTE_PATH.HOME);
+		const unknown = await loadedRoute('/unknown/path');
+		expect(unknown.pathname).toBe(APP_ROUTE_PATH.HOME);
+		expect(unknown.match?.routeId).toBe(APP_ROUTE_PATH.HOME);
+		const unknownDevice = await loadedRoute('/devices/trainer');
+		expect(unknownDevice.pathname).toBe(APP_ROUTE_PATH.HOME);
+		expect(unknownDevice.match?.routeId).toBe(APP_ROUTE_PATH.HOME);
 		expect(appRouteFromRouterMatch((await loadedRoute('/profile?tab=unknown')).match)).toEqual({
 			kind: APP_ROUTE_KIND.PROFILE,
 		});

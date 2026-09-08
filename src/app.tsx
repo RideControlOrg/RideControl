@@ -418,7 +418,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	const devicesOpen = activeOverlay === APP_OVERLAY.DEVICES;
 	const clickShiftRef = useRef<(change: number) => void>(() => undefined);
 	const handleClickShift = useCallback((change: number) => clickShiftRef.current(change), []);
-	const heartRate = useHeartRateMonitor(rememberedDevices, trainer.setNotice);
+	const heartRate = useHeartRateMonitor(rememberedDevices, trainer.setNotice, devicesOpen);
 	const click = useZwiftClick(
 		handleClickShift,
 		trainer.setNotice,

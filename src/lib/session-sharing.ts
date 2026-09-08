@@ -18,9 +18,16 @@ const MAXIMUM_VISUAL_POINTS = 48;
 const VISUAL_SCALE = 1000;
 const PUBLIC_WORKOUT_ID_PATTERN = /^[\w.~-]+$/u;
 
+// Keep the existing share payload limits in UTF-16 code units, matching the backend.
 const workoutShareMetricSchema = z.object({
-	label: z.string().min(1).max(32),
-	value: z.string().min(1).max(32),
+	label: z
+		.string()
+		.min(1)
+		.refine((value) => value.length <= 32),
+	value: z
+		.string()
+		.min(1)
+		.refine((value) => value.length <= 32),
 });
 
 const workoutSharePointSchema = z.tuple([
@@ -35,12 +42,28 @@ const publicWorkoutSchema = z.object({
 });
 
 export const workoutShareSummarySchema = z.object({
-	caption: z.string().min(1).max(280),
-	date: z.string().min(1).max(80),
+	caption: z
+		.string()
+		.min(1)
+		.refine((value) => value.length <= 280),
+	date: z
+		.string()
+		.min(1)
+		.refine((value) => value.length <= 80),
 	metrics: z.array(workoutShareMetricSchema).min(3).max(8),
-	personalBests: z.array(z.string().min(1).max(48)).max(9),
+	personalBests: z
+		.array(
+			z
+				.string()
+				.min(1)
+				.refine((value) => value.length <= 48)
+		)
+		.max(9),
 	publicWorkout: publicWorkoutSchema.optional(),
-	title: z.string().min(1).max(120),
+	title: z
+		.string()
+		.min(1)
+		.refine((value) => value.length <= 120),
 	version: z.literal(1),
 	visual: z
 		.object({

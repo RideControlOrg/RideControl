@@ -16,6 +16,11 @@
 		"indentWidth": 4,
 		"lineWidth": 100
 	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
 	"javascript": {
 		"globals": ["WebSocketPair"],
 		"formatter": {
@@ -37,6 +42,9 @@
 			"a11y": {
 				"noAutofocus": "error"
 			},
+			"complexity": {
+				"noImportantStyles": "error"
+			},
 			"performance": {
 				// Reconnect attempts must be sequential, and these leaf event handlers are not memoized consumers.
 				"noAwaitInLoops": "off",
@@ -46,7 +54,9 @@
 				// Bluetooth FTMS and CSC payloads are defined as packed bit fields.
 				"noBitwiseOperators": "off",
 				// Mutable React refs can change outside Biome's local control-flow analysis.
-				"noUnnecessaryConditions": "off"
+				"noUnnecessaryConditions": "off",
+				// Retain the rule moved from Ultracite core to its opt-in type-aware preset.
+				"useArraySortCompare": "error"
 			}
 		}
 	}
