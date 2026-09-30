@@ -45,7 +45,7 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo KICKR Core 2
 ## Run
 
 ```bash
-bun install
+bun install --frozen-lockfile
 bun run dev
 ```
 
