@@ -95,5 +95,9 @@ export default defineConfig(async () => {
 			'import.meta.env.RIDE_CONTROL_BUILD_TIMESTAMP_UTC': JSON.stringify(buildTimestampUtc),
 		},
 		plugins: [deploymentVersionPlugin(buildTimestampUtc), react(), tailwindcss(), cloudflare()],
+		server: {
+			host: 'localhost',
+			port: 4200,
+		},
 	};
 });

@@ -113,9 +113,18 @@ and repeated dialog and keyboard behavior so those rules stay consistent across 
 ## Deployment
 
 Pull requests and pushes to `main` run the complete `bun run ci` suite in GitHub Actions. After
-CI succeeds on `main`, a separate workflow runs `bun run build` and deploys the generated `dist`
-assets to a Cloudflare Worker at [ridecontrol.xyz](https://ridecontrol.xyz). Each build emits
-`version.json` beside those static assets. Running clients revalidate that marker with the browser
+CI succeeds on `main`, the deployment job runs `bun run build` and deploys the generated Cloudflare
+Build Output to a Worker at [ridecontrol.xyz](https://ridecontrol.xyz). Development, builds, and
+deployment use the pinned `cf` CLI and Cloudflare Vite plugin v2 beta. `cloudflare.config.ts` owns
+the account, custom domain, SPA routing, and observability settings. Build output and generated
+types live in the ignored `.cloudflare/` directory.
+
+`bun run deploy` builds and deploys locally. To validate an existing production build without
+uploading it, run `bun run cf deploy --prebuilt --mode production --dry-run`; CI runs this check
+for every pull request. Production deployment uses the same prebuilt command without `--dry-run`
+and authenticates with the `CLOUDFLARE_API_TOKEN` repository secret.
+
+Each build emits `version.json` beside those static assets. Running clients revalidate that marker with the browser
 cache at most once per hour, so unchanged checks can use Cloudflare's asset ETag without invoking
 dynamic Worker code or transferring the application bundle again.
 
