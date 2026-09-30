@@ -12,8 +12,8 @@
     "tailwind:check": "bun scripts/check-tailwind.ts",
     "ci": "biome check . --error-on-warnings && bun run tailwind:check && bun test && tsc --noEmit && bun run cf build",
     "deploy": "bun run build && bun run cf deploy --prebuilt --mode production",
-    "preview": "vite preview --host localhost --port 4200",
-    "cf": "cf"
+    "preview": "CF_SEND_TELEMETRY=false DO_NOT_TRACK=1 vite preview --host localhost --port 4200",
+    "cf": "CF_SEND_TELEMETRY=false DO_NOT_TRACK=1 cf"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

@@ -114,6 +114,11 @@ and repeated dialog and keyboard behavior so those rules stay consistent across 
 
 ## Deployment
 
+`bun run cf <command>` disables CLI telemetry with `CF_SEND_TELEMETRY=false` and
+`DO_NOT_TRACK=1`. Development, builds, deployment, and CI enforce the same opt-out.
+For direct `cf` commands outside these scripts, disable the machine-wide preference with
+`CF_SEND_TELEMETRY=false DO_NOT_TRACK=1 cf cli telemetry disable`.
+
 Pull requests and pushes to `main` run the complete `bun run ci` suite in GitHub Actions. After
 CI succeeds on `main`, the deployment job runs `bun run build` and deploys the generated Cloudflare
 Build Output to a Worker at [ridecontrol.xyz](https://ridecontrol.xyz). Development, builds, and
