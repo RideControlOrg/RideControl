@@ -44,6 +44,8 @@ Bike trainer control web app using Web Bluetooth. Tested with Wahoo KICKR Core 2
 
 ## Run
 
+Use Bun 1.4.2 (pinned in `package.json`) and Node.js 26.10.0 (pinned in `.node-version`).
+
 ```bash
 bun install --frozen-lockfile
 bun run dev
@@ -122,7 +124,8 @@ types live in the ignored `.cloudflare/` directory.
 `bun run deploy` builds and deploys locally. To validate an existing production build without
 uploading it, run `bun run cf deploy --prebuilt --mode production --dry-run`; CI runs this check
 for every pull request. Production deployment uses the same prebuilt command without `--dry-run`
-and authenticates with the `CLOUDFLARE_API_TOKEN` repository secret.
+and authenticates with the `CLOUDFLARE_API_TOKEN` repository secret. Workflow actions are pinned
+to full commit hashes; Bun and Node.js use the repository's pinned versions.
 
 Each build emits `version.json` beside those static assets. Running clients revalidate that marker with the browser
 cache at most once per hour, so unchanged checks can use Cloudflare's asset ETag without invoking
