@@ -10,13 +10,18 @@ import {
 import { PROFILE_TAB } from '../src/lib/profile-tab';
 import { createAppRouter } from '../src/router';
 
-async function loadedRoute(pathname: string) {
+async function browserRouter(pathname: string) {
 	const router = createAppRouter({
 		history: createMemoryHistory({ initialEntries: [pathname] }),
 	});
-	// Exercise browser navigation rather than the server's redirect response path.
+	// Bun has no document, so explicitly exercise client navigation and redirects.
 	router.update({ isServer: false, origin: 'http://localhost' });
 	await router.load();
+	return router;
+}
+
+async function loadedRoute(pathname: string) {
+	const router = await browserRouter(pathname);
 	return {
 		match: router.state.matches.at(-1),
 		pathname: router.state.location.pathname,
@@ -123,10 +128,7 @@ describe('application deep links', () => {
 	});
 
 	test('builds encoded direct links and selects their parent trays', async () => {
-		const router = createAppRouter({
-			history: createMemoryHistory({ initialEntries: [APP_ROUTE_PATH.HOME] }),
-		});
-		await router.load();
+		const router = await browserRouter(APP_ROUTE_PATH.HOME);
 		expect(
 			router.buildLocation({
 				params: {
@@ -171,9 +173,7 @@ describe('application deep links', () => {
 	});
 
 	test('moves through application history without reloading the dashboard', async () => {
-		const history = createMemoryHistory({ initialEntries: [APP_ROUTE_PATH.HOME] });
-		const router = createAppRouter({ history });
-		await router.load();
+		const router = await browserRouter(APP_ROUTE_PATH.HOME);
 		await router.navigate({ to: APP_ROUTE_PATH.DEVICES });
 		expect(router.state.location.pathname).toBe(APP_ROUTE_PATH.DEVICES);
 
@@ -187,11 +187,7 @@ describe('application deep links', () => {
 	});
 
 	test('moves calendar months through linkable browser history', async () => {
-		const history = createMemoryHistory({
-			initialEntries: ['/sessions?date=2025-12'],
-		});
-		const router = createAppRouter({ history });
-		await router.load();
+		const router = await browserRouter('/sessions?date=2025-12');
 		await router.navigate({
 			search: { date: '2026-01' },
 			to: APP_ROUTE_PATH.SESSIONS,
@@ -208,11 +204,7 @@ describe('application deep links', () => {
 	});
 
 	test('moves session views through linkable browser history', async () => {
-		const history = createMemoryHistory({
-			initialEntries: ['/sessions?date=2025-12&view=calendar'],
-		});
-		const router = createAppRouter({ history });
-		await router.load();
+		const router = await browserRouter('/sessions?date=2025-12&view=calendar');
 		await router.navigate({
 			search: { date: '2025-12', view: 'list' },
 			to: APP_ROUTE_PATH.SESSIONS,
@@ -233,11 +225,7 @@ describe('application deep links', () => {
 	});
 
 	test('moves profile tabs through linkable browser history', async () => {
-		const history = createMemoryHistory({
-			initialEntries: ['/profile?tab=personal'],
-		});
-		const router = createAppRouter({ history });
-		await router.load();
+		const router = await browserRouter('/profile?tab=personal');
 		await router.navigate({
 			search: { tab: PROFILE_TAB.BIKES },
 			to: APP_ROUTE_PATH.PROFILE,
