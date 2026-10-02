@@ -23,6 +23,7 @@ import {
 	workoutSelectionLocked,
 	workoutTerrainAtDistance,
 } from '../src/lib/workouts';
+import godbyFinbyFinish from './fixtures/bikegpx-2635-finish.json';
 import { requiredValue } from './test-values';
 
 const course = WORKOUT_COURSES.find((workout) => workout.id === 'cedar-circuit');
@@ -251,6 +252,58 @@ describe('terrain workouts', () => {
 			descent: oneLapElevation.descent * 2,
 		});
 		expect(workoutMapProgressPath(pointToPoint, finish)).not.toContain('C ');
+	});
+
+	test.each([
+		{ finishSlope: -10, startElevation: 100 },
+		{ finishSlope: 0, startElevation: 100 },
+		{ finishSlope: 10, startElevation: 100 },
+		{ finishSlope: -10, startElevation: 0 },
+		{ finishSlope: 0, startElevation: 0 },
+		{ finishSlope: 10, startElevation: 0 },
+	])('uses the actual finish grade with %j', ({ startElevation, finishSlope }) => {
+		const pointToPoint = requiredValue(
+			restoreWorkoutCourse({
+				...course,
+				distance: 3,
+				id: 'unequal-endpoint-elevations',
+				points: [0, 1, 2, 2.5, 3].map((distance) => ({
+					distance,
+					elevation: distance < 2 ? startElevation : 50 + (distance - 2) * finishSlope,
+					latitude: 40 + distance / 111,
+					longitude: -120,
+				})),
+				routeType: WORKOUT_ROUTE_TYPE.POINT_TO_POINT,
+			}),
+			'point-to-point course with a constant finish slope'
+		);
+		for (const lap of [0, 1, 5]) {
+			for (const remaining of [0.151, 0.15, 0.149, 0.05, 0.001, 0.000_001]) {
+				const terrain = workoutTerrainAtDistance(
+					pointToPoint,
+					(lap + 1) * pointToPoint.distance - remaining
+				);
+				expect(terrain.grade).toBeCloseTo(finishSlope / 10, 5);
+				expect(terrain.resistance).toBe(Math.round(12 + (finishSlope / 10) * 2.25));
+				expect(terrain.completedLaps).toBe(lap);
+			}
+		}
+	});
+
+	test('keeps the BikeGPX Godby–Finby finish downhill on every lap', () => {
+		// Recorded prepared-route endpoints and final 300 m from BikeGPX route 2635.
+		const pointToPoint = requiredValue(restoreWorkoutCourse(godbyFinbyFinish), 'Godby–Finby');
+		for (const lap of [0, 1, 5]) {
+			for (const remainingMeters of [151, 150, 149, 100, 50, 10, 1, 0.1]) {
+				const terrain = workoutTerrainAtDistance(
+					pointToPoint,
+					(lap + 1) * pointToPoint.distance - remainingMeters / 1000
+				);
+				expect(terrain.grade).toBeGreaterThan(-1);
+				expect(terrain.grade).toBeLessThan(0);
+				expect(terrain.resistance).toBe(11);
+			}
+		}
 	});
 
 	test('offers a fifteen-mile course whose rollers use the universal grade load', () => {

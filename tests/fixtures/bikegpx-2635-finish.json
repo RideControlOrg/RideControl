@@ -1,0 +1,106 @@
+{
+	"description": "Aland Islands \u00b7 Near Finstr\u00f6m \u2192 Near Sund",
+	"difficulty": "gentle",
+	"distance": 12.403419378405312,
+	"elevationGain": 92.25029970891447,
+	"id": "gpx-3975d1f0",
+	"name": "Cykelbana Godby - Finby",
+	"points": [
+		{
+			"elevation": 11.4,
+			"latitude": 60.23004,
+			"longitude": 19.98738,
+			"distance": 0
+		},
+		{
+			"elevation": 2.378354630090128,
+			"latitude": 60.22315,
+			"longitude": 20.16514,
+			"distance": 12.096526869949152
+		},
+		{
+			"elevation": 2.0835377907210924,
+			"latitude": 60.22305,
+			"longitude": 20.16567,
+			"distance": 12.127835677076872
+		},
+		{
+			"elevation": 1.7426752681368738,
+			"latitude": 60.22298,
+			"longitude": 20.16629,
+			"distance": 12.16294707743302
+		},
+		{
+			"elevation": 1.0914959203264063,
+			"latitude": 60.22284,
+			"longitude": 20.16756,
+			"distance": 12.234786482416585
+		},
+		{
+			"elevation": 0.922689333924506,
+			"latitude": 60.22279,
+			"longitude": 20.16797,
+			"distance": 12.258100360129866
+		},
+		{
+			"elevation": 0.8918192269831745,
+			"latitude": 60.22278,
+			"longitude": 20.16816,
+			"distance": 12.268651411821708
+		},
+		{
+			"elevation": 0.921808301884592,
+			"latitude": 60.22278,
+			"longitude": 20.16832,
+			"distance": 12.277487030262865
+		},
+		{
+			"elevation": 0.8714783984767054,
+			"latitude": 60.22284,
+			"longitude": 20.1685,
+			"distance": 12.289458510863268
+		},
+		{
+			"elevation": 0.7657732761689788,
+			"latitude": 60.22296,
+			"longitude": 20.16869,
+			"distance": 12.30643300870365
+		},
+		{
+			"elevation": 0.6258217804504469,
+			"latitude": 60.22323,
+			"longitude": 20.16887,
+			"distance": 12.338058337657968
+		},
+		{
+			"elevation": 0.5766157301411078,
+			"latitude": 60.22335,
+			"longitude": 20.16894,
+			"distance": 12.351950362571307
+		},
+		{
+			"elevation": 0.5526951395184578,
+			"latitude": 60.22341,
+			"longitude": 20.16894,
+			"distance": 12.358622058169727
+		},
+		{
+			"elevation": 0.486665559973518,
+			"latitude": 60.22342,
+			"longitude": 20.16917,
+			"distance": 12.371371595477607
+		},
+		{
+			"elevation": 0.34757584097793864,
+			"latitude": 60.22343,
+			"longitude": 20.16975,
+			"distance": 12.403419378405312
+		}
+	],
+	"routeType": "point-to-point",
+	"publicSource": {
+		"collectionId": "public-routes",
+		"providerId": "bikegpx",
+		"routeId": "2635"
+	}
+}

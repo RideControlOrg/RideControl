@@ -457,7 +457,13 @@ export function workoutTerrainAtDistance(
 		course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT
 			? Math.min(lookAheadDistance, course.distance - distance)
 			: lookAheadDistance;
-	const ahead = coursePointAtDistance(course, distance + gradeDistance);
+	// The finish is a real elevation sample. Looking it up as a lap distance wraps
+	// to the start and turns unequal endpoint elevations into an invisible hill.
+	const ahead =
+		course.routeType === WORKOUT_ROUTE_TYPE.POINT_TO_POINT &&
+		distance + gradeDistance >= course.distance
+			? (course.points.at(-1) ?? point)
+			: coursePointAtDistance(course, distance + gradeDistance);
 	const grade =
 		gradeDistance > 0
 			? clamp(((ahead.elevation - point.elevation) / (gradeDistance * 1000)) * 100, -15, 15)
