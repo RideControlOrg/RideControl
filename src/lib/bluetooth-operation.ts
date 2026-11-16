@@ -2,7 +2,7 @@ import { BLUETOOTH_OPERATION_TIMEOUT_MS } from '../constants';
 import { withPromiseTimeout } from './promise-timeout';
 
 const RECOVERABLE_BLUETOOTH_MESSAGE =
-	/(connection closed|device is disconnected|gatt server is disconnected|not connected)/i;
+	/(?:connection closed|device is disconnected|gatt server is disconnected|not connected)/iu;
 
 export class BluetoothOperationTimeoutError extends Error {
 	constructor(description: string) {

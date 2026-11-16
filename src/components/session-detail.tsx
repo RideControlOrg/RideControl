@@ -49,26 +49,26 @@ function SessionMetadataDetails({
 		>
 			{recordedRiderWeight ? (
 				<div className="session-metadata-item session-metadata-weight px-2 py-3 sm:px-3">
-					<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">
+					<p className="text-[10px] font-bold tracking-[.12em] text-slate-500">
 						RIDER WEIGHT
 					</p>
-					<p className="mt-1 flex items-baseline gap-1 font-semibold text-slate-300 text-xl tabular-nums">
+					<p className="mt-1 flex items-baseline gap-1 text-xl font-semibold text-slate-300 tabular-nums">
 						{recordedRiderWeight.value}
-						<span className="font-medium text-slate-400 text-xs">
+						<span className="text-xs font-medium text-slate-400">
 							{recordedRiderWeight.unit}
 						</span>
 					</p>
 				</div>
 			) : null}
 			<div className="session-metadata-item session-metadata-feeling px-2 py-3 sm:px-3">
-				<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">FELT</p>
-				<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
+				<p className="text-[10px] font-bold tracking-[.12em] text-slate-500">FELT</p>
+				<p className="mt-1 text-sm whitespace-pre-wrap text-slate-300">
 					{feelingLabel(session.feeling)}
 				</p>
 			</div>
 			<div className="session-metadata-description session-metadata-item px-2 py-3 sm:px-3">
-				<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">DESCRIPTION</p>
-				<p className="mt-1 whitespace-pre-wrap text-slate-300 text-sm">
+				<p className="text-[10px] font-bold tracking-[.12em] text-slate-500">DESCRIPTION</p>
+				<p className="mt-1 text-sm whitespace-pre-wrap text-slate-300">
 					{session.comments || 'No description'}
 				</p>
 			</div>
@@ -104,18 +104,18 @@ export function DeleteSessionDialog({
 			aria-describedby="delete-session-description"
 			aria-labelledby="delete-session-title"
 			aria-modal="true"
-			className="absolute top-0 right-0 z-30 w-full max-w-sm rounded-xl border border-rose-400/40 bg-panel/95 p-4 shadow-2xl shadow-black/60 backdrop-blur-sm"
+			className="bg-panel/95 absolute top-0 right-0 z-30 w-full max-w-sm rounded-xl border border-rose-400/40 p-4 shadow-2xl shadow-black/60 backdrop-blur-sm"
 			role="alertdialog"
 		>
-			<h2 className="font-bold text-lg" id="delete-session-title">
+			<h2 className="text-lg font-bold" id="delete-session-title">
 				Delete this session?
 			</h2>
-			<p className="mt-1 text-slate-400 text-sm" id="delete-session-description">
+			<p className="mt-1 text-sm text-slate-400" id="delete-session-description">
 				This cannot be undone.
 			</p>
 			<div className="mt-4 flex justify-end gap-2">
 				<button
-					className="rounded-lg px-3 py-2 font-semibold text-slate-400 text-xs hover:bg-slate-800 hover:text-white"
+					className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-white"
 					disabled={deleting}
 					onClick={onCancel}
 					type="button"
@@ -123,7 +123,7 @@ export function DeleteSessionDialog({
 					Cancel
 				</button>
 				<button
-					className="rounded-lg bg-rose-700 px-3 py-2 font-bold text-white text-xs hover:bg-rose-600 disabled:opacity-50"
+					className="rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-600 disabled:opacity-50"
 					disabled={deleting}
 					onClick={onConfirm}
 					ref={confirmButton}
@@ -166,7 +166,7 @@ function JourneyMetricScope({
 				<nav aria-label="Connected journey sessions" className="flex items-center gap-3">
 					{canSelectPrevious ? (
 						<button
-							className="py-1 font-semibold text-slate-400 text-xs hover:text-white"
+							className="py-1 text-xs font-semibold text-slate-400 hover:text-white"
 							onClick={() => selectSession(journey.previousSessionId)}
 							type="button"
 						>
@@ -175,7 +175,7 @@ function JourneyMetricScope({
 					) : null}
 					{canSelectNext ? (
 						<button
-							className="py-1 font-semibold text-slate-400 text-xs hover:text-white"
+							className="py-1 text-xs font-semibold text-slate-400 hover:text-white"
 							onClick={() => selectSession(journey.nextSessionId)}
 							type="button"
 						>
@@ -186,7 +186,7 @@ function JourneyMetricScope({
 			</div>
 			<button
 				aria-pressed={showCombined}
-				className={`px-2 py-1 font-semibold text-xs ${
+				className={`px-2 py-1 text-xs font-semibold ${
 					showCombined ? 'bg-mint/10 text-mint' : 'text-slate-400 hover:text-white'
 				}`}
 				onClick={() => onChange(!showCombined)}
@@ -317,7 +317,7 @@ export function SessionDetail({
 	}, [session, speedUnit]);
 	return (
 		<div
-			className="session-detail-container min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-0 pb-3 sm:px-6 sm:pb-6"
+			className="session-detail-container min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pt-0 pb-3 sm:px-6 sm:pb-6"
 			data-testid="session-detail"
 			onScroll={detailScroll.onScroll}
 			ref={detailScroll.ref}
@@ -328,19 +328,19 @@ export function SessionDetail({
 					data-session-date-time="true"
 				>
 					<div className="flex items-center gap-2">
-						<p className="font-bold text-base text-mint tracking-widest">
+						<p className="text-mint text-base font-bold tracking-widest">
 							{formatSessionDateRange(session)}
 						</p>
 						{imported ? (
 							<span
-								className="rounded-full bg-cyan-400/15 px-1.5 py-0.5 font-bold text-[9px] text-cyan-300 uppercase tracking-wide"
+								className="rounded-full bg-cyan-400/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-cyan-300 uppercase"
 								title={formatSessionImportLabel(session)}
 							>
 								Imported
 							</span>
 						) : null}
 					</div>
-					<h3 className="whitespace-nowrap font-bold text-base tabular-nums">
+					<h3 className="text-base font-bold whitespace-nowrap tabular-nums">
 						{formatSessionTimeRange(session)}
 					</h3>
 				</div>
@@ -350,7 +350,7 @@ export function SessionDetail({
 						data-session-file-downloads="true"
 					>
 						<button
-							className="w-full rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+							className="w-full rounded-lg border border-slate-500/40 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
 							disabled={session.history.length === 0}
 							onClick={() => downloadSessionFit(session)}
 							title={
@@ -363,7 +363,7 @@ export function SessionDetail({
 							Download FIT
 						</button>
 						<button
-							className="w-full rounded-lg border border-slate-500/40 px-3 py-2 font-semibold text-slate-300 text-xs transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+							className="w-full rounded-lg border border-slate-500/40 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
 							disabled={session.history.length === 0}
 							onClick={() => downloadSessionTcx(session)}
 							title={
@@ -376,7 +376,7 @@ export function SessionDetail({
 							Download TCX
 						</button>
 						<button
-							className="w-full rounded-lg border border-cyan-500/40 px-3 py-2 font-semibold text-cyan-300 text-xs transition hover:border-cyan-400 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-50 sm:w-auto"
+							className="w-full rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-300 transition hover:border-cyan-400 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-50 sm:w-auto"
 							disabled={sharing}
 							onClick={shareOnX}
 							title="Create a public workout card and share it on X"
@@ -392,7 +392,7 @@ export function SessionDetail({
 						>
 							{onStartNew ? (
 								<button
-									className="w-full rounded-lg border border-mint/30 px-3 py-2 font-semibold text-mint text-xs transition hover:border-mint/60 hover:bg-mint/5 sm:w-auto"
+									className="border-mint/30 text-mint hover:border-mint/60 hover:bg-mint/5 w-full rounded-lg border px-3 py-2 text-xs font-semibold transition sm:w-auto"
 									onClick={onStartNew}
 									title="Start a fresh linked session from this saved course position"
 									type="button"
@@ -402,7 +402,7 @@ export function SessionDetail({
 							) : null}
 							{onDelete ? (
 								<button
-									className="w-full rounded-lg border border-rose-400/30 px-3 py-2 font-semibold text-rose-300 text-xs transition hover:border-rose-400/60 hover:bg-rose-400/5 sm:w-auto"
+									className="w-full rounded-lg border border-rose-400/30 px-3 py-2 text-xs font-semibold text-rose-300 transition hover:border-rose-400/60 hover:bg-rose-400/5 sm:w-auto"
 									onClick={onDelete}
 									type="button"
 								>
@@ -413,7 +413,7 @@ export function SessionDetail({
 					) : null}
 				</div>
 				{shareError ? (
-					<p className="mt-2 text-rose-300 text-xs" role="alert">
+					<p className="mt-2 text-xs text-rose-300" role="alert">
 						{shareError}
 					</p>
 				) : null}

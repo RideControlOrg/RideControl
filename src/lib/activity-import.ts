@@ -12,8 +12,8 @@ import { parseTcxSessions } from './tcx-import';
 import { loadCustomWorkouts } from './workout-file';
 import { WORKOUT_COURSES } from './workouts';
 
-const ACTIVITY_FILE_EXTENSION = /\.(fit|tcx)$/i;
-const ZIP_FILE_EXTENSION = /\.zip$/i;
+const ACTIVITY_FILE_EXTENSION = /\.(?<extension>fit|tcx)$/iu;
+const ZIP_FILE_EXTENSION = /\.zip$/iu;
 const INPUT_CHUNK_BYTES = 64 * 1024;
 const ZIP_END_RECORD_BYTES = 22;
 const ZIP_MAX_COMMENT_BYTES = 0xff_ff;
@@ -57,7 +57,7 @@ const DEFAULT_IMPORT_DEPENDENCIES: ImportDependencies = {
 
 function formatForFilename(filename: string): ActivityFileFormat | undefined {
 	const match = ACTIVITY_FILE_EXTENSION.exec(filename);
-	const extension = match?.[1]?.toLowerCase();
+	const extension = match?.groups?.extension?.toLowerCase();
 	if (extension === ACTIVITY_FILE_FORMAT.FIT) {
 		return ACTIVITY_FILE_FORMAT.FIT;
 	}

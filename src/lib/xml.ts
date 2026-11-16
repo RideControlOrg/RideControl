@@ -15,6 +15,7 @@ export function xmlChild(element: Element, name: string): Element | undefined {
 }
 
 export function xmlDescendants(element: Element, name: string): Element[] {
+	// biome-ignore lint/style/useDomQuerySelector: XML elements also come from xmldom, which has no selector API.
 	return Array.from(element.getElementsByTagName('*')).filter(
 		(candidate) => elementName(candidate) === name
 	);

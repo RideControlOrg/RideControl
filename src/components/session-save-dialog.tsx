@@ -103,7 +103,7 @@ export function SessionSaveDialog({
 			<form
 				aria-labelledby="save-session-title"
 				aria-modal="true"
-				className="relative w-full max-w-xl rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/50 sm:p-6"
+				className="bg-panel relative w-full max-w-xl rounded-2xl border border-slate-600 p-5 shadow-2xl shadow-black/50 sm:p-6"
 				onSubmit={(event) => {
 					event.preventDefault();
 					event.stopPropagation();
@@ -113,10 +113,10 @@ export function SessionSaveDialog({
 			>
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<h2 className="font-bold text-2xl" id="save-session-title">
+						<h2 className="text-2xl font-bold" id="save-session-title">
 							Save this session?
 						</h2>
-						<p className="mt-1 text-slate-400 text-sm">
+						<p className="mt-1 text-sm text-slate-400">
 							Started at {formatSessionTime(session.startedAt)}
 							{session.workout ? ` · ${session.workout.course.name}` : null}
 						</p>
@@ -133,7 +133,7 @@ export function SessionSaveDialog({
 					</button>
 				</div>
 
-				<div className="mt-5 grid grid-cols-3 divide-x divide-line rounded-xl bg-[#12171d] ring-1 ring-line ring-inset">
+				<div className="divide-line ring-line mt-5 grid grid-cols-3 divide-x rounded-xl bg-[#12171d] ring-1 ring-inset">
 					<SessionSummary
 						calories={session.calories}
 						distance={session.distance}
@@ -145,12 +145,12 @@ export function SessionSaveDialog({
 				<form.Field name="feeling">
 					{(field) => (
 						<fieldset className="mt-5">
-							<legend className="font-semibold text-sm">How did it feel?</legend>
+							<legend className="text-sm font-semibold">How did it feel?</legend>
 							<div className="mt-2 grid grid-cols-5 gap-1.5">
 								{SESSION_FEELING_OPTIONS.map((option) => (
 									<button
 										aria-pressed={field.state.value === option.value}
-										className={`rounded-lg border px-2 py-2 font-semibold text-xs transition ${field.state.value === option.value ? 'border-mint bg-mint/10 text-mint' : 'border-line bg-[#12171d] text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
+										className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${field.state.value === option.value ? 'border-mint bg-mint/10 text-mint' : 'border-line bg-[#12171d] text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
 										key={option.value}
 										onClick={() => field.handleChange(option.value)}
 										type="button"
@@ -167,7 +167,7 @@ export function SessionSaveDialog({
 				<form.Field name="comments">
 					{(field) => (
 						<label
-							className="mt-5 block font-semibold text-sm"
+							className="mt-5 block text-sm font-semibold"
 							htmlFor="session-description"
 						>
 							<span className="flex items-center justify-between gap-4">
@@ -175,13 +175,13 @@ export function SessionSaveDialog({
 									Description{' '}
 									<span className="font-normal text-slate-500">(optional)</span>
 								</span>
-								<span className="font-normal text-slate-500 text-xs tabular-nums">
+								<span className="text-xs font-normal text-slate-500 tabular-nums">
 									{field.state.value.length} /{' '}
 									{MAXIMUM_SESSION_DESCRIPTION_LENGTH}
 								</span>
 							</span>
 							<textarea
-								className="mt-2 min-h-24 w-full resize-y rounded-xl border border-line bg-[#10151a] px-3 py-2.5 text-sm outline-none placeholder:text-slate-600 focus:border-mint"
+								className="border-line focus:border-mint mt-2 min-h-24 w-full resize-y rounded-xl border bg-[#10151a] px-3 py-2.5 text-sm outline-none placeholder:text-slate-600"
 								id="session-description"
 								maxLength={MAXIMUM_SESSION_DESCRIPTION_LENGTH}
 								onBlur={field.handleBlur}
@@ -196,7 +196,7 @@ export function SessionSaveDialog({
 
 				<div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 					<button
-						className={`rounded-lg px-4 py-2.5 font-semibold text-sm ${labels.secondaryClass}`}
+						className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${labels.secondaryClass}`}
 						disabled={busy}
 						onClick={onStartWithoutSaving}
 						type="button"
@@ -204,7 +204,7 @@ export function SessionSaveDialog({
 						{labels.secondary}
 					</button>
 					<button
-						className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c] disabled:opacity-50"
+						className="bg-lime text-ink rounded-lg px-5 py-2.5 text-sm font-bold hover:bg-[#e4ff9c] disabled:opacity-50"
 						disabled={busy || !canSubmit}
 						type="submit"
 					>

@@ -32,6 +32,7 @@ import { useGearControl } from './hooks/use-gear-control';
 import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useProfile } from './hooks/use-profile';
 import { useRememberedBluetoothDevices } from './hooks/use-remembered-bluetooth-devices';
+import { useRideNotifications } from './hooks/use-ride-notifications';
 import { useSession } from './hooks/use-session';
 import { useSessionWorkflow } from './hooks/use-session-workflow';
 import { useTrainer } from './hooks/use-trainer';
@@ -464,6 +465,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		initialSession,
 		riderProfile.ready ? riderPhysicsProfile : undefined
 	);
+	useRideNotifications(session);
 	const [workoutPreview, setWorkoutPreview] = useState<
 		{ distance: number; startedAt: number } | undefined
 	>();
@@ -852,7 +854,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	);
 
 	return (
-		<main className="app-shell flex min-h-dvh min-w-0 flex-col overflow-x-clip bg-ink selection:bg-mint/30">
+		<main className="app-shell bg-ink selection:bg-mint/30 flex min-h-dvh min-w-0 flex-col overflow-x-clip">
 			<Dashboard>
 				<DashboardToolbar>
 					<SessionControls
@@ -882,7 +884,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				{showRestoredSessionNotice ? (
 					<SessionRecoveryNotice onDismiss={dismissRestoredSessionNotice} />
 				) : null}
-				<section className="dashboard-data-grid grid gap-px bg-line min-[1120px]:grid-cols-4">
+				<section className="dashboard-data-grid bg-line grid gap-px min-[1120px]:grid-cols-4">
 					<RideMetrics
 						aggregates={session.aggregates}
 						elapsedSeconds={session.elapsedSeconds}
@@ -891,7 +893,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						rideDistance={session.rideDistance}
 						speedUnit={speedUnit}
 					/>
-					<div className="dashboard-session-summary grid min-w-0 grid-cols-3 gap-px bg-line">
+					<div className="dashboard-session-summary bg-line grid min-w-0 grid-cols-3 gap-px">
 						<SessionSummary
 							calories={session.rideCalories}
 							distance={session.rideDistance}

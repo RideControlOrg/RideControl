@@ -30,14 +30,14 @@ export function RemoveWorkoutDialog({
 				aria-describedby="remove-workout-description"
 				aria-labelledby="remove-workout-title"
 				aria-modal="true"
-				className="relative z-10 w-full max-w-sm rounded-2xl border border-rose-400/40 bg-panel p-5 shadow-2xl shadow-black/60"
+				className="bg-panel relative z-10 w-full max-w-sm rounded-2xl border border-rose-400/40 p-5 shadow-2xl shadow-black/60"
 				role="alertdialog"
 			>
-				<h2 className="font-bold text-lg" id="remove-workout-title">
+				<h2 className="text-lg font-bold" id="remove-workout-title">
 					Remove this workout?
 				</h2>
 				<p
-					className="mt-2 text-slate-400 text-sm leading-6"
+					className="mt-2 text-sm leading-6 text-slate-400"
 					id="remove-workout-description"
 				>
 					<span className="font-semibold text-slate-200">{courseName}</span> will be
@@ -46,14 +46,14 @@ export function RemoveWorkoutDialog({
 				</p>
 				<div className="mt-5 flex justify-end gap-2">
 					<button
-						className="rounded-lg px-3 py-2 font-semibold text-slate-400 text-sm hover:bg-slate-800 hover:text-white"
+						className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-800 hover:text-white"
 						onClick={onCancel}
 						type="button"
 					>
 						Cancel
 					</button>
 					<button
-						className="rounded-lg bg-rose-700 px-3 py-2 font-bold text-sm text-white hover:bg-rose-600"
+						className="rounded-lg bg-rose-700 px-3 py-2 text-sm font-bold text-white hover:bg-rose-600"
 						onClick={onConfirm}
 						ref={confirmButtonRef}
 						type="button"

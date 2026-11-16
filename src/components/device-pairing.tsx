@@ -84,7 +84,7 @@ function ClickControllerRow({
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-2">
 					<p
-						className={`font-semibold text-xs transition ${controller.active ? 'text-mint' : 'text-slate-200'}`}
+						className={`text-xs font-semibold transition ${controller.active ? 'text-mint' : 'text-slate-200'}`}
 					>
 						{controller.label}
 					</p>
@@ -95,7 +95,7 @@ function ClickControllerRow({
 								? `${activeShiftSymbol} shift pressed`
 								: undefined
 						}
-						className={`grid h-5 w-5 shrink-0 place-items-center rounded-md bg-mint font-bold text-[11px] text-ink ${controller.activeShift ? '' : 'invisible'}`}
+						className={`bg-mint text-ink grid h-5 w-5 shrink-0 place-items-center rounded-md text-[11px] font-bold ${controller.activeShift ? '' : 'invisible'}`}
 					>
 						{controller.activeShift ? activeShiftSymbol : null}
 					</output>
@@ -110,7 +110,7 @@ function ClickControllerRow({
 			</div>
 			{controller.paired ? (
 				<button
-					className="font-semibold text-[11px] text-rose-300 hover:text-rose-200"
+					className="text-[11px] font-semibold text-rose-300 hover:text-rose-200"
 					onClick={() => onForget(controller.role)}
 					type="button"
 				>
@@ -158,7 +158,7 @@ function SlowReconnectNotice() {
 
 	return (
 		<div
-			className="mt-4 rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5 text-sky-100 text-xs leading-relaxed"
+			className="mt-4 rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5 text-xs leading-relaxed text-sky-100"
 			role="status"
 		>
 			Connecting can take up to 60 seconds. Please be patient. If a device seems stuck, reload
@@ -216,7 +216,7 @@ function DeviceActions({ slot }: { slot: DeviceSlot }) {
 		if (actionBusy) {
 			return (
 				<button
-					className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs transition hover:border-slate-500 hover:text-white"
+					className="border-line h-9 rounded-lg border px-3 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
 					onClick={slot.onCancel}
 					type="button"
 				>
@@ -251,14 +251,14 @@ function ConnectedDeviceActions({ slot }: { slot: Omit<DeviceSlot, 'onPair'> }) 
 	return (
 		<div className="flex flex-wrap justify-end gap-2">
 			<button
-				className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs transition hover:border-slate-500 hover:text-white disabled:opacity-50"
+				className="border-line h-9 rounded-lg border px-3 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white disabled:opacity-50"
 				onClick={connectionAction}
 				type="button"
 			>
 				{connectionLabel}
 			</button>
 			<button
-				className="h-9 rounded-lg border border-rose-400/25 px-3 font-semibold text-rose-300 text-xs transition hover:border-rose-400/60 hover:bg-rose-400/5"
+				className="h-9 rounded-lg border border-rose-400/25 px-3 text-xs font-semibold text-rose-300 transition hover:border-rose-400/60 hover:bg-rose-400/5"
 				onClick={slot.onForget}
 				type="button"
 			>
@@ -281,11 +281,11 @@ function AutomaticReconnectStatus({
 }) {
 	if (configured) {
 		return (
-			<aside className="rounded-xl border border-mint/20 bg-mint/5 p-3 text-[11px] text-slate-400 leading-relaxed">
-				<p className="flex items-center gap-2 font-semibold text-mint text-xs">
+			<aside className="border-mint/20 bg-mint/5 rounded-xl border p-3 text-[11px] leading-relaxed text-slate-400">
+				<p className="text-mint flex items-center gap-2 text-xs font-semibold">
 					<span
 						aria-hidden="true"
-						className="h-2 w-2 shrink-0 rounded-full bg-mint shadow-[0_0_8px_rgba(173,245,189,.45)]"
+						className="bg-mint h-2 w-2 shrink-0 rounded-full shadow-[0_0_8px_rgba(173,245,189,.45)]"
 					/>
 					Automatic reconnect is configured correctly
 				</p>
@@ -294,8 +294,8 @@ function AutomaticReconnectStatus({
 	}
 
 	return (
-		<aside className="rounded-xl border border-sky-400/20 bg-sky-400/5 p-3 text-[11px] text-slate-400 leading-relaxed">
-			<h3 className="font-semibold text-slate-200 text-xs">Automatic reconnect in Chrome</h3>
+		<aside className="rounded-xl border border-sky-400/20 bg-sky-400/5 p-3 text-[11px] leading-relaxed text-slate-400">
+			<h3 className="text-xs font-semibold text-slate-200">Automatic reconnect in Chrome</h3>
 			<p className="mt-1">
 				Chrome needs persistent Bluetooth permissions to reconnect devices after a refresh.
 			</p>
@@ -304,7 +304,7 @@ function AutomaticReconnectStatus({
 					{copied ? null : 'Open '}
 					<button
 						aria-label="Copy Chrome Bluetooth settings address"
-						className="wrap-break-word max-w-full text-left align-top font-semibold text-sky-300 underline underline-offset-2 hover:text-sky-200"
+						className="max-w-full text-left align-top font-semibold wrap-break-word text-sky-300 underline underline-offset-2 hover:text-sky-200"
 						onClick={onCopy}
 						type="button"
 					>
@@ -340,9 +340,9 @@ function DeviceCard({
 				<div className="min-w-28 flex-1">
 					<div className="flex items-center gap-2">
 						<StatusDot busy={slot.busy} connected={slot.connected} />
-						<h3 className="font-bold text-sm text-white">{title}</h3>
+						<h3 className="text-sm font-bold text-white">{title}</h3>
 					</div>
-					<p className="mt-1 font-medium text-slate-300 text-xs leading-snug">
+					<p className="mt-1 text-xs leading-snug font-medium text-slate-300">
 						{slot.name ?? description}
 					</p>
 					<p className="mt-1 text-[11px] text-slate-500">
@@ -373,7 +373,7 @@ function ClickShiftIndicator({ controller }: { controller?: ClickController }) {
 		<output
 			aria-hidden={controller.activeShift ? undefined : true}
 			aria-label={controller.activeShift ? `${symbol} shift pressed` : undefined}
-			className={`grid h-5 w-5 shrink-0 place-items-center bg-mint font-bold text-[11px] text-ink ${controller.activeShift ? '' : 'invisible'}`}
+			className={`bg-mint text-ink grid h-5 w-5 shrink-0 place-items-center text-[11px] font-bold ${controller.activeShift ? '' : 'invisible'}`}
 		>
 			{controller.activeShift ? symbol : null}
 		</output>
@@ -435,7 +435,7 @@ function ClickFirmwareUpdateNotice({ visible }: { visible: boolean }) {
 		return null;
 	}
 	return (
-		<p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
+		<p className="mt-2 text-[10px] leading-relaxed text-slate-500">
 			Use firmware {CLICK_LATEST_FIRMWARE_VERSION}. Update it in the Zwift Companion app under
 			Equipment → Zwift Click →{' '}
 			<a
@@ -474,10 +474,10 @@ function ClickDeviceCard({ click }: { click: ClickSlot }) {
 							busy={waitingForControllers}
 							connected={click.connectedCount > 0}
 						/>
-						<h3 className="font-bold text-sm text-white">Zwift Click V2</h3>
+						<h3 className="text-sm font-bold text-white">Zwift Click V2</h3>
 						<ClickShiftIndicator controller={soleController} />
 					</div>
-					<p className="mt-1 text-slate-300 text-xs">
+					<p className="mt-1 text-xs text-slate-300">
 						{soleController ? soleController.label : clickControllerSummary(click)}
 					</p>
 					<p className="mt-1 text-[11px] text-slate-500">
@@ -491,7 +491,7 @@ function ClickDeviceCard({ click }: { click: ClickSlot }) {
 				</div>
 			</div>
 
-			<p className="mt-3 text-slate-500 text-xs leading-relaxed">
+			<p className="mt-3 text-xs leading-relaxed text-slate-500">
 				Wake the physical + controller, then choose Pair. Its + button shifts up, and its
 				blue Y button shifts down. It reconnects during open sessions, including auto-pause,
 				and may disconnect during a manual pause or after the session ends.
@@ -530,14 +530,14 @@ export function DevicePairingButton({
 	return (
 		<button
 			aria-busy={connecting}
-			className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3.5 font-semibold text-sm transition ${buttonClass}`}
+			className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3.5 text-sm font-semibold transition ${buttonClass}`}
 			onClick={onClick}
 			type="button"
 		>
 			<Icon className="h-4 w-4" name="bluetooth" />
 			<span>{pairedCount ? 'Devices' : 'Pair devices'}</span>
 			{pairedCount ? (
-				<span className="inline-flex items-center gap-1.5 border-line border-l pl-2 text-xs">
+				<span className="border-line inline-flex items-center gap-1.5 border-l pl-2 text-xs">
 					<span className={`h-2.5 w-2.5 rounded-full ${statusClass}`} />
 					{connectedCount}/{pairedCount}
 				</span>
@@ -587,10 +587,10 @@ export function DevicePairingPanel({
 		>
 			<div className="flex items-start justify-between gap-4">
 				<div>
-					<h2 className="font-bold text-2xl" id="paired-devices-title">
+					<h2 className="text-2xl font-bold" id="paired-devices-title">
 						Paired devices
 					</h2>
-					<p className="mt-1 max-w-sm text-slate-400 text-sm">
+					<p className="mt-1 max-w-sm text-sm text-slate-400">
 						Pair each physical device once. Ride Control keeps the trainer, heart-rate
 						monitor, and Click controller separate, then reconnects them automatically.
 					</p>
@@ -615,7 +615,7 @@ export function DevicePairingPanel({
 
 			{browserNotice ? (
 				<div
-					className="mt-5 rounded-xl border border-sky-400/30 bg-sky-400/10 p-3 text-sky-100 text-sm"
+					className="mt-5 rounded-xl border border-sky-400/30 bg-sky-400/10 p-3 text-sm text-sky-100"
 					role="note"
 				>
 					<p>{browserNotice}</p>

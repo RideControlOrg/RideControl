@@ -35,9 +35,9 @@ function CalendarSessionButton({
 	return (
 		<button
 			aria-pressed={selected}
-			className={`block w-full truncate rounded px-1 py-0.5 text-left font-semibold text-[9px] transition ${
+			className={`block w-full truncate rounded px-1 py-0.5 text-left text-[9px] font-semibold transition ${
 				selected
-					? 'bg-mint/20 text-mint ring-1 ring-mint/40'
+					? 'bg-mint/20 text-mint ring-mint/40 ring-1'
 					: 'bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/20'
 			}`}
 			onClick={onSelect}
@@ -75,15 +75,15 @@ function CalendarDaySessions({
 					type="button"
 				>
 					<span className="min-w-0">
-						<span className="block font-semibold text-sm">
+						<span className="block text-sm font-semibold">
 							{formatSessionListTime(session)}
 						</span>
-						<span className="block truncate text-slate-400 text-xs">
+						<span className="block truncate text-xs text-slate-400">
 							{session.workoutName ?? 'Indoor ride'}
 						</span>
 					</span>
 					<span className="shrink-0 text-right">
-						<span className="block font-semibold text-slate-200 text-xs">
+						<span className="block text-xs font-semibold text-slate-200">
 							{formatDistance(session.distance, speedUnit)}
 						</span>
 						<span className="block text-[10px] text-slate-500">
@@ -162,20 +162,20 @@ export function SessionCalendar({
 
 	return (
 		<aside
-			className="max-h-112 min-w-0 shrink-0 overflow-y-auto overflow-x-hidden border-line border-b bg-[#12171d] p-3 md:max-h-none md:w-md md:border-r md:border-b-0"
+			className="border-line max-h-112 min-w-0 shrink-0 overflow-x-hidden overflow-y-auto border-b bg-[#12171d] p-3 md:max-h-none md:w-md md:border-r md:border-b-0"
 			data-testid="session-calendar"
 		>
 			<div className="flex items-center justify-between gap-2">
 				<button
 					aria-label="Previous month"
-					className="grid h-9 w-9 place-items-center rounded-lg border border-line text-lg text-slate-300 hover:border-cyan-400/50 hover:text-white"
+					className="border-line grid h-9 w-9 place-items-center rounded-lg border text-lg text-slate-300 hover:border-cyan-400/50 hover:text-white"
 					onClick={() => onChangeMonth(moveSessionCalendarMonth(normalizedMonth, -1))}
 					type="button"
 				>
 					‹
 				</button>
 				<div className="min-w-0 text-center">
-					<h3 className="truncate font-bold text-base">
+					<h3 className="truncate text-base font-bold">
 						{MONTH_FORMATTER.format(normalizedMonth)}
 					</h3>
 					<p className="mt-0.5 text-[10px] text-slate-500">
@@ -186,7 +186,7 @@ export function SessionCalendar({
 				</div>
 				<button
 					aria-label="Next month"
-					className="grid h-9 w-9 place-items-center rounded-lg border border-line text-lg text-slate-300 hover:border-cyan-400/50 hover:text-white"
+					className="border-line grid h-9 w-9 place-items-center rounded-lg border text-lg text-slate-300 hover:border-cyan-400/50 hover:text-white"
 					onClick={() => onChangeMonth(moveSessionCalendarMonth(normalizedMonth, 1))}
 					type="button"
 				>
@@ -194,19 +194,19 @@ export function SessionCalendar({
 				</button>
 			</div>
 			<button
-				className="mx-auto mt-2 block rounded-md px-2 py-1 font-semibold text-[10px] text-cyan-300 hover:bg-cyan-400/10"
+				className="mx-auto mt-2 block rounded-md px-2 py-1 text-[10px] font-semibold text-cyan-300 hover:bg-cyan-400/10"
 				onClick={() => onChangeMonth(sessionCalendarMonth(new Date()))}
 				type="button"
 			>
 				Today
 			</button>
 			{error ? (
-				<p className="mt-3 rounded-lg bg-rose-400/10 p-3 text-rose-300 text-sm">{error}</p>
+				<p className="mt-3 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-300">{error}</p>
 			) : null}
-			<div className="mt-3 grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-line bg-line">
+			<div className="border-line bg-line mt-3 grid grid-cols-7 gap-px overflow-hidden rounded-lg border">
 				{WEEKDAYS.map((weekday) => (
 					<div
-						className="bg-slate-900/90 py-1.5 text-center font-bold text-[9px] text-slate-500 uppercase tracking-wide"
+						className="bg-slate-900/90 py-1.5 text-center text-[9px] font-bold tracking-wide text-slate-500 uppercase"
 						key={weekday}
 					>
 						{weekday}
@@ -225,14 +225,14 @@ export function SessionCalendar({
 						<div
 							className={`min-h-14 min-w-0 bg-[#12171d] p-1 sm:min-h-20 ${
 								day.inCurrentMonth ? '' : 'opacity-30'
-							} ${selected ? 'ring-1 ring-mint ring-inset' : ''}`}
+							} ${selected ? 'ring-mint ring-1 ring-inset' : ''}`}
 							key={day.key}
 						>
 							<button
 								aria-label={`${DAY_FORMATTER.format(day.date)}, ${day.sessions.length} ${
 									day.sessions.length === 1 ? 'ride' : 'rides'
 								}`}
-								className={`grid h-6 w-6 place-items-center rounded-full font-semibold text-[10px] ${dayNumberClass}`}
+								className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold ${dayNumberClass}`}
 								onClick={() => setSelectedDayKey(day.key)}
 								type="button"
 							>
@@ -273,9 +273,9 @@ export function SessionCalendar({
 					);
 				})}
 			</div>
-			<div className="mt-4 border-line border-t pt-3">
+			<div className="border-line mt-4 border-t pt-3">
 				<div className="flex items-center justify-between gap-3">
-					<h4 className="font-bold text-sm">
+					<h4 className="text-sm font-bold">
 						{selectedDay ? DAY_FORMATTER.format(selectedDay.date) : 'Select a day'}
 					</h4>
 					{selectedDay?.sessions.length ? (
@@ -293,7 +293,7 @@ export function SessionCalendar({
 						speedUnit={speedUnit}
 					/>
 				) : (
-					<p className="mt-2 rounded-lg border border-line border-dashed p-4 text-center text-slate-500 text-xs">
+					<p className="border-line mt-2 rounded-lg border border-dashed p-4 text-center text-xs text-slate-500">
 						{loading ? 'Loading rides…' : 'No rides on this day'}
 					</p>
 				)}

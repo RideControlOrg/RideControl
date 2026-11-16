@@ -49,11 +49,11 @@ export function RenameWorkoutDialog({
 			<section
 				aria-labelledby="rename-workout-title"
 				aria-modal="true"
-				className="w-full max-w-md rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/50 sm:p-6"
+				className="bg-panel w-full max-w-md rounded-2xl border border-slate-600 p-5 shadow-2xl shadow-black/50 sm:p-6"
 				role="dialog"
 			>
 				<div className="flex items-start justify-between gap-4">
-					<h2 className="font-bold text-2xl" id="rename-workout-title">
+					<h2 className="text-2xl font-bold" id="rename-workout-title">
 						Rename workout
 					</h2>
 					<button
@@ -75,10 +75,10 @@ export function RenameWorkoutDialog({
 				>
 					<form.Field name="name">
 						{(field) => (
-							<label className="block font-semibold text-sm" htmlFor="workout-name">
+							<label className="block text-sm font-semibold" htmlFor="workout-name">
 								Workout name
 								<input
-									className="mt-2 h-11 w-full rounded-xl border border-line bg-[#10151a] px-3 text-sm outline-none placeholder:text-slate-600 focus:border-mint"
+									className="border-line focus:border-mint mt-2 h-11 w-full rounded-xl border bg-[#10151a] px-3 text-sm outline-none placeholder:text-slate-600"
 									id="workout-name"
 									maxLength={MAX_WORKOUT_NAME_LENGTH}
 									onBlur={field.handleBlur}
@@ -92,20 +92,20 @@ export function RenameWorkoutDialog({
 						)}
 					</form.Field>
 					{renameError ? (
-						<p aria-live="assertive" className="mt-2 text-rose-300 text-xs">
+						<p aria-live="assertive" className="mt-2 text-xs text-rose-300">
 							{renameError}
 						</p>
 					) : null}
 					<div className="mt-5 flex justify-end gap-2">
 						<button
-							className="rounded-lg px-4 py-2.5 font-semibold text-slate-400 text-sm hover:bg-slate-800 hover:text-white"
+							className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-400 hover:bg-slate-800 hover:text-white"
 							onClick={onClose}
 							type="button"
 						>
 							Cancel
 						</button>
 						<button
-							className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c] disabled:cursor-not-allowed disabled:opacity-50"
+							className="bg-lime text-ink rounded-lg px-5 py-2.5 text-sm font-bold hover:bg-[#e4ff9c] disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={!canSubmit || isSubmitting}
 							type="submit"
 						>

@@ -88,10 +88,10 @@ function ChartScale({
 	const labels = [maximum, (maximum + minimum) / 2, minimum];
 	const positions = [12, CHART_PLOT_MIDDLE, 88];
 	return (
-		<div className="pointer-events-none relative h-full w-16 shrink-0 font-semibold text-[11px] text-slate-300 sm:w-20 sm:text-xs">
+		<div className="pointer-events-none relative h-full w-16 shrink-0 text-[11px] font-semibold text-slate-300 sm:w-20 sm:text-xs">
 			{labels.map((scaleLabel, index) => (
 				<span
-					className="absolute right-2 -translate-y-1/2 whitespace-nowrap leading-none"
+					className="absolute right-2 -translate-y-1/2 leading-none whitespace-nowrap"
 					key={scaleLabel}
 					style={{ top: `${positions[index]}%` }}
 				>
@@ -128,7 +128,7 @@ export function ChartPlot({
 			<div className="relative h-full min-w-0 flex-1 overflow-hidden">
 				{showLabel ? (
 					<span
-						className="pointer-events-none absolute top-[12%] right-2 z-10 -translate-y-1/2 font-semibold text-[10px] text-slate-300 leading-none sm:text-[11px]"
+						className="pointer-events-none absolute top-[12%] right-2 z-10 -translate-y-1/2 text-[10px] leading-none font-semibold text-slate-300 sm:text-[11px]"
 						data-chart-series-label="true"
 					>
 						{label}
@@ -501,7 +501,7 @@ export function SessionChart({
 				{controlOverflow.left ? (
 					<span
 						aria-hidden="true"
-						className="pointer-events-none absolute inset-y-1 left-0 z-10 grid w-7 place-items-center font-bold text-base text-slate-300"
+						className="pointer-events-none absolute inset-y-1 left-0 z-10 grid w-7 place-items-center text-base font-bold text-slate-300"
 						style={{
 							background: chartControlsEdgeBackground('right', sessionControls),
 						}}
@@ -512,7 +512,7 @@ export function SessionChart({
 				{controlOverflow.right ? (
 					<span
 						aria-hidden="true"
-						className="pointer-events-none absolute inset-y-1 right-0 z-10 grid w-7 place-items-center font-bold text-base text-slate-300"
+						className="pointer-events-none absolute inset-y-1 right-0 z-10 grid w-7 place-items-center text-base font-bold text-slate-300"
 						style={{
 							background: chartControlsEdgeBackground('left', sessionControls),
 						}}
@@ -524,7 +524,7 @@ export function SessionChart({
 			<div className="mt-3">
 				<div className="relative w-full">
 					{history.length === 0 && !sessionControls ? (
-						<div className="absolute inset-y-0 right-0 left-16 z-20 grid place-items-center px-4 text-center text-slate-500 text-sm sm:left-20">
+						<div className="absolute inset-y-0 right-0 left-16 z-20 grid place-items-center px-4 text-center text-sm text-slate-500 sm:left-20">
 							Connect and pedal to graph live session data
 						</div>
 					) : null}
@@ -561,7 +561,7 @@ export function SessionChart({
 						/>
 					))}
 				</div>
-				<div className="mt-1 grid grid-cols-[4rem_minmax(0,1fr)] font-medium text-[10px] text-slate-400 sm:grid-cols-[5rem_minmax(0,1fr)] sm:text-xs">
+				<div className="mt-1 grid grid-cols-[4rem_minmax(0,1fr)] text-[10px] font-medium text-slate-400 sm:grid-cols-[5rem_minmax(0,1fr)] sm:text-xs">
 					<span aria-hidden="true" />
 					<div className="flex justify-between">
 						{[0, 0.25, 0.5, 0.75, 1].map((position) => (

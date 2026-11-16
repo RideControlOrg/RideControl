@@ -14,16 +14,16 @@ export function TrainingControlPanel({
 	value: number;
 }) {
 	return (
-		<div className="w-full min-w-0 bg-ink p-4 sm:p-5">
+		<div className="bg-ink w-full min-w-0 p-4 sm:p-5">
 			<div className="flex items-center justify-between gap-4">
-				<h2 className="font-bold text-lg">{title}</h2>
+				<h2 className="text-lg font-bold">{title}</h2>
 				<div className="text-right">
-					<output className="font-bold text-3xl text-mint tabular-nums tracking-tight">
+					<output className="text-mint text-3xl font-bold tracking-tight tabular-nums">
 						{value}
-						<span className="ml-1 text-slate-500 text-xs">{unit}</span>
+						<span className="ml-1 text-xs text-slate-500">{unit}</span>
 					</output>
 					{detail ? (
-						<div className="mt-0.5 whitespace-nowrap font-medium text-slate-400 text-xs tabular-nums">
+						<div className="mt-0.5 text-xs font-medium whitespace-nowrap text-slate-400 tabular-nums">
 							{detail}
 						</div>
 					) : null}

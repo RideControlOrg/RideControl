@@ -22,14 +22,14 @@ export function ConnectionControl({
 			<div className="flex items-center gap-2">
 				<div
 					aria-live="polite"
-					className="inline-flex h-10 items-center gap-2 px-1 font-medium text-slate-400 text-sm"
+					className="inline-flex h-10 items-center gap-2 px-1 text-sm font-medium text-slate-400"
 					role="status"
 				>
-					<span className="functional-status-pulse h-2 w-2 shrink-0 rounded-full bg-lime" />
+					<span className="functional-status-pulse bg-lime h-2 w-2 shrink-0 rounded-full" />
 					{status}
 				</div>
 				<button
-					className="h-10 rounded-lg border border-line px-3 font-semibold text-slate-400 text-sm transition hover:border-slate-500 hover:text-slate-200"
+					className="border-line h-10 rounded-lg border px-3 text-sm font-semibold text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
 					onClick={onCancel}
 					type="button"
 				>
@@ -42,20 +42,20 @@ export function ConnectionControl({
 	if (connected) {
 		return (
 			<button
-				className="inline-flex h-10 items-center gap-2 rounded-lg border border-mint/30 bg-mint/5 px-3.5 font-semibold text-slate-100 text-sm transition hover:border-rose-400/50 hover:bg-rose-400/5"
+				className="border-mint/30 bg-mint/5 inline-flex h-10 items-center gap-2 rounded-lg border px-3.5 text-sm font-semibold text-slate-100 transition hover:border-rose-400/50 hover:bg-rose-400/5"
 				onClick={onDisconnect}
 				type="button"
 			>
-				<span className="h-2 w-2 shrink-0 rounded-full bg-mint shadow-[0_0_12px_#adf5bd]" />
+				<span className="bg-mint h-2 w-2 shrink-0 rounded-full shadow-[0_0_12px_#adf5bd]" />
 				<span className="max-w-36 truncate">{deviceName ?? 'Trainer'}</span>
-				<span className="border-line border-l pl-2 text-slate-400 text-xs">Disconnect</span>
+				<span className="border-line border-l pl-2 text-xs text-slate-400">Disconnect</span>
 			</button>
 		);
 	}
 
 	return (
 		<button
-			className="inline-flex h-10 items-center gap-2 rounded-lg border border-lime bg-lime px-3.5 font-semibold text-ink text-sm transition hover:bg-[#e4ff9c]"
+			className="border-lime bg-lime text-ink inline-flex h-10 items-center gap-2 rounded-lg border px-3.5 text-sm font-semibold transition hover:bg-[#e4ff9c]"
 			onClick={onConnect}
 			type="button"
 		>

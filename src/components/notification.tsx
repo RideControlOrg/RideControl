@@ -47,7 +47,7 @@ export function NotificationCountdown({ connected }: { connected: boolean }) {
 					transform="rotate(-90 18 21)"
 				/>
 			</svg>
-			<span className="pt-1 font-bold font-mono text-[9px] text-slate-200">
+			<span className="pt-1 font-mono text-[9px] font-bold text-slate-200">
 				{secondsRemaining}
 			</span>
 		</span>
@@ -68,7 +68,7 @@ export function Notification({
 	}
 	return (
 		<div
-			className="fixed bottom-5 left-1/2 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-slate-600 bg-[#20262e]/95 p-3 text-slate-100 text-sm shadow-2xl"
+			className="fixed bottom-5 left-1/2 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-slate-600 bg-[#20262e]/95 p-3 text-sm text-slate-100 shadow-2xl"
 			role="status"
 		>
 			<div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ export function Notification({
 						<div>
 							<p>Chrome has not enabled persistent Bluetooth permissions.</p>
 							<a
-								className="mt-1 block break-all font-semibold text-mint underline"
+								className="text-mint mt-1 block font-semibold break-all underline"
 								href={CHROME_BLUETOOTH_FLAGS_URL}
 								rel="noreferrer"
 								target="_blank"

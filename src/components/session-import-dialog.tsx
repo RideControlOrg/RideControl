@@ -53,18 +53,18 @@ export function SessionImportResultDialog({
 				aria-describedby="session-import-result-description"
 				aria-labelledby="session-import-result-title"
 				aria-modal="true"
-				className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/60 sm:max-h-[calc(100dvh-2rem)]"
+				className="bg-panel relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-600 shadow-2xl shadow-black/60 sm:max-h-[calc(100dvh-2rem)]"
 				ref={dialogRef}
 				role="dialog"
 			>
-				<header className="flex shrink-0 items-start justify-between gap-4 border-line border-b px-5 py-4 sm:px-6">
+				<header className="border-line flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
 					<div className="min-w-0">
-						<h2 className="font-bold text-2xl" id="session-import-result-title">
+						<h2 className="text-2xl font-bold" id="session-import-result-title">
 							{result && result.importedSessions.length > 0
 								? 'Sessions imported with errors'
 								: 'Session import failed'}
 						</h2>
-						<p className="mt-1 break-all text-slate-400 text-sm">{fileName}</p>
+						<p className="mt-1 text-sm break-all text-slate-400">{fileName}</p>
 					</div>
 					<button
 						aria-label="Close session import summary"
@@ -89,7 +89,7 @@ export function SessionImportResultDialog({
 							: 'The selected file could not be imported.'}
 					</p>
 					{error ? (
-						<p className="wrap-break-word whitespace-pre-wrap rounded-xl border border-rose-400/25 bg-rose-950/25 p-4 text-rose-200 leading-relaxed">
+						<p className="rounded-xl border border-rose-400/25 bg-rose-950/25 p-4 leading-relaxed wrap-break-word whitespace-pre-wrap text-rose-200">
 							{error}
 						</p>
 					) : null}
@@ -100,25 +100,25 @@ export function SessionImportResultDialog({
 									className="rounded-xl border border-rose-400/25 bg-rose-950/25 p-4"
 									key={failure.fileName}
 								>
-									<p className="break-all font-semibold text-slate-100">
+									<p className="font-semibold break-all text-slate-100">
 										{failure.fileName}
 									</p>
-									<p className="wrap-break-word mt-1 whitespace-pre-wrap text-rose-200 leading-relaxed">
+									<p className="mt-1 leading-relaxed wrap-break-word whitespace-pre-wrap text-rose-200">
 										{failure.message}
 									</p>
 								</li>
 							))}
 						</ul>
 					) : null}
-					<p className="text-slate-400 leading-relaxed">
+					<p className="leading-relaxed text-slate-400">
 						Review the errors, fix or export the affected files again, then retry the
 						import. Any successfully imported sessions are saved; existing sessions will
 						be skipped as duplicates when you retry.
 					</p>
 				</div>
-				<footer className="flex shrink-0 justify-end border-line border-t px-5 py-4 sm:px-6">
+				<footer className="border-line flex shrink-0 justify-end border-t px-5 py-4 sm:px-6">
 					<button
-						className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c]"
+						className="bg-lime text-ink rounded-lg px-5 py-2.5 text-sm font-bold hover:bg-[#e4ff9c]"
 						onClick={onClose}
 						ref={doneButtonRef}
 						type="button"

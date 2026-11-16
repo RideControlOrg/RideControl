@@ -27,7 +27,7 @@ export function SessionControls({
 }) {
 	const workoutButton = (
 		<button
-			className={`h-10 rounded-lg border bg-[#12171d] px-3 font-semibold text-xs transition disabled:cursor-not-allowed disabled:opacity-40 ${workoutName ? 'border-mint/30 text-mint' : 'border-line text-slate-300 hover:border-slate-500 hover:text-white'}`}
+			className={`h-10 rounded-lg border bg-[#12171d] px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${workoutName ? 'border-mint/30 text-mint' : 'border-line text-slate-300 hover:border-slate-500 hover:text-white'}`}
 			disabled={workoutSelectionLocked}
 			onClick={onOpenWorkouts}
 			title={
@@ -45,7 +45,7 @@ export function SessionControls({
 			<div className="flex flex-wrap items-center gap-2">
 				{saveResolved ? null : (
 					<button
-						className="h-10 rounded-lg border border-mint/40 bg-mint/10 px-3 font-semibold text-mint text-xs hover:bg-mint/15"
+						className="border-mint/40 bg-mint/10 text-mint hover:bg-mint/15 h-10 rounded-lg border px-3 text-xs font-semibold"
 						onClick={onSave}
 						type="button"
 					>
@@ -53,7 +53,7 @@ export function SessionControls({
 					</button>
 				)}
 				<button
-					className="h-10 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-300 text-xs hover:border-slate-500 hover:text-white"
+					className="border-line h-10 rounded-lg border bg-[#12171d] px-3 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-white"
 					onClick={onRequestNew}
 					title={
 						workoutName
@@ -85,7 +85,7 @@ export function SessionControls({
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<button
-				className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 font-semibold text-xs transition ${isRiding ? 'border-mint/40 bg-mint/10 text-mint' : 'border-amber-300/50 bg-amber-300/10 text-amber-300 hover:bg-amber-300/15'}`}
+				className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition ${isRiding ? 'border-mint/40 bg-mint/10 text-mint' : 'border-amber-300/50 bg-amber-300/10 text-amber-300 hover:bg-amber-300/15'}`}
 				data-session-state={sessionState}
 				onClick={onTogglePause}
 				type="button"
@@ -94,7 +94,7 @@ export function SessionControls({
 				{controlLabel}
 			</button>
 			<button
-				className="h-10 rounded-lg border border-line bg-[#12171d] px-3 font-semibold text-slate-400 text-xs hover:border-rose-400/50 hover:text-rose-300"
+				className="border-line h-10 rounded-lg border bg-[#12171d] px-3 text-xs font-semibold text-slate-400 hover:border-rose-400/50 hover:text-rose-300"
 				onClick={onEnd}
 				type="button"
 			>

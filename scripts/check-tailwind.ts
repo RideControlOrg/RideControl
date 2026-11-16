@@ -4,12 +4,12 @@ import { extname, join, relative, resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const DIAGNOSTIC_TIMEOUT_MS = 30_000;
-const CONTENT_LENGTH_PATTERN = /Content-Length: (\d+)/i;
+const CONTENT_LENGTH_PATTERN = /Content-Length: (?<length>\d+)/iu;
 const DIAGNOSTIC_CANARY = 'export const Canary = () => <div className="p-2 p-4" />;';
 const TAILWIND_CSS_SYNTAX_PATTERN =
-	/@(?:apply|config|custom-variant|import|plugin|source|tailwind|theme|utility|variant)\b/;
-const LEADING_IMPORTANT_MODIFIER_PATTERN = /^!/;
-const TRAILING_IMPORTANT_MODIFIER_PATTERN = /!$/;
+	/@(?:apply|config|custom-variant|import|plugin|source|tailwind|theme|utility|variant)\b/u;
+const LEADING_IMPORTANT_MODIFIER_PATTERN = /^!/u;
+const TRAILING_IMPORTANT_MODIFIER_PATTERN = /!$/u;
 const LANGUAGE_IDS = new Map([
 	['.css', 'css'],
 	['.html', 'html'],
@@ -196,13 +196,17 @@ function utilityParts(className: string) {
 
 function classLists(text: string): ClassToken[][] {
 	const attributePattern =
-		/\b(?:class|className)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*`([\s\S]*?)`\s*\})/g;
+		/\b(?:class|className)\s*=\s*(?:"(?<doubleQuoted>[^"]*)"|'(?<singleQuoted>[^']*)'|\{\s*`(?<template>[\s\S]*?)`\s*\})/gu;
 	const lists: ClassToken[][] = [];
 	for (const attribute of text.matchAll(attributePattern)) {
-		const value = attribute[1] ?? attribute[2] ?? attribute[3];
+		const value =
+			attribute.groups?.doubleQuoted ??
+			attribute.groups?.singleQuoted ??
+			attribute.groups?.template ??
+			'';
 		const attributeStart = attribute.index ?? 0;
 		const valueStart = attributeStart + attribute[0].indexOf(value);
-		const tokens = [...value.matchAll(/\S+/g)].map((token) => ({
+		const tokens = [...value.matchAll(/\S+/gu)].map((token) => ({
 			className: token[0],
 			position: positionAt(text, valueStart + (token.index ?? 0)),
 			...utilityParts(token[0]),
@@ -381,7 +385,7 @@ async function main() {
 				break;
 			}
 			const header = output.subarray(0, headerEnd).toString('ascii');
-			const contentLength = CONTENT_LENGTH_PATTERN.exec(header)?.[1];
+			const contentLength = CONTENT_LENGTH_PATTERN.exec(header)?.groups?.length;
 			if (!contentLength) {
 				throw new Error('Tailwind language server sent an invalid response header.');
 			}
@@ -477,10 +481,9 @@ async function main() {
 			params: { textDocument: { uri: canaryUri } },
 		});
 
-		const files = [
-			...(await sourceFiles(resolvePath('src'))),
-			resolvePath('index.html'),
-		].sort();
+		const files = [...(await sourceFiles(resolvePath('src'))), resolvePath('index.html')].sort(
+			(left, right) => Number(left > right) - Number(left < right)
+		);
 		const documents: SourceDocument[] = await Promise.all(
 			files.map(async (file) => ({
 				file,

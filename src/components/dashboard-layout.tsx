@@ -2,7 +2,7 @@ import { Children, type ReactNode } from 'react';
 
 export function Dashboard({ children }: { children: ReactNode }) {
 	return (
-		<div className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 px-3 py-3 sm:px-8 sm:py-5">
+		<div className="mx-auto w-full max-w-[1600px] min-w-0 flex-1 px-3 py-3 sm:px-8 sm:py-5">
 			{children}
 		</div>
 	);

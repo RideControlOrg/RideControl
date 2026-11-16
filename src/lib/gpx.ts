@@ -114,6 +114,7 @@ function routePoints(points: GpxPointSource[]): GeographicRoutePoint[] {
 function parserFailed(xml: Document): boolean {
 	return (
 		xml.documentElement?.localName === 'parsererror' ||
+		// biome-ignore lint/style/useDomQuerySelector: XML documents also come from xmldom, which has no selector API.
 		xml.getElementsByTagName('parsererror').length > 0
 	);
 }

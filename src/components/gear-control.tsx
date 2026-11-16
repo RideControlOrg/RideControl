@@ -102,11 +102,11 @@ export function GearControl({
 					<div className="relative h-2 overflow-hidden rounded-full bg-slate-700">
 						<div
 							aria-hidden="true"
-							className="absolute inset-y-0 left-0 rounded-full bg-mint transition-[width] duration-150"
+							className="bg-mint absolute inset-y-0 left-0 rounded-full transition-[width] duration-150"
 							style={{ width: `${progress}%` }}
 						/>
 					</div>
-					<div className="mt-2 flex justify-between font-bold text-[9px] text-slate-500 tracking-[.12em]">
+					<div className="mt-2 flex justify-between text-[9px] font-bold tracking-[.12em] text-slate-500">
 						<span>EASIER</span>
 						<span>HARDER</span>
 					</div>

@@ -110,13 +110,13 @@ function analyticsDuration(seconds: number): string {
 function StatisticsCard({ label, unit, value }: { label: string; unit?: string; value: string }) {
 	return (
 		<div className="minimal-stat-card min-w-0 py-3">
-			<p className="font-bold text-[10px] text-slate-500 uppercase tracking-[.12em]">
+			<p className="text-[10px] font-bold tracking-[.12em] text-slate-500 uppercase">
 				{label}
 			</p>
-			<p className="mt-1.5 flex min-w-0 flex-nowrap items-baseline gap-x-1.5 font-bold text-4xl text-white leading-none sm:text-5xl">
+			<p className="mt-1.5 flex min-w-0 flex-nowrap items-baseline gap-x-1.5 text-4xl leading-none font-bold text-white sm:text-5xl">
 				<span className="whitespace-nowrap">{value}</span>
 				{unit ? (
-					<span className="font-semibold text-slate-400 text-sm sm:text-base">
+					<span className="text-sm font-semibold text-slate-400 sm:text-base">
 						{unit}
 					</span>
 				) : null}
@@ -216,19 +216,19 @@ function AnalyticsTrendChart({
 		<section className="minimal-chart-panel min-w-0 py-3">
 			<div className="flex items-start justify-between gap-6">
 				<div className="min-w-0">
-					<h4 className="font-bold text-base">{title}</h4>
-					<p className="wrap-anywhere mt-2 font-bold text-3xl text-white tabular-nums">
+					<h4 className="text-base font-bold">{title}</h4>
+					<p className="mt-2 text-3xl font-bold wrap-anywhere text-white tabular-nums">
 						{formatValue(series.latestValue)}
 						{unit ? (
-							<span className="ml-1.5 font-semibold text-slate-400 text-sm">
+							<span className="ml-1.5 text-sm font-semibold text-slate-400">
 								{unit}
 							</span>
 						) : null}
 					</p>
-					<p className="mt-0.5 text-slate-500 text-xs">{latest?.label}</p>
+					<p className="mt-0.5 text-xs text-slate-500">{latest?.label}</p>
 				</div>
 				<div className="shrink-0 text-right">
-					<p className="text-slate-500 text-xs">Best period</p>
+					<p className="text-xs text-slate-500">Best period</p>
 					<p className="mt-1 font-bold text-slate-200 tabular-nums">
 						{formatValue(series.maximum)}
 						{unit ? ` ${unit}` : ''}
@@ -246,7 +246,7 @@ function AnalyticsTrendChart({
 				<AnalyticsPeriodLabels data={data} />
 			</div>
 			{data.length > 0 ? (
-				<div className="mt-2 flex items-center justify-between gap-3 border-line border-t pt-2 text-[10px]">
+				<div className="border-line mt-2 flex items-center justify-between gap-3 border-t pt-2 text-[10px]">
 					<span className="truncate text-slate-500">
 						{data[0]?.label} – {data.at(-1)?.label}
 					</span>
@@ -268,9 +268,9 @@ function AnalyticsTrendOverviewRow({
 }) {
 	const series = analyticsChartSeries(data, metric);
 	return (
-		<div className="grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] items-center gap-4 border-line border-b py-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+		<div className="border-line grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] items-center gap-4 border-b py-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
 			<div className="min-w-0">
-				<p className="flex items-center gap-2 font-semibold text-slate-400 text-xs">
+				<p className="flex items-center gap-2 text-xs font-semibold text-slate-400">
 					<span
 						aria-hidden="true"
 						className="size-2 shrink-0 rounded-full"
@@ -278,10 +278,10 @@ function AnalyticsTrendOverviewRow({
 					/>
 					{metric.label}
 				</p>
-				<p className="wrap-anywhere mt-1 font-bold text-2xl text-white tabular-nums leading-none">
+				<p className="mt-1 text-2xl leading-none font-bold wrap-anywhere text-white tabular-nums">
 					{metric.formatValue(series.latestValue)}
 					{metric.unit ? (
-						<span className="ml-1 font-semibold text-slate-500 text-xs">
+						<span className="ml-1 text-xs font-semibold text-slate-500">
 							{metric.unit}
 						</span>
 					) : null}
@@ -308,8 +308,8 @@ function AnalyticsTrendOverview({
 	return (
 		<section className="minimal-chart-panel min-w-0 py-3" data-testid="trend-overview">
 			<div className="flex items-center justify-between gap-4">
-				<h4 className="font-bold text-base">All trends</h4>
-				<span className="text-slate-500 text-xs">{metrics.length} metrics</span>
+				<h4 className="text-base font-bold">All trends</h4>
+				<span className="text-xs text-slate-500">{metrics.length} metrics</span>
 			</div>
 			<div className="statistics-trend-overview-grid mt-3 grid min-w-0 gap-x-8">
 				{metrics.map((metric) => (
@@ -445,8 +445,8 @@ function PeakCard({
 	if (!onSelect) {
 		return (
 			<div className={className}>
-				<p className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</p>
-				<p className="wrap-anywhere mt-2 font-bold text-xl leading-none sm:text-2xl">
+				<p className="text-[9px] tracking-wide text-slate-500 uppercase">{label}</p>
+				<p className="mt-2 text-xl leading-none font-bold wrap-anywhere sm:text-2xl">
 					{value}
 				</p>
 			</div>
@@ -459,8 +459,8 @@ function PeakCard({
 			title="Open this session"
 			type="button"
 		>
-			<p className="text-[9px] text-slate-500 uppercase tracking-wide">{label}</p>
-			<p className="wrap-anywhere mt-2 font-bold text-xl leading-none sm:text-2xl">{value}</p>
+			<p className="text-[9px] tracking-wide text-slate-500 uppercase">{label}</p>
+			<p className="mt-2 text-xl leading-none font-bold wrap-anywhere sm:text-2xl">{value}</p>
 		</button>
 	);
 }
@@ -587,8 +587,8 @@ export function SessionStatistics({
 		return (
 			<div className="grid min-h-64 flex-1 place-items-center p-6 text-center">
 				<div>
-					<p className="font-bold text-lg">No ride statistics yet</p>
-					<p className="mt-1 text-slate-500 text-sm">
+					<p className="text-lg font-bold">No ride statistics yet</p>
+					<p className="mt-1 text-sm text-slate-500">
 						Complete or import a session to start building your history.
 					</p>
 				</div>
@@ -598,19 +598,19 @@ export function SessionStatistics({
 
 	return (
 		<div
-			className="session-statistics min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-6"
+			className="session-statistics min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 sm:px-6"
 			data-testid="session-statistics"
 		>
 			<div className="session-statistics-content mx-auto w-full max-w-5xl">
 				{error ? (
-					<p className="mb-4 rounded-lg bg-rose-400/10 p-3 text-rose-300 text-sm">
+					<p className="mb-4 rounded-lg bg-rose-400/10 p-3 text-sm text-rose-300">
 						{error}
 					</p>
 				) : null}
 				<section data-testid="all-time-totals">
 					<div className="flex items-center justify-between gap-3">
-						<h3 className="font-bold text-xl">All-time totals</h3>
-						{loading ? <span className="text-cyan-300 text-xs">Updating…</span> : null}
+						<h3 className="text-xl font-bold">All-time totals</h3>
+						{loading ? <span className="text-xs text-cyan-300">Updating…</span> : null}
 					</div>
 					<div className="minimal-stat-grid mt-2 grid gap-x-8 gap-y-1">
 						<StatisticsCard
@@ -722,7 +722,7 @@ export function SessionStatistics({
 					</div>
 				</section>
 				<section className="mt-6" data-testid="personal-bests">
-					<h3 className="font-bold text-xl">Personal bests</h3>
+					<h3 className="text-xl font-bold">Personal bests</h3>
 					<div className="minimal-peak-grid mt-2 grid gap-x-8 gap-y-1">
 						{peakDefinitions.map((definition) => {
 							const peak = analytics.peaks[definition.key];
@@ -740,19 +740,19 @@ export function SessionStatistics({
 					</div>
 				</section>
 				<section className="mt-6">
-					<h3 className="font-bold text-xl">Weight over time</h3>
+					<h3 className="text-xl font-bold">Weight over time</h3>
 					{weightHistory.length > 0 ? (
 						<RiderWeightChart entries={weightHistory} speedUnit={speedUnit} />
 					) : (
-						<p className="mt-3 text-slate-500 text-sm">
+						<p className="mt-3 text-sm text-slate-500">
 							Save your weight in Profile to begin tracking it here.
 						</p>
 					)}
 				</section>
 				<div className="mt-6 flex flex-wrap items-end justify-between gap-3">
 					<div>
-						<h3 className="font-bold text-xl">Trends</h3>
-						<p className="mt-1 text-slate-500 text-xs">
+						<h3 className="text-xl font-bold">Trends</h3>
+						<p className="mt-1 text-xs text-slate-500">
 							{trendRange === SESSION_TREND_RANGE.ALL
 								? 'Complete ride history'
 								: `The latest ${
@@ -772,11 +772,11 @@ export function SessionStatistics({
 							options={trendMetricOptions}
 							value={trendMetricKey}
 						/>
-						<div className="isolate inline-flex h-10 rounded-lg border border-line p-1">
+						<div className="border-line isolate inline-flex h-10 rounded-lg border p-1">
 							{TREND_RANGE_OPTIONS.map((option) => (
 								<button
 									aria-pressed={trendRange === option.value}
-									className={`rounded-md px-3 py-1.5 font-semibold text-xs transition ${
+									className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
 										trendRange === option.value
 											? 'bg-slate-700 text-white'
 											: 'text-slate-400 hover:text-white'

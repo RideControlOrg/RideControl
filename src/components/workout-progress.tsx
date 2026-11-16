@@ -70,11 +70,11 @@ function WorkoutStats({
 				return (
 					<div className={compact ? 'min-w-0' : undefined} key={stat.label}>
 						<p
-							className={`whitespace-nowrap font-bold text-slate-500 uppercase ${compact ? 'tracking-[.14em]' : 'tracking-widest'} ${labelSize}`}
+							className={`font-bold whitespace-nowrap text-slate-500 uppercase ${compact ? 'tracking-[.14em]' : 'tracking-widest'} ${labelSize}`}
 						>
 							{stat.label}
 							{stat.unit ? (
-								<span className="ml-1 font-semibold text-slate-400 normal-case tracking-normal">
+								<span className="ml-1 font-semibold tracking-normal text-slate-400 normal-case">
 									{stat.unit}
 								</span>
 							) : null}

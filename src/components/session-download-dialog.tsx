@@ -108,12 +108,12 @@ export function SessionDownloadDialog({
 				aria-describedby="session-download-description"
 				aria-labelledby="session-download-title"
 				aria-modal="true"
-				className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/60 sm:max-h-[calc(100dvh-2rem)]"
+				className="bg-panel relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-600 shadow-2xl shadow-black/60 sm:max-h-[calc(100dvh-2rem)]"
 				ref={dialogRef}
 				role="dialog"
 			>
-				<header className="flex shrink-0 items-start justify-between gap-4 border-line border-b px-5 py-4 sm:px-6">
-					<h2 className="font-bold text-2xl" id="session-download-title">
+				<header className="border-line flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
+					<h2 className="text-2xl font-bold" id="session-download-title">
 						Download all sessions
 					</h2>
 					<button
@@ -134,18 +134,18 @@ export function SessionDownloadDialog({
 					role="document"
 					tabIndex={-1}
 				>
-					<p className="text-slate-300 leading-relaxed" id="session-download-description">
+					<p className="leading-relaxed text-slate-300" id="session-download-description">
 						Choose a format for all sessions. TCX is recommended for importing back into
 						RideControl because it preserves RideControl-specific data. FIT is useful
 						for uploads to external fitness services.
 					</p>
-					<p className="text-slate-400 leading-relaxed">
+					<p className="leading-relaxed text-slate-400">
 						This comparison covers data restored from RideControl&apos;s own downloads
 						when reimported into RideControl, not the full capabilities of each format.
 					</p>
 					<section
 						aria-label="TCX and FIT comparison; scroll horizontally to view all columns"
-						className="overflow-x-auto rounded-xl border border-line"
+						className="border-line overflow-x-auto rounded-xl border"
 						ref={comparisonRef}
 						tabIndex={-1}
 					>
@@ -159,11 +159,11 @@ export function SessionDownloadDialog({
 										Session data
 									</th>
 									<th
-										className="w-1/5 px-4 py-3 font-semibold text-lime"
+										className="text-lime w-1/5 px-4 py-3 font-semibold"
 										scope="col"
 									>
 										TCX
-										<span className="mt-1 block font-normal text-xs">
+										<span className="mt-1 block text-xs font-normal">
 											Recommended
 										</span>
 									</th>
@@ -172,7 +172,7 @@ export function SessionDownloadDialog({
 									</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-line">
+							<tbody className="divide-line divide-y">
 								{FORMAT_COMPARISON.map((row) => (
 									<tr className="align-top" key={row.data}>
 										<th
@@ -188,27 +188,27 @@ export function SessionDownloadDialog({
 							</tbody>
 						</table>
 					</section>
-					<p className="text-slate-400 leading-relaxed">
+					<p className="leading-relaxed text-slate-400">
 						TCX retains the extra RideControl data through RideControl-specific
 						extensions. Another service may strip these extensions when re-exporting, so
 						keep the original TCX files for a complete RideControl round trip.
 					</p>
 					{error ? (
 						<p
-							className="wrap-break-word whitespace-pre-wrap rounded-xl border border-rose-400/25 bg-rose-950/25 p-4 text-rose-200 leading-relaxed"
+							className="rounded-xl border border-rose-400/25 bg-rose-950/25 p-4 leading-relaxed wrap-break-word whitespace-pre-wrap text-rose-200"
 							role="alert"
 						>
 							{error}
 						</p>
 					) : null}
 				</div>
-				<footer className="shrink-0 space-y-3 border-line border-t px-5 py-4 sm:px-6">
-					<p className="text-slate-300 text-sm empty:hidden" role="status">
+				<footer className="border-line shrink-0 space-y-3 border-t px-5 py-4 sm:px-6">
+					<p className="text-sm text-slate-300 empty:hidden" role="status">
 						{downloading ? 'Preparing your download…' : ''}
 					</p>
 					<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
 						<button
-							className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c] disabled:opacity-50"
+							className="bg-lime text-ink rounded-lg px-5 py-2.5 text-sm font-bold hover:bg-[#e4ff9c] disabled:opacity-50"
 							disabled={downloading}
 							onClick={() => onDownload(ACTIVITY_FILE_FORMAT.TCX)}
 							ref={tcxButtonRef}
@@ -217,7 +217,7 @@ export function SessionDownloadDialog({
 							Download TCX
 						</button>
 						<button
-							className="rounded-lg border border-slate-600 px-5 py-2.5 font-semibold text-slate-200 text-sm hover:bg-slate-700 disabled:opacity-50"
+							className="rounded-lg border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-700 disabled:opacity-50"
 							disabled={downloading}
 							onClick={() => onDownload(ACTIVITY_FILE_FORMAT.FIT)}
 							ref={fitButtonRef}
@@ -226,7 +226,7 @@ export function SessionDownloadDialog({
 							Download FIT
 						</button>
 						<button
-							className="rounded-lg px-5 py-2.5 font-semibold text-slate-400 text-sm hover:bg-slate-700 hover:text-white disabled:opacity-50"
+							className="rounded-lg px-5 py-2.5 text-sm font-semibold text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-50"
 							disabled={downloading}
 							onClick={onClose}
 							ref={cancelButtonRef}

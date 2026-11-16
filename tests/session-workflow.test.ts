@@ -37,6 +37,25 @@ const recordedSession: StoredSession = {
 	workout: { course },
 };
 
+function WorkflowHarness({
+	onWorkflow,
+	session,
+	settleResistance,
+}: {
+	onWorkflow: (workflow: SessionWorkflow) => void;
+	session: Parameters<typeof useSessionWorkflow>[0];
+	settleResistance: () => void;
+}) {
+	const workflow = useSessionWorkflow(
+		session,
+		() => undefined,
+		settleResistance,
+		() => undefined
+	);
+	onWorkflow(workflow);
+	return null;
+}
+
 function workflowForSession(store: SessionStore, settleResistance = () => undefined) {
 	const session = {
 		cancelEnd: store.actions.cancelEnd,
@@ -73,16 +92,15 @@ function workflowForSession(store: SessionStore, settleResistance = () => undefi
 		startNew: () => store.actions.reset(store.get().controlMode, 4000),
 	};
 	let workflow: SessionWorkflow | undefined;
-	function WorkflowHarness() {
-		workflow = useSessionWorkflow(
+	renderToStaticMarkup(
+		createElement(WorkflowHarness, {
+			onWorkflow: (renderedWorkflow) => {
+				workflow = renderedWorkflow;
+			},
 			session,
-			() => undefined,
 			settleResistance,
-			() => undefined
-		);
-		return null;
-	}
-	renderToStaticMarkup(createElement(WorkflowHarness));
+		})
+	);
 	return requiredValue(workflow, 'rendered session workflow');
 }
 

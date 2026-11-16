@@ -41,6 +41,7 @@ import { requestUnloadConfirmation } from '../lib/unload';
 import type { SpeedUnit } from '../types';
 import { FormFieldError } from './form-field-error';
 import { Icon } from './icon';
+import { RideNotificationSettingsPanel } from './ride-notification-settings';
 import { RiderWeightChart } from './rider-weight-chart';
 import { SuggestionInput } from './select-menu';
 import { SideTray } from './side-tray';
@@ -104,10 +105,10 @@ function ImageActions({
 }) {
 	const visibleChooseLabel = hasImage ? 'Change image' : chooseLabel;
 	return (
-		<div className="inline-flex overflow-hidden rounded-lg border border-line bg-slate-800 shadow-sm">
+		<div className="border-line inline-flex overflow-hidden rounded-lg border bg-slate-800 shadow-sm">
 			<label
 				aria-disabled={disabled}
-				className={`inline-flex items-center gap-2 px-3 py-2 font-semibold text-slate-200 text-sm transition ${
+				className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-200 transition ${
 					disabled ? 'cursor-wait opacity-60' : 'cursor-pointer hover:bg-slate-700'
 				}`}
 				htmlFor={inputId}
@@ -119,7 +120,7 @@ function ImageActions({
 				<button
 					aria-controls={removeDialogId}
 					aria-haspopup="dialog"
-					className="inline-flex items-center gap-2 border-line border-l px-3 py-2 font-semibold text-rose-300 text-sm transition hover:bg-rose-400/10 hover:text-rose-200 disabled:cursor-wait disabled:opacity-50"
+					className="border-line inline-flex items-center gap-2 border-l px-3 py-2 text-sm font-semibold text-rose-300 transition hover:bg-rose-400/10 hover:text-rose-200 disabled:cursor-wait disabled:opacity-50"
 					disabled={disabled}
 					onClick={onRemove}
 					type="button"
@@ -145,7 +146,7 @@ function RiderWeightHistory({
 			{entries.length > 0 ? (
 				<RiderWeightChart compact entries={entries} speedUnit={speedUnit} />
 			) : (
-				<p className="mt-2 rounded-xl border border-line bg-[#10151a] p-4 text-slate-400 text-sm">
+				<p className="border-line mt-2 rounded-xl border bg-[#10151a] p-4 text-sm text-slate-400">
 					Your first saved weight will start the history.
 				</p>
 			)}
@@ -166,7 +167,7 @@ function ProfileGuidance({
 
 	return (
 		<p
-			className="mt-5 rounded-xl border border-line bg-[#10151a] px-4 py-3 text-slate-400 text-sm leading-6"
+			className="border-line mt-5 rounded-xl border bg-[#10151a] px-4 py-3 text-sm leading-6 text-slate-400"
 			data-profile-guidance={profileTab}
 		>
 			{profileTab === PROFILE_TAB.PERSONAL ? (
@@ -218,27 +219,27 @@ export function RemoveBikeDialog({
 				aria-describedby="remove-bike-description"
 				aria-labelledby="remove-bike-title"
 				aria-modal="true"
-				className="relative z-10 w-full max-w-sm rounded-2xl border border-rose-400/40 bg-panel p-5 shadow-2xl shadow-black/60"
+				className="bg-panel relative z-10 w-full max-w-sm rounded-2xl border border-rose-400/40 p-5 shadow-2xl shadow-black/60"
 				id="remove-bike-dialog"
 				role="alertdialog"
 			>
-				<h2 className="font-bold text-lg" id="remove-bike-title">
+				<h2 className="text-lg font-bold" id="remove-bike-title">
 					Remove this bike?
 				</h2>
-				<p className="mt-2 text-slate-400 text-sm leading-6" id="remove-bike-description">
+				<p className="mt-2 text-sm leading-6 text-slate-400" id="remove-bike-description">
 					<span className="font-semibold text-slate-200">{bikeName || 'This bike'}</span>{' '}
 					will be removed from your profile when you save your changes.
 				</p>
 				<div className="mt-5 flex justify-end gap-2">
 					<button
-						className="rounded-lg px-3 py-2 font-semibold text-slate-400 text-sm hover:bg-slate-800 hover:text-white"
+						className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-800 hover:text-white"
 						onClick={onCancel}
 						type="button"
 					>
 						Cancel
 					</button>
 					<button
-						className="rounded-lg bg-rose-700 px-3 py-2 font-bold text-sm text-white hover:bg-rose-600"
+						className="rounded-lg bg-rose-700 px-3 py-2 text-sm font-bold text-white hover:bg-rose-600"
 						onClick={onConfirm}
 						ref={confirmButtonRef}
 						type="button"
@@ -295,26 +296,26 @@ export function RemoveImageDialog({
 				aria-describedby="remove-image-description"
 				aria-labelledby="remove-image-title"
 				aria-modal="true"
-				className="relative z-10 w-full max-w-sm rounded-2xl border border-rose-400/40 bg-panel p-5 shadow-2xl shadow-black/60"
+				className="bg-panel relative z-10 w-full max-w-sm rounded-2xl border border-rose-400/40 p-5 shadow-2xl shadow-black/60"
 				id="remove-image-dialog"
 				role="alertdialog"
 			>
-				<h2 className="font-bold text-lg" id="remove-image-title">
+				<h2 className="text-lg font-bold" id="remove-image-title">
 					{title}
 				</h2>
-				<p className="mt-2 text-slate-400 text-sm leading-6" id="remove-image-description">
+				<p className="mt-2 text-sm leading-6 text-slate-400" id="remove-image-description">
 					{description}
 				</p>
 				<div className="mt-5 flex justify-end gap-2">
 					<button
-						className="rounded-lg px-3 py-2 font-semibold text-slate-400 text-sm hover:bg-slate-800 hover:text-white"
+						className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-800 hover:text-white"
 						onClick={onCancel}
 						type="button"
 					>
 						Cancel
 					</button>
 					<button
-						className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 font-bold text-sm text-white hover:bg-rose-600"
+						className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 text-sm font-bold text-white hover:bg-rose-600"
 						onClick={onConfirm}
 						ref={confirmButtonRef}
 						type="button"
@@ -651,10 +652,10 @@ export function ProfilePanel({
 		>
 			<header className="flex shrink-0 items-center justify-between gap-4 px-5 py-3 sm:px-6">
 				<div className="flex min-w-0 items-baseline gap-3">
-					<h2 className="shrink-0 font-bold text-xl" id="profile-title">
+					<h2 className="shrink-0 text-xl font-bold" id="profile-title">
 						Profile
 					</h2>
-					<p className="hidden truncate text-slate-400 text-sm sm:block">
+					<p className="hidden truncate text-sm text-slate-400 sm:block">
 						Manage your rider details and bikes.
 					</p>
 				</div>
@@ -693,7 +694,7 @@ export function ProfilePanel({
 						<form.Field name="image">
 							{(field) => (
 								<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-									<div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-slate-800 font-bold text-3xl text-mint">
+									<div className="border-line text-mint grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border bg-slate-800 text-3xl font-bold">
 										{imageUrl ? (
 											<img
 												alt={
@@ -743,7 +744,7 @@ export function ProfilePanel({
 											type="file"
 										/>
 										{imageError ? (
-											<p className="mt-2 text-rose-300 text-xs" role="alert">
+											<p className="mt-2 text-xs text-rose-300" role="alert">
 												{imageError}
 											</p>
 										) : null}
@@ -801,11 +802,11 @@ export function ProfilePanel({
 							</form.Field>
 							<fieldset>
 								<legend className={labelClass}>Display units</legend>
-								<div className="mt-2 inline-flex h-10 rounded-lg border border-line bg-[#10151a] p-1">
+								<div className="border-line mt-2 inline-flex h-10 rounded-lg border bg-[#10151a] p-1">
 									{SPEED_UNIT_OPTIONS.map((option) => (
 										<button
 											aria-pressed={values.speedUnit === option.value}
-											className={`px-3 py-1 font-bold text-xs ${values.speedUnit === option.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+											className={`px-3 py-1 text-xs font-bold ${values.speedUnit === option.value ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
 											key={option.value}
 											onClick={() => selectSpeedUnit(option.value)}
 											type="button"
@@ -843,6 +844,7 @@ export function ProfilePanel({
 							entries={profile.weightHistory}
 							speedUnit={values.speedUnit}
 						/>
+						<RideNotificationSettingsPanel speedUnit={values.speedUnit} />
 					</section>
 
 					<section
@@ -853,13 +855,13 @@ export function ProfilePanel({
 					>
 						<div className="flex items-start justify-between gap-4">
 							<div>
-								<h3 className="font-bold text-lg">Bikes</h3>
-								<p className="mt-1 text-slate-500 text-xs leading-5">
+								<h3 className="text-lg font-bold">Bikes</h3>
+								<p className="mt-1 text-xs leading-5 text-slate-500">
 									The active bike supplies weight and gearing to trainer physics.
 								</p>
 							</div>
 							<button
-								className="rounded-lg border border-line px-3 py-2 font-semibold text-slate-300 text-xs hover:border-mint hover:text-white disabled:opacity-40"
+								className="border-line hover:border-mint rounded-lg border px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40"
 								disabled={
 									physicsSettingsLocked ||
 									Boolean(bikeImagePreparingId) ||
@@ -901,16 +903,16 @@ export function ProfilePanel({
 												type="button"
 											>
 												<span className="flex items-center justify-between gap-3">
-													<span className="truncate font-bold text-sm">
+													<span className="truncate text-sm font-bold">
 														{bike.name || 'Unnamed bike'}
 													</span>
 													{selected ? (
-														<span className="shrink-0 font-bold text-[10px] text-mint uppercase tracking-[.12em]">
+														<span className="text-mint shrink-0 text-[10px] font-bold tracking-[.12em] uppercase">
 															Active
 														</span>
 													) : null}
 												</span>
-												<span className="mt-1 block text-slate-500 text-xs">
+												<span className="mt-1 block text-xs text-slate-500">
 													{bike.bikeWeight} {weightUnit} · {count || '—'}{' '}
 													gears
 												</span>
@@ -929,7 +931,7 @@ export function ProfilePanel({
 									<button
 										aria-controls="remove-bike-dialog"
 										aria-haspopup="dialog"
-										className="font-semibold text-rose-300 text-xs hover:text-rose-200 disabled:opacity-40"
+										className="text-xs font-semibold text-rose-300 hover:text-rose-200 disabled:opacity-40"
 										disabled={
 											physicsSettingsLocked ||
 											Boolean(bikeImagePreparingId) ||
@@ -949,7 +951,7 @@ export function ProfilePanel({
 								<form.Field name={`bikes[${activeBikeIndex}].image`}>
 									{(field) => (
 										<div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-											<div className="grid aspect-3/2 w-full shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-slate-900 text-slate-600 text-xs uppercase tracking-[.16em] sm:w-40">
+											<div className="border-line grid aspect-3/2 w-full shrink-0 place-items-center overflow-hidden rounded-lg border bg-slate-900 text-xs tracking-[.16em] text-slate-600 uppercase sm:w-40">
 												{bikeImageUrl ? (
 													<img
 														alt={`${activeBike.name || 'Bike'} profile`}
@@ -1000,7 +1002,7 @@ export function ProfilePanel({
 												/>
 												{bikeImageError ? (
 													<p
-														className="mt-2 text-rose-300 text-xs"
+														className="mt-2 text-xs text-rose-300"
 														role="alert"
 													>
 														{bikeImageError}
@@ -1213,14 +1215,14 @@ export function ProfilePanel({
 						profileTab={profileTab}
 					/>
 					{saveError || storageError ? (
-						<p className="mt-4 text-rose-300 text-sm" role="alert">
+						<p className="mt-4 text-sm text-rose-300" role="alert">
 							{saveError || storageError}
 						</p>
 					) : null}
 				</div>
-				<footer className="flex shrink-0 justify-end gap-2 border-line border-t px-5 py-4 sm:px-6">
+				<footer className="border-line flex shrink-0 justify-end gap-2 border-t px-5 py-4 sm:px-6">
 					<button
-						className="rounded-lg px-4 py-2.5 font-semibold text-slate-400 text-sm hover:bg-slate-800 hover:text-slate-200"
+						className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200"
 						disabled={isSubmitting}
 						onClick={onClose}
 						type="button"
@@ -1228,7 +1230,7 @@ export function ProfilePanel({
 						Cancel
 					</button>
 					<button
-						className="rounded-lg border border-mint/50 bg-mint/15 px-4 py-2.5 font-bold text-mint text-sm hover:bg-mint/20 disabled:opacity-50"
+						className="border-mint/50 bg-mint/15 text-mint hover:bg-mint/20 rounded-lg border px-4 py-2.5 text-sm font-bold disabled:opacity-50"
 						disabled={imagePreparationInProgress || isSubmitting || !canSubmit}
 						type="submit"
 					>

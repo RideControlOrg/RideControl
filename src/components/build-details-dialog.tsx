@@ -13,7 +13,7 @@ import {
 	formatBuildTimestamp,
 } from '../lib/build-info';
 
-const BUILD_LABEL_PREFIX = /^Build: /;
+const BUILD_LABEL_PREFIX = /^Build: /u;
 
 export function BuildDetailsDialog({
 	onClose,
@@ -38,11 +38,11 @@ export function BuildDetailsDialog({
 				aria-describedby="build-details-description"
 				aria-labelledby="build-details-title"
 				aria-modal="true"
-				className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-2rem)]"
+				className="bg-panel flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-600 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-2rem)]"
 				role="dialog"
 			>
-				<header className="flex shrink-0 items-start justify-between gap-4 border-line border-b px-5 py-4 sm:px-6">
-					<h2 className="font-bold text-2xl" id="build-details-title">
+				<header className="border-line flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
+					<h2 className="text-2xl font-bold" id="build-details-title">
 						Version details
 					</h2>
 					<button
@@ -60,20 +60,20 @@ export function BuildDetailsDialog({
 					className="space-y-5 overflow-y-auto px-5 py-5 sm:px-6"
 					id="build-details-description"
 				>
-					<dl className="overflow-hidden rounded-xl border border-line bg-[#10151a]">
+					<dl className="border-line overflow-hidden rounded-xl border bg-[#10151a]">
 						<div className="border-line border-b px-4 py-3">
-							<dt className="font-bold text-[10px] text-slate-500 uppercase tracking-[.14em]">
+							<dt className="text-[10px] font-bold tracking-[.14em] text-slate-500 uppercase">
 								Build ID
 							</dt>
-							<dd className="mt-1 font-mono font-semibold text-mint text-sm">
+							<dd className="text-mint mt-1 font-mono text-sm font-semibold">
 								{formatBuildIdentifier(BUILD_TIMESTAMP_UTC)}
 							</dd>
 						</div>
 						<div className="border-line border-b px-4 py-3">
-							<dt className="font-bold text-[10px] text-slate-500 uppercase tracking-[.14em]">
+							<dt className="text-[10px] font-bold tracking-[.14em] text-slate-500 uppercase">
 								Built
 							</dt>
-							<dd className="mt-1 font-semibold text-slate-200 text-sm">
+							<dd className="mt-1 text-sm font-semibold text-slate-200">
 								{formatBuildTimestamp(BUILD_TIMESTAMP_UTC).replace(
 									BUILD_LABEL_PREFIX,
 									''
@@ -81,17 +81,17 @@ export function BuildDetailsDialog({
 							</dd>
 						</div>
 						<div className="px-4 py-3">
-							<dt className="font-bold text-[10px] text-slate-500 uppercase tracking-[.14em]">
+							<dt className="text-[10px] font-bold tracking-[.14em] text-slate-500 uppercase">
 								UTC timestamp
 							</dt>
-							<dd className="mt-1 break-all font-mono text-slate-300 text-xs">
+							<dd className="mt-1 font-mono text-xs break-all text-slate-300">
 								{BUILD_TIMESTAMP_UTC}
 							</dd>
 						</div>
 					</dl>
 
 					<a
-						className="flex w-full items-center justify-between gap-3 rounded-lg border border-mint/35 bg-mint/10 px-4 py-3 font-bold text-mint text-sm transition hover:border-mint hover:bg-mint/15"
+						className="border-mint/35 bg-mint/10 text-mint hover:border-mint hover:bg-mint/15 flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm font-bold transition"
 						href={BUILD_PR_URL}
 						rel="noreferrer"
 						target="_blank"
@@ -102,11 +102,11 @@ export function BuildDetailsDialog({
 
 					<section aria-labelledby="recent-build-changes-title">
 						<div className="mb-3 flex items-end justify-between gap-3">
-							<h3 className="font-bold text-base" id="recent-build-changes-title">
+							<h3 className="text-base font-bold" id="recent-build-changes-title">
 								Recent changes
 							</h3>
 							{pullRequests.length > 0 ? (
-								<span className="text-slate-500 text-xs">
+								<span className="text-xs text-slate-500">
 									{pullRequests.length === 1
 										? 'Latest merged PR'
 										: `Last ${pullRequests.length} merged PRs`}
@@ -114,7 +114,7 @@ export function BuildDetailsDialog({
 							) : null}
 						</div>
 						{pullRequests.length > 0 ? (
-							<ol className="overflow-hidden rounded-xl border border-line bg-[#10151a]">
+							<ol className="border-line overflow-hidden rounded-xl border bg-[#10151a]">
 								{pullRequests.map((pullRequest) => (
 									<li
 										className="border-line border-b last:border-b-0"
@@ -126,10 +126,10 @@ export function BuildDetailsDialog({
 											rel="noreferrer"
 											target="_blank"
 										>
-											<span className="block font-semibold text-slate-200 text-sm leading-5">
+											<span className="block text-sm leading-5 font-semibold text-slate-200">
 												{pullRequest.title}
 											</span>
-											<span className="mt-1 block text-slate-500 text-xs">
+											<span className="mt-1 block text-xs text-slate-500">
 												#{pullRequest.number} ·{' '}
 												<time dateTime={pullRequest.mergedAt}>
 													{formatBuildPullRequestDate(
@@ -142,7 +142,7 @@ export function BuildDetailsDialog({
 								))}
 							</ol>
 						) : (
-							<p className="rounded-xl border border-line bg-[#10151a] px-4 py-3 text-slate-400 text-sm">
+							<p className="border-line rounded-xl border bg-[#10151a] px-4 py-3 text-sm text-slate-400">
 								Recent pull requests are included in production builds.
 							</p>
 						)}

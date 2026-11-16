@@ -173,7 +173,7 @@ const cacheSchema = z.object({
 });
 
 const PEAK_KEYS = Object.values(SESSION_ANALYTICS_PEAK);
-const YEAR_KEY_PATTERN = /^\d{4}$/;
+const YEAR_KEY_PATTERN = /^\d{4}$/u;
 
 function emptyMetricTotal(): SessionAnalyticsMetricTotal {
 	return { count: 0, sum: 0 };
@@ -351,7 +351,7 @@ function cloneCache(cache: SessionAnalyticsCache): SessionAnalyticsCache {
 
 function adjustedValue(current: number, change: number): number {
 	const adjusted = current + change;
-	return adjusted > 0 ? adjusted : 0;
+	return Math.max(0, adjusted);
 }
 
 function adjustMetricTotal(
@@ -573,7 +573,7 @@ export function sessionAnalyticsCompleteTrendRollups(
 ): [string, SessionAnalyticsRollup][] {
 	const yearKeys = Object.keys(cache.periods.years)
 		.filter((key) => YEAR_KEY_PATTERN.test(key))
-		.sort();
+		.sort((left, right) => Number(left > right) - Number(left < right));
 	const firstYear = Number(yearKeys[0]);
 	const lastYear = Number(yearKeys.at(-1));
 	if (!(Number.isFinite(firstYear) && Number.isFinite(lastYear))) {
