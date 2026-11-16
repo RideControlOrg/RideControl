@@ -15,5 +15,5 @@
 		"strict": true,
 		"types": ["@types/web-bluetooth", "bun", "vite/client"]
 	},
-	"include": ["src", "tests", "cloudflare.config.ts"]
+	"include": ["src", "tests", "scripts", "cloudflare.config.ts"]
 }
