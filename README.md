@@ -35,6 +35,24 @@ Control your indoor bike trainer from Google Chrome. No account required; your r
 </details>
 
 <details>
+<summary>Sessions list</summary>
+
+![Sessions list with eight synthetic demo rides and the selected ride's metrics and charts](docs/images/sessions-list.png)
+
+*Demo data.*
+
+</details>
+
+<details>
+<summary>Sessions statistics</summary>
+
+![Statistics for eight synthetic demo rides, including all-time totals, personal bests, and weekly trends](docs/images/sessions-statistics.png)
+
+*Demo data.*
+
+</details>
+
+<details>
 <summary>Tour de France route</summary>
 
 Tour de France 2026, Stage 6: Pau–Gavarnie-Cèdre, in the route browser.
