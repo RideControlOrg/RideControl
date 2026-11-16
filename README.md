@@ -9,7 +9,9 @@ Control your indoor bike trainer from Google Chrome. No account required; your r
 - Save, review, export, and resume sessions.
 - Customize ride reminders, motivational messages, and event countdowns in your profile.
 
-![Ride dashboard with the Prairie Roll terrain workout selected](docs/images/dashboard.png)
+![Dashboard with a synthetic Prairie Roll ride and data in every history chart](docs/images/dashboard.png)
+
+*Demo data; ride paused.*
 
 <details>
 <summary>Profile and desktop notification settings</summary>
@@ -43,7 +45,7 @@ Tour de France 2026, Stage 6: Pau–Gavarnie-Cèdre, in the route browser.
 
 ## Run locally
 
-Use Bun 1.4.2 and Node.js 26.10.0:
+Use Bun 1.4.4 and Node.js 26.13.1:
 
 ```sh
 bun install --frozen-lockfile

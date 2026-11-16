@@ -6,7 +6,7 @@ Keep these images current with the UI they show. Refresh affected screenshots in
 
 1. Run `bun run dev` and open `http://localhost:4200` in a separate Chrome profile with no personal ride data. Do not clear your regular browser's data or connect real devices for screenshots.
 2. Dismiss the welcome screen and transient notices. Use dark mode, Imperial units, and the default tray width. Leave the rider name and photo blank.
-3. Open **Workouts**, choose **Prairie Roll**, and close the tray. Keep the session unstarted: the zero metrics accurately show the disconnected app, rather than fabricated telemetry.
+3. For the dashboard, load [screenshot-dashboard.json](screenshot-dashboard.json), a synthetic 32-minute Prairie Roll ride, using the DevTools snippet below in this separate local-development browser profile. It replaces that profile's active ride. Reload, dismiss the restored-session notice, and close all trays. Leave the ride auto-paused: instantaneous metrics remain zero without real devices, while averages, maximums, totals, route progress, and all eight history charts show demo data.
 4. In Chrome DevTools, enable the device toolbar, select a responsive desktop viewport of **1440 × 1000**, set device pixel ratio to **1**, and use **Capture full size screenshot**. Save the PNG as `docs/images/dashboard.png`. Include the entire dashboard, all ride-history charts, and the footer; the image height follows the page content.
 5. Open **Profile → Personal details**. Leave notifications disabled, select **5 minutes**, enable encouragement, and enter **Spring century** with an event date 30 calendar days from capture. These settings save immediately in this separate browser profile; no notification permission is needed to show the preview.
 6. Change the viewport to **1440 × 1300**, ensure the profile content is scrolled to the top, and use **Capture screenshot** (viewport only) for `docs/images/profile.png`. Use viewport-only captures for the remaining images too. The notification controls, event countdown preview, and save/cancel footer should all be visible.
@@ -17,9 +17,23 @@ Keep these images current with the UI they show. Refresh affected screenshots in
 
 If the layout outgrows these dimensions, adjust the capture dimensions and update this procedure together. Browser automation may follow the same steps through normal UI interactions; the saved images must still come from the real running app.
 
+### Dashboard demo fixture
+
+Run this only on the local development server in the disposable screenshot profile, never in a browser with a real active ride:
+
+```js
+const { persistActiveSession } = await import('/src/lib/saved-sessions.ts');
+const response = await fetch('/docs/screenshot-dashboard.json');
+if (!response.ok) throw new Error('Dashboard demo fixture unavailable');
+await persistActiveSession(await response.json());
+location.reload();
+```
+
+The fixture was generated through the session recorder with 192 synthetic ten-second samples, using the real Prairie Roll course to calculate grade and elevation. It is screenshot data, not real telemetry or a production demo mode. Keep the README demo-data caption. Capture the actual rendered app without changing the DOM or painting over the image.
+
 ## Review
 
-- Dashboard: glanceable metrics, virtual shifting, selected route, elevation profile, every ride-history chart, and footer are visible without cropping.
+- Dashboard: averages, maximums, totals, route progress, virtual shifting, and footer are visible without cropping. All eight history charts—speed, power, cadence, heart rate, gear, resistance, grade, and elevation—contain data. The README labels the paused ride as synthetic.
 - Profile: current notification controls and the event countdown example are readable and unclipped.
 - Pairing: all three device categories and reconnect instructions are visible, with no permission chooser open.
 - Sessions: eight demo rides populate the calendar; the selected ride's metrics, charts, and synthetic-data description are visible. No personal activity data is included.
