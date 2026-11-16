@@ -41,6 +41,7 @@ import { requestUnloadConfirmation } from '../lib/unload';
 import type { SpeedUnit } from '../types';
 import { FormFieldError } from './form-field-error';
 import { Icon } from './icon';
+import { RideNotificationSettingsPanel } from './ride-notification-settings';
 import { RiderWeightChart } from './rider-weight-chart';
 import { SuggestionInput } from './select-menu';
 import { SideTray } from './side-tray';
@@ -843,6 +844,7 @@ export function ProfilePanel({
 							entries={profile.weightHistory}
 							speedUnit={values.speedUnit}
 						/>
+						<RideNotificationSettingsPanel speedUnit={values.speedUnit} />
 					</section>
 
 					<section

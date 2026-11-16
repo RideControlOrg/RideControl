@@ -32,6 +32,7 @@ import { useGearControl } from './hooks/use-gear-control';
 import { useHeartRateMonitor } from './hooks/use-heart-rate-monitor';
 import { useProfile } from './hooks/use-profile';
 import { useRememberedBluetoothDevices } from './hooks/use-remembered-bluetooth-devices';
+import { useRideNotifications } from './hooks/use-ride-notifications';
 import { useSession } from './hooks/use-session';
 import { useSessionWorkflow } from './hooks/use-session-workflow';
 import { useTrainer } from './hooks/use-trainer';
@@ -464,6 +465,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 		initialSession,
 		riderProfile.ready ? riderPhysicsProfile : undefined
 	);
+	useRideNotifications(session);
 	const [workoutPreview, setWorkoutPreview] = useState<
 		{ distance: number; startedAt: number } | undefined
 	>();
