@@ -1,166 +1,64 @@
 # Ride Control
 
-Bike trainer control web app using Web Bluetooth. Tested with Wahoo KICKR Core 2 and Zwift Cog, with standards-based support for Bluetooth FTMS trainers such as the Elite DIRETO XR-T and initial support for Zwift Click V2.
+Control your indoor bike trainer from Google Chrome. No account required; your ride data stays in your browser.
 
-[Open Ride Control](https://ridecontrol.xyz)
+**[Open Ride Control](https://ridecontrol.xyz)**
 
-## Features
+- Connect Bluetooth FTMS trainers, heart-rate monitors, and supported shifting controls.
+- Ride terrain workouts or import GPX routes, with virtual shifting and live ride metrics.
+- Save, review, export, and resume sessions.
+- Customize ride reminders, motivational messages, and event countdowns in your profile.
 
-- Presents the dashboard and every tray in an intentionally flat, square visual system with thin dividers, restrained surfaces, and large glanceable ride data. Live metrics, ride totals, and trainer controls form one cohesive responsive dashboard region instead of unrelated floating cards, with both metric rows sharing the same physical column tracks so every divider aligns exactly; terrain and ride-history graphs remain grouped by function below it. The complete interface adapts to narrow screens without shrinking important numbers into captions. A footer control switches the entire site immediately between persistent dark and light modes. Both themes use contrast-tested semantic colors, stronger functional dividers, and visible series names so chart meaning never depends on color alone.
-- Welcomes first-time visitors with a concise introduction, open-source and local-data privacy details, a direct source-code link, and an optional “Don't show again” preference stored in the browser; visitors outside the tested Google Chrome environment first see a prominent top-of-welcome compatibility warning and official browser download link, and the welcome screen remains available from the Ride Control footer link.
-- Restores the paired-devices, terrain-workouts, profile, or session-history side tray when the page reloads while that tray is open, and clears the remembered tray as soon as it closes. On wider screens, every tray can be expanded from its default width with a pointer or keyboard-accessible resize handle; each tray remembers its own chosen width when it closes. Pulsing indicators that communicate live connection or route state remain active even when Chromium reports a reduced-motion preference.
-- Uses TanStack Router to keep shareable deep links synchronized with the visible selection: `/gpx/:provider/:collection/:route` opens the terrain-workout tray, reusable route browser, map, and requested prepared route; `/workouts/:workoutId` opens and centers the requested workout; `/sessions/:sessionId` opens the complete saved-session detail; `/devices` opens the paired-devices tray; and `/profile` opens the rider-and-bike profile tray. Provider and collection links open the corresponding route browser, prior `/bikegpx/:routeId` links remain compatible, invalid identifiers fall back safely, and browser back/forward navigation restores the matching nested interface.
-- Manages the smart trainer, heart rate monitor, and the physical `+` Zwift Click V2 controller independently from one paired-devices tray that slides smoothly into and out of view, with prominent pulsing status dots, direct **Cancel pairing** and **Stop connecting** actions during stalled attempts, immediate local removal when **Forget** is chosen even if the Bluetooth link is failing, delayed recovery guidance for unusually long reconnects only while Chrome automatic reconnect is configured and a remembered device remains disconnected, and a green indicator once every paired device is ready. Cancelling invalidates the pending attempt so a late browser selection or GATT completion cannot restore it. Ride Control currently exposes only the reliable `+` controller while retaining an extensible controller-slot model for future hardware support. Its role-specific Bluetooth filter selects the advertised right-side controller, the physical `+` button shifts up, and the blue `Y` button shifts down; the controller row briefly identifies those inputs as `+` and `−` while they are pressed. Pairing reads and remembers the controller's standard firmware revision and battery level when available, live Zwift battery notifications keep the percentage current, and the panel flags versions other than `1.2.0` with a direct link to the official Zwift Companion update instructions. The saved controller reconnects during any open session, including its initial or inactivity-triggered auto-pause, and keeps retrying after sleep so virtual shifts are ready when riding resumes. It may disconnect during an explicit manual pause or after the session ends to preserve its battery. The controller is not reported ready until its notification stream produces data, and Click presses made while the paired-devices panel is open stay in setup and do not shift the ride.
-- Detects browsers outside the currently tested Chrome environment and replaces the pairing controls with a compatibility notice, while showing Chrome's automatic-reconnect setup steps directly in the paired-devices panel only when its persistent permission capability is unavailable and confirming when it is configured correctly.
-- Shows each deployment's build time in the viewer's local timezone and links it to the GitHub pull request that produced the build, falling back to the closed pull-request list when no associated PR is available. A tiny static deployment marker is revalidated at most once per hour; when it differs from the running bundle, a persistent notice offers to reload into the latest version without automatically interrupting a ride.
-- Connects to compatible bike trainers and standard Bluetooth heart rate monitors through Web Bluetooth, remembers authorized devices, and restores the trainer, heart-rate monitor, and `+` Click controller from one browser permission snapshot after a reload. Each browser chooser filters by the required advertised service, so trainer pairing shows FTMS hardware while heart-rate pairing shows standard heart-rate monitors. The trainer adapter is based on capability instead of a vendor-specific name, allowing the same path to support Wahoo, Elite, and other standards-compliant trainers while keeping one active trainer for a ride. FTMS control commands wait for the trainer's matching acknowledgement and establish control with the standard Request Control and Start/Resume procedures before resistance is restored. Runtime resistance updates are coalesced to the newest target and sent at most twice per second, preventing ramps and live terrain feedback from building a stale command backlog on slower trainers. A timed-out control response or disconnected GATT write invalidates the old command path and triggers a clean automatic reconnect instead of repeatedly writing through a dead characteristic. The trainer and heart-rate monitor begin reconnecting immediately and independently; the remembered Click controller joins those parallel attempts while a session is open and not manually paused. Offline remembered devices keep retrying while the page remains open, with bounded attempts so a stale browser request cannot stall the loop; background heart-rate probes use a shorter timeout so a monitor that wakes up gets a fresh connection attempt promptly. Starting a new session re-arms every remembered device that is not already connected, while **Disconnect**, **Stop connecting**, and closing the page cancel current retry work. Trainers, heart-rate monitors, and the active Click controller share advertisement discovery through the GATT handshake so Chrome can rediscover remembered hardware as it broadcasts. Bounded direct GATT retries remain the fallback when advertisements are not delivered or watching is unavailable or fails. A shared coordinator deduplicates requests to the same physical device without letting a slow sensor block the others, and each device's service and notification setup stays sequential for reliable GATT communication.
-- Reports a heart-rate monitor ready only after its first valid measurement. If readings stop for 10 seconds, the app closes the stale connection and retries the remembered monitor without requiring it to be forgotten or paired again. Disconnects during setup abort the attempt, and canceled or late connection work cannot tear down its replacement.
-- Opening the Devices tray refreshes advertisement discovery for a remembered heart-rate monitor that is already reconnecting. It preserves the retry schedule and any connection attempt in progress, leaves connected devices alone, and does not resume a manually stopped or disconnected monitor.
-- Shows live speed, power, cadence, heart rate, elapsed time, distance, and estimated calories, with MPH and KM/H display modes.
-- Opens the linkable Profile view as a slide-out tray with shared, keyboard-accessible tabs that separate Personal details from Bikes while leaving room for future sections such as Premium and Teams. `/profile?tab=personal` and `/profile?tab=bikes` link directly to each section, browser history follows tab changes, and plain `/profile` safely defaults to Personal details. Switching tabs preserves every unsaved form edit. Profile data remains in IndexedDB on the current device and includes name, profile image, rider weight, an inclusive free-form sex or gender identity field that remembers saved custom entries in a separately labelled, removable suggestion group without relying on browser autofill, the app-wide Imperial or Metric display preference, and multiple named bikes. Every bike can store its own prepared image, manufacturer, model, color, purchase date, weight, front-chainring teeth, and rear-cassette teeth; rider and bike images share the same JPEG/PNG/WebP validation, browser-side resizing and compression, 32 MB source ceiling, 512-pixel edge, and 512 KB prepared-image ceiling. Removing a bike, profile image, or bike image requires explicit confirmation. 1×11, 1×12, 2×, and other valid drivetrains are supported up to 24 total combinations. Selecting the active bike immediately supplies that bike's mass and ordered virtual gear ratios to trainer physics. Existing single-bike and multi-bike profiles migrate automatically. Every actual rider-weight change is timestamped in the profile without adding duplicates for unchanged saves or unit conversions; the tray graphs the complete series with current weight and net change while retaining the complete local history for future encrypted sync. Weight follows the selected pounds or kilograms display while calculations use canonical kilograms, and the browser warns before reloading while the open profile contains unsaved changes. Each ride captures an immutable, physics-only snapshot of rider weight plus the active bike's identity, weight, chainrings, and cassette before recording begins, preserves it through active-session recovery and continuation, and round-trips it through Ride Control TCX files so later bike edits do not rewrite historical settings. Those physics fields and the active-bike selection lock after recording begins and unlock when the session ends; names, images, identity, display units, and descriptive bike metadata remain editable. Identity, rider name, and images never affect workout calculations or enter session history. Future cloud storage and synchronization will be offered as a premium feature.
-- Provides direct resistance control with buttons, a slider, and keyboard shortcuts with matching button feedback: Up Arrow or Return increases resistance, while Down Arrow or Right Shift decreases it. The control shows smoothing progress inside the slider thumb and records resistance changes alongside the other ride metrics.
-- Offers original terrain workouts built as repeatable courses, with gentle, rolling, and climbing options and distinctive winding top-down route shapes. Courses explicitly support loops, point-to-point routes, and out-and-back routes; an out-and-back follows the supplied path to its turnaround, then reverses the same location and elevation data back to the start before repeating. Prairie Roll adds a non-intersecting, curving 15-mile loop of repeated gradual climbs and descents. Granite Switchbacks adds a sustained four-mile ascent whose hairpin corners briefly get steeper before immediately returning to the steady climbing grade, followed by a ridge and a descending sequence of five recovery rollers. Ridgeline Time Trial is a ten-mile out-and-back with a gradual five-mile, roughly 300-foot hillclimb to the turnaround and the identical terrain in reverse on the return. Every course begins flat without giving nearly level routes an unnecessarily long rollout: low-climb courses use about 0.4 km, moderate rollers use about 0.8 km, and climbing-focused courses retain a 1.5 km rollout. The course then automatically adjusts trainer resistance from the current grade, tracks the rider in compact, vertically aligned top-down and elevation views with a clearly labelled ridden-this-lap, ridden-this-trip, or ridden-this-route path and pulsing position markers while pedaling, and uses clear mid-contrast preview lines with a shared elevation scale so gentle rollers remain visibly low beside genuinely mountainous routes. It shows course distance progress to two decimal places alongside course percentage, current grade, and effective trainer resistance directly on the map, with grade and resistance values matching their graph colors, and derives cumulative ride climbing and downhill from course distance so those totals remain aligned with the advertised full-course climb. Elevation appears in feet with MPH or meters with KM/H, and terrain totals and progress are recorded with the session and preserved in saved history and TCX import/export. Currently open in-progress sessions resolve bundled workout IDs to the latest course definition, preventing stale geometry from lingering before a ride is saved; saved history keeps the exact workout snapshot used by that ride. A workout can be selected before riding or planned while viewing a completed session; ending a workout keeps it selected and previews it at 0% for the next session unless the rider clears or replaces it. A newly planned workout immediately replaces the prior course on the dashboard at 0% progress without changing the completed ride's recorded data. It then remains locked from the moment riding begins until that session ends; definition refreshes for that same workout remain allowed without opening a path to switch courses. Routes contain geometry and elevation rather than an arbitrary resistance baseline; one shared terrain engine derives the load from grade before virtual gearing is applied. Point-to-point finish grades use the actual finish elevation, so starting the next lap cannot create an invisible climb or descent in the last 150 meters.
-- Lets a saved ride start a linked course extension on a later day. The new session inherits the exact map and elevation-profile position while resetting time, distance, calories, climbing, samples, averages, and maxima, so each day remains independently measurable. Every extension records its journey and previous-session lineage; session history can switch between the selected part and a combined full-journey view whose totals, averages, maxima, charts, and course progress span the complete linked chain. Ride Control TCX export and import preserve this continuation metadata.
-- Downloads terrain workouts as standard GPX 1.1 files with ordinary geographic and elevation data plus Ride Control metadata for stable ids, difficulty, exact distance, starting location, and route type. Valid GPX tracks or routes can be imported through the file picker or by dropping a file anywhere in the workout tray, then saved into the current device's custom library. Before processing, Ride Control offers an ephemeral enhanced Worker path that removes invalid and duplicate points, rejects large coordinate gaps, smooths elevation noise and implausible grade spikes, calculates climbing and difficulty, and creates normalized map geometry without storing the uploaded file. Riders can decline and process the route entirely on the current device instead; a final dialog summarizes the imported route, processing path, and any errors or fallback warnings. Both paths enforce a 2 MiB file ceiling, a 25,000-point ceiling, safe XML restrictions, and bounded route validation. The map-first route browser can switch between providers and collections, including BikeGPX public routes and yearly Tour de France stages. BikeGPX is linked and thanked beside its collection description, with a note that Ride Control heavily processes and cleans the original route data. The browser searches by name, place, distance, group, or difficulty, filters in the dashboard's current units, continuously scrolls a virtualized list, previews complete routes over OpenStreetMap, displays available stage imagery, shows finalized elevation statistics, downloads GPX, and imports a course in one click. Every visible route already includes finalized distance, climbing, maximum grade, difficulty, and map data; routes with unusable coordinate or elevation data never appear, and the first matching route previews automatically. Imported route descriptions can open an in-app map with start and finish markers and an animated bicycle; routes with genuinely nearby endpoints become loops while other routes remain point-to-point. Stable fingerprints prevent duplicate imports. The workout library supports immediate filtering by name, difficulty, or an approximate distance in the selected Imperial or Metric units, plus renaming, confirmed removal, and vertical drag reordering with persistent order. The terrain tray and route browser remember their open state, collection-specific scroll positions, searches, filters, provider, collection, and selected route across reloads.
-- Replaces direct resistance controls with a focused virtual shifting interface whenever the `+` Zwift Click V2 controller is paired or a terrain workout is selected. Virtual shifting becomes available as soon as the trainer is connected, regardless of whether the remembered Click controller is currently connected; available Click presses, the on-screen minus/plus buttons, Up Arrow or Return for a harder gear, and Down Arrow or Right Shift for an easier gear remain usable. The physical `+` button shifts up and its blue `Y` button shifts down. The configured chainrings and cassette determine the number of positions—11 for a 1×11, 12 for a 1×12, and up to 24 total—and define the drivetrain's easiest, neutral, and hardest ratios. Positions use equal percentage load steps on either side of the middle neutral gear, while the control identifies the selected physical chainring/cassette combination, its ratio, and its calibrated load multiplier, such as `53/15 · 3.53:1 · 2.21× load`. The progress meter retains visible fill in the easiest gear and increases at every higher position, so gear 1 remains represented while gear 2 is visibly farther along. The prepared route grade produces one stable terrain target, then the calibrated load curve progressively unloads gears below neutral and adds load above it: the middle gear preserves the terrain target at `1.00×`, gear 1 provides the easiest configured ratio, and the final gear provides the hardest configured ratio. Reported speed, power, and cadence remain measured results of the trainer's brake load instead of being fed back into that same target and destabilizing it. Holding a shift control continues shifting, terrain changes remain smoothly automated underneath the selected gear, and sessions record both the selected gear and applied trainer resistance.
-- Automatically records while pedaling, auto-pauses during inactivity, supports manual pause and resume, and allows a session to end at any time—even before trainer data arrives. Reloading while riding or explicitly paused retains the browser safety confirmation, while an inactivity-triggered auto-pause can reload immediately because its complete checkpoint is already stored locally. Finishing a ride smoothly returns a connected trainer to 10% resistance; if it is disconnected, 10% is remembered and applied when it reconnects.
-- Temporarily stops recording while the end-session save dialog is open. Escape, the close button, or the backdrop cancels that finish and restores the prior pause state; pedaling resumes the counters without adding dialog time or distance. Trainer resistance returns to 10% only after saving or explicitly ending without saving, and dismissal is disabled while saving.
-- Tracks every time-series sample plus averages and maximums for power, cadence, heart rate, speed, resistance, and virtual gear, with no duration-based truncation during recording or FIT/TCX import. Large, high-visibility numbers appear in space-efficient live metric and ride-summary cards, with oversized ride totals and subdued unit labels. Focused or combined charts use a responsive display-only sample of long histories without changing the complete data retained for summaries and exports. The resistance chart starts at a useful 50% scale and expands in ten-point steps as samples approach its ceiling. Workout grade and elevation are graphed in their own distinct colors, resistance remains visible alongside gear during virtual shifting, and the gear graph stays hidden outside gear mode unless the session contains recorded gear data. Workout elevation is recorded across the entire ride, so the course profile repeats for every completed loop. Saved sessions reference immutable, content-addressed workout snapshots in a separate IndexedDB store: identical course definitions share one snapshot, edited definitions retain their historical versions, and deleting a workout from the selectable library cannot break an older session's maps or terrain details.
-- Keeps the complete dashboard usable at phone widths: ride totals reflow when necessary, chart controls and plots shrink within the viewport, virtual shifting uses the available width, and the footer remains below the controls with device safe-area spacing.
-- Provides clear footer access to email contact, the privacy policy, terms of service, and the current deployment version in responsive in-app dialogs. The legal dialogs explain today's local-only storage and briefly disclose the planned optional paid premium cloud-storage features that will receive expanded terms and privacy details before launch. Production version details include links and merge dates for the ten most recent frontend pull requests.
-- Lets riders explicitly save a completed session or end it without saving, while keeping start-new and continue-session choices to two clear, context-aware actions. Saving an ended session immediately opens the Sessions drawer with that new ride selected, while save-and-start flows continue directly into the next ride. Saved and in-progress sessions use browser-managed IndexedDB storage, and active rides are checkpointed in small sample chunks so recovery does not repeatedly rewrite the complete history. Existing localStorage recovery data is migrated once and removed only after IndexedDB has accepted it. Saved sessions support an optional 500-character description with a live character count plus ride feeling, and persistent browser storage is requested when supported.
-- Starts ordinary new sessions independently, even when the selected workout is unchanged: ride totals, samples, saved identity, journey linkage, and course position reset. Only starting from a saved ride in session history creates a linked course continuation.
-- Opens saved rides from the dashboard's Sessions button in a slide-out tray with Calendar, List, and Statistics views. The month calendar marks every day with rides and makes each event directly selectable, while the virtualized chronological list retains paginated loading for very large histories. Statistics are updated transactionally whenever a session is saved, replaced, imported, or deleted, then read from compact IndexedDB rollups instead of rescanning telemetry. All-time totals cover rides, distance, time, climbing, downhill, calories, speed, power, cadence, and heart rate; their responsive cards use at most three columns and always show complete numeric values instead of truncating them. The statistics view also graphs the same canonical profile-weight history shown in Profile, with values converted into the selected display unit. Personal-best cards open their source sessions, and dedicated weekly, monthly, yearly, and complete-history graphs show distance, time, elevation, calories, ride count, average speed, power, cadence, and heart rate. Trends remembers both the selected chart metric and timeframe. Detailed session metrics and charts, clear date ranges for rides that span midnight, keyboard navigation with grouped shortcut help, and permanent deletion remain available. The tray remembers its active view, selected session, list scroll position, and each session's independent detail-pane scroll position after a page reload.
-- Downloads saved rides as standards-compliant FIT activities for direct upload to Strava and other fitness services, including indoor-cycling and creator metadata, UTC and local timestamps, distance, speed, power, cadence, estimated crank revolutions and work, heart rate, resistance, elevation, calories, and ride totals. Each FIT filename includes a stable session token for reliable upload identity. TCX export remains available for the richer Ride Control round trip, including virtual gear, terrain workout metadata, ride feeling, session description, and the original session identifier.
-- Creates an on-demand 1200×630 workout card for sharing on X from a stable, stateless RideControl.xyz link containing selected summary stats, a compact route map and elevation preview, and accurate personal-best callouts. Public GPX workouts link back to their exact RideControl route. Cloudflare regenerates an evicted image from the link and serves it with immutable cache headers; no share data is stored in KV or R2. Sharing is explicit and does not publish raw ride samples, comments, or profile details.
-- Imports individual FIT or TCX activities, or every supported activity inside nested folders in a mixed-format ZIP, directly into local session history. Full exports can be restored without application-imposed file-count, per-activity-size, or total-archive-size ceilings. ZIPs are read incrementally and activities are parsed and saved sequentially rather than inflating the entire archive first; available browser memory and storage still determine practical capacity. Compatible ride data is preserved, including complete route details in RideControl TCX files and saved-route identity and course position in RideControl FIT files; FIT routes reconnect automatically when the matching built-in or saved route is available. Duplicates are detected across formats by identifier or stable activity data, and invalid activity files do not stop the rest of a batch. Import failures and partial successes with errors appear in a dismissible dialog over any Sessions tab, with affected filenames and error details; successfully imported rides remain saved if a later archive entry fails. Imported rides permanently retain their import timestamp and a subtle import icon, while only the latest batch remains highlighted until the history tray closes.
-- Downloads every locally saved ride at once as a compressed ZIP with collision-safe filenames when sessions share the same start time. **Download all** opens a modal comparing the data restored from RideControl's TCX and FIT exports, explaining why TCX is recommended for a richer RideControl round trip and FIT is useful for external fitness services. Explicit **Download TCX**, **Download FIT**, and **Cancel** buttons replace the bulk format dropdown and remembered choice. Archive preparation errors remain in the modal for retry, while successful downloads close it and return focus to **Download all**. Single-ride download controls remain unchanged.
-- Continues any saved session in a new unsaved copy while preserving its recorded time, distance, calories, samples, averages, maximums, and original start time. Linked course sessions expose compact part-number navigation through the continuation path, plus an all-parts view that combines every session on that path without mixing in alternate branches. Active rides are checkpointed locally and restored after a page reload; the restored dashboard explains that ride data remains safe while Bluetooth devices may need time to reconnect before riding continues, then automatically removes that notice once the trainer and every other paired ride device are connected again.
-- Protects recorded active rides with a browser confirmation before refresh or close, and presents the save workflow before starting or continuing another session.
-- Includes contextual keyboard help for dashboard and history actions, including pausing, ending, starting, navigating, viewing history, and deleting sessions.
-- Reserves Return for shifting up on the dashboard while a session is open, including its initial auto-pause and manual pauses; in direct-resistance mode it increases resistance instead. Focused buttons and links cannot activate from Return during that time, even when the trainer is disconnected or the highest gear is reached. Right Shift still shifts down. Dialogs and editable fields retain their normal keyboard behavior, and Return can activate **Start new session** after a ride has ended.
-- Displays connection and application notices with a visible 15-second countdown and automatic dismissal.
-- Keeps ride and session data local to the current browser profile; no account is required. Enhanced GPX processing uploads a selected route only after explicit approval, processes it ephemerally in the Ride Control Worker, and does not store the source file. Choosing on-device GPX processing keeps the complete file and its coordinates on that device. Other import paths may send only the first coordinate of a route without a description to OpenStreetMap's Nominatim service to find a starting-city label; that result is cached in the browser and stored with the workout. The resulting location sentence links to OpenStreetMap in a new tab, frames the complete route area, and marks the starting coordinate.
+![Ride dashboard with the Prairie Roll terrain workout selected](docs/images/dashboard.png)
 
-## Run
+<details>
+<summary>Profile and desktop notification settings</summary>
 
-Use Bun 1.4.2 (pinned in `package.json`) and Node.js 26.10.0 (pinned in `.node-version`).
+![Profile settings with five-minute ride updates and a customizable event countdown](docs/images/profile.png)
 
-```bash
+</details>
+
+<details>
+<summary>Device pairing</summary>
+
+![Pairing controls for a smart trainer, heart-rate monitor, and Zwift Click V2](docs/images/pairing.png)
+
+</details>
+
+<details>
+<summary>Sessions calendar</summary>
+
+![Sessions calendar populated with eight synthetic demo rides, showing selected ride metrics and charts](docs/images/sessions.png)
+
+</details>
+
+<details>
+<summary>Tour de France route</summary>
+
+Tour de France 2026, Stage 6: Pau–Gavarnie-Cèdre, in the route browser.
+
+![Tour de France Stage 6 on a geographic map, with the full route, start and finish markers, and elevation previews visible](docs/images/tour-de-france.png)
+
+</details>
+
+## Run locally
+
+Use Bun 1.4.2 and Node.js 26.10.0:
+
+```sh
 bun install --frozen-lockfile
 bun run dev
 ```
 
-Open <http://localhost:4200> in current Chrome.
+Open `http://localhost:4200` in Google Chrome. Bluetooth requires a supported device and permission to connect; see [compatibility and reconnect setup](docs/bluetooth.md).
 
-Open this repository directory as an editor project root so Biome uses the installed version and
-`biome.jsonc`, rather than an editor-bundled fallback. When editing the sibling backend as well,
-add it as a separate project root. For Zed, run `zed --new . ../backend` from this directory instead
-of opening their shared parent directory.
+## Documentation
 
-`bun run ci` checks Biome diagnostics, Tailwind CSS diagnostics, tests, types, and the production
-build. The Biome configuration explicitly enables Tailwind directives and rejects `!important`;
-chart tooltip presentation is stylesheet-owned while TanStack retains its native interaction and
-positioning behavior.
-
-## Architecture
-
-Ride session data is held in a per-app TanStack Store and changed through atomic domain actions.
-The `useSession` adapter owns recording timers and periodic IndexedDB checkpoints while exposing the
-existing session controller API to the interface. Active-session metadata is stored separately from
-chunked 100-sample records, while saved rides and immutable workout snapshots remain in their
-existing IndexedDB stores. A gated one-time migration moves the former localStorage recovery record
-and deletes it only after a successful write. Each Bluetooth hook exposes one explicit
-connection phase instead of independently managed status flags. A single remembered-device catalog
-loads browser-authorized devices once, then the trainer, heart-rate, and Click adapters start their
-independent reconnections together. One GATT coordinator deduplicates overlapping requests
-to the same physical device while allowing the trainer, heart-rate monitor, and controllers to
-connect in parallel. Each device sequences its own service setup, so a sleeping device cannot block
-an awake one and concurrent ATT requests cannot fight over one connection.
-Shared bounded connection probes, required service and notification
-setup, persistent advertisement-driven wake detection, retry backoff, scheduling, and notification subscriptions live in
-plain domain controllers, while device-specific adapters own their GATT services. Bluetooth objects
-and timers stay outside shared application state. The application component coordinates focused
-dashboard regions,
-uses an explicit overlay state for mutually exclusive trays, renders every side tray through one
-animated and accessible shell, and delegates save/discard/start/continue transitions to a
-store-backed session workflow. Temporary form inputs remain local React state.
-Terrain workouts are an independent course domain layered over session distance. Each bundled
-course keeps its editable metadata, map geometry, and elevation in an
-individual JSON definition under `src/workouts`; shared factories derive the normalized runtime
-course geometry and terrain behavior. Course geometry
-produces grade, elevation, current and completed course counts, and map position. A shared terrain
-engine turns grade into one bounded resistance target, independent of which route supplied it.
-Virtual gearing applies a calibrated load curve across the active bike's modeled drivetrain ratios—including
-1×11 and 1×12 setups—without feeding
-the trainer's resulting speed, power, and cadence back into the same resistance target, so terrain
-changes ramp smoothly while button-driven gear changes remain immediate. An optional IndexedDB
-profile supplies total rider-and-bike mass and the configured drivetrain ratios to that calculation,
-and retains a timestamped history whenever the rider weight actually changes;
-the existing 53/39 chainrings, 12-speed 12–24 cassette, and neutral reference mass remain the
-defaults. Recorded grade, resistance,
-and elevation appear alongside the other session graphs for the full ride, and the course profile
-repeats on every loop or out-and-back trip while point-to-point routes stop at their finish; route
-progress, selected gear, and applied resistance stay portable in saved sessions and TCX files;
-standard ride metrics also stay portable through FIT files.
-Saved-session writes also maintain a versioned IndexedDB analytics cache containing compact
-per-session contributions plus daily, weekly, monthly, yearly, and all-time rollups. New sessions
-update those totals incrementally; replacement and deletion subtract the prior contribution, and
-only a removed personal-best holder requires a scan of the compact contribution store to select
-the next peak. Existing saved rides are indexed and backfilled once when the analytics stores are
-created, so opening the calendar or statistics view never walks complete telemetry histories.
-Shared domain utilities own unit conversions, numeric bounds, storage keys, metric presentation,
-and repeated dialog and keyboard behavior so those rules stay consistent across views and exports.
-
-## Deployment
-
-`bun run cf <command>` disables CLI telemetry with `CF_SEND_TELEMETRY=false` and
-`DO_NOT_TRACK=1`. Development, builds, deployment, and CI enforce the same opt-out.
-For direct `cf` commands outside these scripts, disable the machine-wide preference with
-`CF_SEND_TELEMETRY=false DO_NOT_TRACK=1 cf cli telemetry disable`.
-
-Pull requests and pushes to `main` run the complete `bun run ci` suite in GitHub Actions. After
-CI succeeds on `main`, the deployment job runs `bun run build` and deploys the generated Cloudflare
-Build Output to a Worker at [ridecontrol.xyz](https://ridecontrol.xyz). Development, builds, and
-deployment use the pinned `cf` CLI and Cloudflare Vite plugin v2 beta. `cloudflare.config.ts` owns
-the account, custom domain, SPA routing, and observability settings. Build output and generated
-types live in the ignored `.cloudflare/` directory.
-
-`bun run deploy` builds and deploys locally. To validate an existing production build without
-uploading it, run `bun run cf deploy --prebuilt --mode production --dry-run`; CI runs this check
-for every pull request. Production deployment uses the same prebuilt command without `--dry-run`
-and authenticates with the `CLOUDFLARE_API_TOKEN` repository secret. Workflow actions are pinned
-to full commit hashes; Bun and Node.js use the repository's pinned versions.
-
-Each build emits `version.json` beside those static assets. Running clients revalidate that marker with the browser
-cache at most once per hour, so unchanged checks can use Cloudflare's asset ETag without invoking
-dynamic Worker code or transferring the application bundle again.
-
-## Automatic reconnect
-
-Ride Control currently tests Web Bluetooth only in desktop Chrome. Bluetooth does not work in
-Brave.
-
-Persistent Web Bluetooth permissions are disabled by default in current Chromium builds. To allow the app to reconnect after a page reload:
-
-1. Open `chrome://flags/#enable-web-bluetooth-new-permissions-backend`.
-2. Enable **Use the new permissions backend for Web Bluetooth**.
-3. Relaunch Chrome and pair the device once more from the app.
-
-The paired-devices panel detects Chrome's persistent reconnect capability and replaces these setup steps with a configured confirmation when it is available.
-
-Remembered permission alone does not guarantee that Chrome can connect to a device: it may still
-need advertisement discovery to refresh that device's availability. In a live TRACKR HR recovery,
-direct GATT retries repeatedly reported “Bluetooth Device is no longer in range” until advertisement
-watching was enabled on the same remembered device; it then connected and delivered heart-rate
-measurements without a refresh or re-pair. Heart-rate monitors therefore use the same discovery
-policy as trainers, alongside bounded direct GATT retries that do not depend on an advertisement
-arriving or watching succeeding. This recovery was observed on that device in Chrome, not verified
-across all heart-rate hardware.
+- [Features and behavior](docs/features.md)
+- [Architecture](docs/architecture.md)
+- [Development and deployment](docs/development.md)
+- [Refreshing screenshots](docs/screenshots.md)
 
 ## License
 
-Copyright (C) 2026 Ride Control.
-
-Ride Control is licensed under version 3 of the GNU General Public License. See
-[LICENSE](LICENSE) for the complete license terms.
+Copyright (C) 2026 Ride Control. [GNU GPL v3](LICENSE).
