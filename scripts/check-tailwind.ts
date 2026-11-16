@@ -5,7 +5,8 @@ import { pathToFileURL } from 'node:url';
 
 const DIAGNOSTIC_TIMEOUT_MS = 30_000;
 const CONTENT_LENGTH_PATTERN = /Content-Length: (?<length>\d+)/iu;
-const DIAGNOSTIC_CANARY = 'export const Canary = () => <div className="p-2 p-4" />;';
+// Assemble the intentional conflict so editors do not lint the fixture as application markup.
+const DIAGNOSTIC_CANARY = `export const Canary = () => <div className="${['p-2', 'p-4'].join(' ')}" />;`;
 const TAILWIND_CSS_SYNTAX_PATTERN =
 	/@(?:apply|config|custom-variant|import|plugin|source|tailwind|theme|utility|variant)\b/u;
 const LEADING_IMPORTANT_MODIFIER_PATTERN = /^!/u;
@@ -106,13 +107,7 @@ interface Deferred<T> {
 }
 
 function deferred<T>(): Deferred<T> {
-	let reject = (_reason: Error) => undefined;
-	let resolve = (_value: T) => undefined;
-	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-		reject = rejectPromise;
-		resolve = resolvePromise;
-	});
-	return { promise, reject, resolve };
+	return Promise.withResolvers<T>();
 }
 
 function withTimeout<T>(promise: Promise<T>, description: string): Promise<T> {
@@ -481,9 +476,12 @@ async function main() {
 			params: { textDocument: { uri: canaryUri } },
 		});
 
-		const files = [...(await sourceFiles(resolvePath('src'))), resolvePath('index.html')].sort(
-			(left, right) => Number(left > right) - Number(left < right)
-		);
+		const files = [
+			...(await sourceFiles(resolvePath('src'))),
+			...(await sourceFiles(resolvePath('scripts'))),
+			...(await sourceFiles(resolvePath('tests'))),
+			resolvePath('index.html'),
+		].sort((left, right) => Number(left > right) - Number(left < right));
 		const documents: SourceDocument[] = await Promise.all(
 			files.map(async (file) => ({
 				file,

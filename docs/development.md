@@ -15,9 +15,12 @@ Open this repository directory as an editor project root so Biome uses the insta
 `biome.jsonc`, rather than an editor-bundled fallback. When editing the sibling backend as well,
 add it as a separate project root. For Zed, run `zed --new . ../backend` from this directory instead
 of opening their shared parent directory.
+To correct an already-open parent workspace, focus its window and run
+`zed --existing . ../backend` from this directory; this replaces that window's project roots.
 
-`bun run ci` checks Biome diagnostics, Tailwind CSS diagnostics, tests, types, and the production
-build. The Biome configuration explicitly enables Tailwind directives and rejects `!important`;
+`bun run ci` checks Biome diagnostics, Tailwind CSS diagnostics across source, scripts, and tests,
+tests, types (including build/check scripts), and the production build. The Biome configuration
+explicitly enables Tailwind directives and rejects `!important`;
 chart tooltip presentation is stylesheet-owned while TanStack retains its native interaction and
 positioning behavior.
 
