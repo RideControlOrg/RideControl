@@ -13,7 +13,7 @@ import { savedSessionFixture } from './fixtures/saved-session';
 
 Object.defineProperty(globalThis, 'DOMParser', { configurable: true, value: DOMParser });
 
-const SESSION_ID_ELEMENT = /\s*<rc:SessionId>.*<\/rc:SessionId>/;
+const SESSION_ID_ELEMENT = /\s*<rc:SessionId>.*<\/rc:SessionId>/u;
 const session: SavedSession = {
 	...savedSessionFixture,
 	aggregates: {

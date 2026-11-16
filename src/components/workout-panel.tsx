@@ -141,7 +141,7 @@ function WorkoutCourseCard({
 				{...dragHandleAttributes}
 				{...dragHandleListeners}
 				aria-label={`Drag ${course.name} to reorder`}
-				className="absolute top-3 right-3 z-10 grid h-8 w-8 cursor-grab touch-none place-items-center border border-line bg-[#12171d] text-slate-400 transition hover:border-cyan-400/70 hover:text-cyan-300 active:cursor-grabbing"
+				className="border-line absolute top-3 right-3 z-10 grid h-8 w-8 cursor-grab touch-none place-items-center border bg-[#12171d] text-slate-400 transition hover:border-cyan-400/70 hover:text-cyan-300 active:cursor-grabbing"
 				onKeyDown={moveWithKeyboard}
 				ref={setDragHandleRef}
 				title="Drag to reorder. Use the up and down arrow keys while focused."
@@ -151,7 +151,7 @@ function WorkoutCourseCard({
 			</button>
 			<header className="pr-11">
 				<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-					<h3 className="min-w-0 font-bold text-base">
+					<h3 className="min-w-0 text-base font-bold">
 						{custom ? (
 							<button
 								aria-label={`Rename ${course.name}`}
@@ -168,16 +168,16 @@ function WorkoutCourseCard({
 					</h3>
 					<div className="flex shrink-0 items-center gap-1.5">
 						{custom ? (
-							<span className="border border-cyan-400/30 px-1.5 py-0.5 font-bold text-[9px] text-cyan-300 uppercase tracking-wide">
+							<span className="border border-cyan-400/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-cyan-300 uppercase">
 								Imported
 							</span>
 						) : null}
-						<span className="border border-slate-700 px-1.5 py-0.5 font-bold text-[9px] text-slate-400 uppercase tracking-wide">
+						<span className="border border-slate-700 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-slate-400 uppercase">
 							{workoutDifficultyLabel(course.difficulty)}
 						</span>
 					</div>
 				</div>
-				<p className="mt-1 max-w-2xl text-slate-400 text-xs leading-relaxed">
+				<p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-400">
 					{usesOpenStreetMapAttribution ? (
 						<button
 							className="text-left underline decoration-cyan-400/40 underline-offset-2 transition hover:text-cyan-300 hover:decoration-cyan-300"
@@ -209,7 +209,7 @@ function WorkoutCourseCard({
 				</div>
 			</div>
 			<footer className="mt-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
-				<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500 text-xs tabular-nums">
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 tabular-nums">
 					<span>
 						{formatDistance(course.distance, speedUnit, 1)}{' '}
 						{workoutRouteLabel(course.routeType)}
@@ -217,10 +217,10 @@ function WorkoutCourseCard({
 					<span>{formatElevation(course.elevationGain, speedUnit)} climbing</span>
 					<span>Up to +{workoutMaximumGrade(course).toFixed(1)}%</span>
 				</div>
-				<div className="ml-auto flex shrink-0 items-center gap-3 font-semibold text-xs">
+				<div className="ml-auto flex shrink-0 items-center gap-3 text-xs font-semibold">
 					{usesOpenStreetMapAttribution ? (
 						<a
-							className="font-normal text-[10px] text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-slate-300"
+							className="text-[10px] font-normal text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-slate-300"
 							href={OPENSTREETMAP_ATTRIBUTION_URL}
 							rel="noreferrer"
 							target="_blank"
@@ -246,7 +246,7 @@ function WorkoutCourseCard({
 						</button>
 					) : null}
 					<button
-						className={`h-8 border px-3 font-bold transition ${selected ? 'border-mint/40 bg-mint/10 text-mint hover:bg-mint/15' : 'border-line text-slate-200 hover:border-mint/60 hover:text-mint'} disabled:cursor-not-allowed disabled:opacity-40`}
+						className={`h-8 border px-3 font-bold transition ${selected ? 'border-mint/40 bg-mint/10 text-mint hover:bg-mint/15' : 'border-line hover:border-mint/60 hover:text-mint text-slate-200'} disabled:cursor-not-allowed disabled:opacity-40`}
 						disabled={disabled}
 						onClick={onSelect}
 						type="button"
@@ -311,7 +311,7 @@ function WorkoutLibraryStatus({ error, status }: { error?: string; status: strin
 	return (
 		<div
 			aria-live={error ? 'assertive' : 'polite'}
-			className={`flex min-h-9 flex-1 items-center rounded-lg border border-line bg-[#10151a] px-3 text-xs ${error ? 'text-rose-300' : 'text-cyan-300'}`}
+			className={`border-line flex min-h-9 flex-1 items-center rounded-lg border bg-[#10151a] px-3 text-xs ${error ? 'text-rose-300' : 'text-cyan-300'}`}
 			data-testid="workout-status"
 			role={error ? 'alert' : 'status'}
 		>
@@ -338,11 +338,11 @@ function WorkoutPanelFooter({
 		return null;
 	}
 	return (
-		<footer className="flex items-center justify-end gap-3 border-line border-t p-4 sm:px-6">
+		<footer className="border-line flex items-center justify-end gap-3 border-t p-4 sm:px-6">
 			<WorkoutLibraryStatus error={error} status={status} />
 			{canClear ? (
 				<button
-					className="min-h-9 shrink-0 rounded-lg border border-line px-3 py-2 font-semibold text-slate-400 text-xs hover:border-slate-500 hover:text-white"
+					className="border-line min-h-9 shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold text-slate-400 hover:border-slate-500 hover:text-white"
 					onClick={onClear}
 					type="button"
 				>
@@ -442,7 +442,7 @@ export function WorkoutPanel({
 		}
 		const frame = window.requestAnimationFrame(() => {
 			document
-				.getElementById(`workout-${encodeURIComponent(focusedCourseId)}`)
+				.querySelector(`#${CSS.escape(`workout-${encodeURIComponent(focusedCourseId)}`)}`)
 				?.scrollIntoView({ block: 'center' });
 		});
 		return () => window.cancelAnimationFrame(frame);
@@ -572,14 +572,14 @@ export function WorkoutPanel({
 				>
 					{fileDropActive ? (
 						<div
-							className="pointer-events-none absolute inset-3 z-30 grid place-items-center rounded-2xl border-2 border-cyan-300 border-dashed bg-[#0b1118]/95 shadow-[0_0_40px_rgba(34,211,238,.16)]"
+							className="pointer-events-none absolute inset-3 z-30 grid place-items-center rounded-2xl border-2 border-dashed border-cyan-300 bg-[#0b1118]/95 shadow-[0_0_40px_rgba(34,211,238,.16)]"
 							role="status"
 						>
 							<div className="text-center">
-								<p className="font-bold text-cyan-200 text-lg">
+								<p className="text-lg font-bold text-cyan-200">
 									Drop GPX to import
 								</p>
-								<p className="mt-1 text-slate-400 text-xs">
+								<p className="mt-1 text-xs text-slate-400">
 									The workout will be saved on this device.
 								</p>
 							</div>
@@ -587,10 +587,10 @@ export function WorkoutPanel({
 					) : null}
 					<header className="relative flex flex-col gap-3 px-4 py-3 pr-12 sm:flex-row sm:items-start sm:gap-4 sm:px-6 sm:py-4 sm:pr-16">
 						<div className="min-w-0 flex-1">
-							<h2 className="font-bold text-xl" id="workout-panel-title">
+							<h2 className="text-xl font-bold" id="workout-panel-title">
 								Terrain workouts
 							</h2>
-							<p className="mt-1 max-w-md text-slate-400 text-sm leading-snug">
+							<p className="mt-1 max-w-md text-sm leading-snug text-slate-400">
 								Choose a public route or import GPX. Resistance follows its climbs
 								and descents.
 							</p>
@@ -610,14 +610,14 @@ export function WorkoutPanel({
 								type="file"
 							/>
 							<button
-								className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white"
+								className="border-line h-9 rounded-lg border px-3 text-xs font-semibold text-slate-300 hover:border-cyan-400/60 hover:text-white"
 								onClick={onOpenGpx}
 								type="button"
 							>
 								Browse routes
 							</button>
 							<button
-								className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
+								className="border-line h-9 rounded-lg border px-3 text-xs font-semibold text-slate-300 hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
 								disabled={importing}
 								onClick={() => importInput.current?.click()}
 								type="button"
@@ -636,14 +636,14 @@ export function WorkoutPanel({
 					</header>
 					<div className="px-5 pt-3 text-xs leading-relaxed sm:px-6">
 						<div
-							className="flex items-center gap-3 border-line border-b transition-colors focus-within:border-cyan-400/70"
+							className="border-line flex items-center gap-3 border-b transition-colors focus-within:border-cyan-400/70"
 							data-testid="workout-search-bar"
 						>
 							<label className="sr-only" htmlFor="workout-search">
 								Search workouts by name, difficulty, or distance
 							</label>
 							<input
-								className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 text-slate-100 text-sm outline-none placeholder:text-slate-600"
+								className="h-10 min-w-0 flex-1 border-0 bg-transparent px-0 text-sm text-slate-100 outline-none placeholder:text-slate-600"
 								id="workout-search"
 								onChange={(event) => setSearchQuery(event.currentTarget.value)}
 								placeholder="Search by name, difficulty, or distance"
@@ -721,7 +721,7 @@ export function WorkoutPanel({
 							</SortableContext>
 							{filteredCourses.length === 0 ? (
 								<p
-									className="py-10 text-center text-slate-500 text-sm"
+									className="py-10 text-center text-sm text-slate-500"
 									role="status"
 								>
 									No workouts match “{searchQuery.trim()}”.
@@ -742,7 +742,7 @@ export function WorkoutPanel({
 				<Suspense
 					fallback={
 						<div
-							className="fixed inset-4 z-50 grid place-items-center rounded-2xl border border-slate-600 bg-panel text-slate-400 text-sm shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
+							className="bg-panel fixed inset-4 z-50 grid place-items-center rounded-2xl border border-slate-600 text-sm text-slate-400 shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
 							role="status"
 						>
 							Loading route browser…
@@ -771,7 +771,7 @@ export function WorkoutPanel({
 				<Suspense
 					fallback={
 						<div
-							className="fixed inset-4 z-50 grid place-items-center rounded-2xl border border-slate-600 bg-panel text-slate-400 text-sm shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
+							className="bg-panel fixed inset-4 z-50 grid place-items-center rounded-2xl border border-slate-600 text-sm text-slate-400 shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
 							role="status"
 						>
 							Loading map…

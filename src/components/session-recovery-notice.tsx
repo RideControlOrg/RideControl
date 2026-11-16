@@ -46,7 +46,7 @@ export function useAutoDismissSessionRecoveryNotice(
 export function SessionRecoveryNotice({ onDismiss }: { onDismiss: () => void }) {
 	return (
 		<section
-			className="mb-4 flex items-start gap-3 rounded-xl border border-sky-400/30 bg-sky-400/10 px-4 py-3 text-slate-200 text-sm"
+			className="mb-4 flex items-start gap-3 rounded-xl border border-sky-400/30 bg-sky-400/10 px-4 py-3 text-sm text-slate-200"
 			role="status"
 		>
 			<p className="min-w-0 flex-1 leading-6">

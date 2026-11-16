@@ -146,7 +146,7 @@ export function SelectMenu<T extends string>({
 				aria-expanded={open}
 				aria-haspopup="listbox"
 				aria-label={ariaLabel}
-				className={`flex w-full items-center justify-between border border-line bg-[#12171d] font-semibold text-slate-200 text-xs outline-none focus-visible:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${triggerClassName}`}
+				className={`border-line flex w-full items-center justify-between border bg-[#12171d] text-xs font-semibold text-slate-200 outline-none focus-visible:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${triggerClassName}`}
 				disabled={disabled || options.length === 0}
 				onClick={() => {
 					if (open) {
@@ -177,7 +177,7 @@ export function SelectMenu<T extends string>({
 			</button>
 			<div
 				aria-label={ariaLabel}
-				className={`absolute top-full z-50 mt-px max-h-80 w-max min-w-full overflow-y-auto border border-line bg-panel p-1 ${
+				className={`border-line bg-panel absolute top-full z-50 mt-px max-h-80 w-max min-w-full overflow-y-auto border p-1 ${
 					align === 'end' ? 'right-0' : 'left-0'
 				}`}
 				hidden={!open}
@@ -189,7 +189,7 @@ export function SelectMenu<T extends string>({
 					return (
 						<button
 							aria-selected={selected}
-							className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-medium text-xs outline-none ${
+							className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium outline-none ${
 								index === activeIndex
 									? 'bg-slate-700 text-(--content-strong)'
 									: 'text-slate-300 hover:bg-slate-800 hover:text-(--content-strong)'
@@ -365,21 +365,21 @@ export function SuggestionInput({
 			/>
 			<div
 				aria-label={ariaLabel}
-				className="absolute top-full left-0 z-50 mt-px max-h-80 w-full min-w-max overflow-y-auto border border-line bg-panel p-1"
+				className="border-line bg-panel absolute top-full left-0 z-50 mt-px max-h-80 w-full min-w-max overflow-y-auto border p-1"
 				hidden={!open || filteredSuggestions.length === 0}
 				id={listboxId}
 				role="listbox"
 			>
 				{filteredCustomSuggestions.length > 0 ? (
 					<fieldset aria-label="Custom entries" className="m-0 min-w-0 border-0 p-0">
-						<legend className="w-full border-line border-b px-2.5 py-1.5 font-bold text-[10px] text-slate-500 uppercase tracking-widest">
+						<legend className="border-line w-full border-b px-2.5 py-1.5 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
 							Custom
 						</legend>
 						{filteredCustomSuggestions.map((suggestion, index) => (
 							<div className="flex items-stretch" key={suggestion}>
 								<button
 									aria-selected={suggestion === value}
-									className={`min-w-0 flex-1 px-2.5 py-1.5 text-left font-medium text-xs outline-none ${
+									className={`min-w-0 flex-1 px-2.5 py-1.5 text-left text-xs font-medium outline-none ${
 										index === activeIndex
 											? 'bg-slate-700 text-(--content-strong)'
 											: 'text-slate-300 hover:bg-slate-800 hover:text-(--content-strong)'
@@ -397,7 +397,7 @@ export function SuggestionInput({
 								{onRemoveCustomSuggestion ? (
 									<button
 										aria-label={`Remove ${suggestion} from custom identities`}
-										className="grid w-8 shrink-0 place-items-center border-line border-l text-slate-500 text-sm outline-none hover:bg-rose-400/10 hover:text-rose-300"
+										className="border-line grid w-8 shrink-0 place-items-center border-l text-sm text-slate-500 outline-none hover:bg-rose-400/10 hover:text-rose-300"
 										onClick={() => {
 											onRemoveCustomSuggestion(suggestion);
 											setActiveIndex(0);
@@ -418,14 +418,14 @@ export function SuggestionInput({
 						aria-label="Standard options"
 						className={
 							filteredCustomSuggestions.length > 0
-								? 'm-0 mt-1 min-w-0 border-0 border-line border-t p-0 pt-1'
+								? 'border-line m-0 mt-1 min-w-0 border-0 border-t p-0 pt-1'
 								: 'm-0 min-w-0 border-0 p-0'
 						}
 					>
 						<legend
 							className={
 								filteredCustomSuggestions.length > 0
-									? 'w-full px-2.5 py-1.5 font-bold text-[10px] text-slate-500 uppercase tracking-widest'
+									? 'w-full px-2.5 py-1.5 text-[10px] font-bold tracking-widest text-slate-500 uppercase'
 									: 'sr-only'
 							}
 						>
@@ -436,7 +436,7 @@ export function SuggestionInput({
 							return (
 								<button
 									aria-selected={suggestion === value}
-									className={`flex w-full px-2.5 py-1.5 text-left font-medium text-xs outline-none ${
+									className={`flex w-full px-2.5 py-1.5 text-left text-xs font-medium outline-none ${
 										optionIndex === activeIndex
 											? 'bg-slate-700 text-(--content-strong)'
 											: 'text-slate-300 hover:bg-slate-800 hover:text-(--content-strong)'

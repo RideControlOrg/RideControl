@@ -27,15 +27,15 @@ export function WorkoutMapDialog({
 			<section
 				aria-labelledby="workout-map-dialog-title"
 				aria-modal="true"
-				className="absolute inset-4 z-10 flex flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
+				className="bg-panel absolute inset-4 z-10 flex flex-col overflow-hidden rounded-2xl border border-slate-600 shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
 				role="dialog"
 			>
-				<header className="flex items-start gap-4 border-line border-b bg-[#12171d] px-5 py-4 sm:px-6">
+				<header className="border-line flex items-start gap-4 border-b bg-[#12171d] px-5 py-4 sm:px-6">
 					<div className="mr-auto min-w-0">
-						<h2 className="truncate font-bold text-xl" id="workout-map-dialog-title">
+						<h2 className="truncate text-xl font-bold" id="workout-map-dialog-title">
 							{course.name}
 						</h2>
-						<p className="mt-1 text-slate-400 text-xs leading-relaxed">
+						<p className="mt-1 text-xs leading-relaxed text-slate-400">
 							{formatDescriptionDistance(
 								course.description,
 								course.distance,

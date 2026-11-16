@@ -854,7 +854,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 	);
 
 	return (
-		<main className="app-shell flex min-h-dvh min-w-0 flex-col overflow-x-clip bg-ink selection:bg-mint/30">
+		<main className="app-shell bg-ink selection:bg-mint/30 flex min-h-dvh min-w-0 flex-col overflow-x-clip">
 			<Dashboard>
 				<DashboardToolbar>
 					<SessionControls
@@ -884,7 +884,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 				{showRestoredSessionNotice ? (
 					<SessionRecoveryNotice onDismiss={dismissRestoredSessionNotice} />
 				) : null}
-				<section className="dashboard-data-grid grid gap-px bg-line min-[1120px]:grid-cols-4">
+				<section className="dashboard-data-grid bg-line grid gap-px min-[1120px]:grid-cols-4">
 					<RideMetrics
 						aggregates={session.aggregates}
 						elapsedSeconds={session.elapsedSeconds}
@@ -893,7 +893,7 @@ export function App({ initialSession = emptySession }: { initialSession?: Stored
 						rideDistance={session.rideDistance}
 						speedUnit={speedUnit}
 					/>
-					<div className="dashboard-session-summary grid min-w-0 grid-cols-3 gap-px bg-line">
+					<div className="dashboard-session-summary bg-line grid min-w-0 grid-cols-3 gap-px">
 						<SessionSummary
 							calories={session.rideCalories}
 							distance={session.rideDistance}

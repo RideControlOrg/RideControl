@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { SavedSessionSummary } from '../types';
 import { localSessionDateKey } from './session-analytics';
 
-export const sessionCalendarMonthKeySchema = z.string().regex(/^[1-9]\d{3}-(?:0[1-9]|1[0-2])$/);
+export const sessionCalendarMonthKeySchema = z.string().regex(/^[1-9]\d{3}-(?:0[1-9]|1[0-2])$/u);
 
 export interface SessionCalendarDay {
 	date: Date;

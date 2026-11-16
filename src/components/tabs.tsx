@@ -46,20 +46,22 @@ export function Tabs<T extends string>({
 		}
 		event.preventDefault();
 		onChange(nextValue);
-		event.currentTarget.ownerDocument.getElementById(`${idPrefix}-tab-${nextValue}`)?.focus();
+		event.currentTarget.ownerDocument
+			.querySelector<HTMLButtonElement>(`#${CSS.escape(`${idPrefix}-tab-${nextValue}`)}`)
+			?.focus();
 	};
 
 	return (
 		<div
 			aria-label={ariaLabel}
-			className="scrollbar-hidden flex shrink-0 items-end gap-6 overflow-x-auto overflow-y-hidden bg-panel px-3 sm:px-5"
+			className="scrollbar-hidden bg-panel flex shrink-0 items-end gap-6 overflow-x-auto overflow-y-hidden px-3 sm:px-5"
 			role="tablist"
 		>
 			{options.map((option) => (
 				<button
 					aria-controls={`${idPrefix}-panel-${option.value}`}
 					aria-selected={value === option.value}
-					className={`group relative shrink-0 px-1 py-3 font-semibold text-sm outline-none transition-colors ${
+					className={`group relative shrink-0 px-1 py-3 text-sm font-semibold transition-colors outline-none ${
 						value === option.value ? 'text-white' : 'text-slate-400 hover:text-white'
 					}`}
 					id={`${idPrefix}-tab-${option.value}`}

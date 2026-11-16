@@ -2,7 +2,7 @@
 
 ## Local development
 
-Use Bun 1.4.2 (pinned in `package.json`) and Node.js 26.10.0 (pinned in `.node-version`).
+Use Bun 1.4.4 (pinned in `package.json`) and Node.js 26.13.1 (pinned in `.node-version`).
 
 ```bash
 bun install --frozen-lockfile
@@ -21,6 +21,15 @@ build. The Biome configuration explicitly enables Tailwind directives and reject
 chart tooltip presentation is stylesheet-owned while TanStack retains its native interaction and
 positioning behavior.
 
+Ultracite 8 and Biome 2.6 enforce Tailwind class ordering, Unicode-aware regular expressions,
+and named captures. Browser DOM queries use selectors with escaped dynamic IDs. XML parsing
+retains the tag-name APIs supported by both browsers and `@xmldom/xmldom`, with local lint
+exceptions. CSS Baseline exceptions are limited to existing Chrome-supported features or
+declarations with explicit fallbacks; they do not relax the rule globally.
+
+Charts use TanStack Charts 1.x, including the React adapter from `@tanstack/charts/react`;
+the separate `@tanstack/react-charts` package is no longer needed.
+
 ## Deployment
 
 `bun run cf <command>` disables CLI telemetry with `CF_SEND_TELEMETRY=false` and
@@ -34,6 +43,10 @@ Build Output to a Worker at [ridecontrol.xyz](https://ridecontrol.xyz). Developm
 deployment use the pinned `cf` CLI and Cloudflare Vite plugin v2 beta. `cloudflare.config.ts` owns
 the account, custom domain, SPA routing, and observability settings. Build output and generated
 types live in the ignored `.cloudflare/` directory.
+
+The Cloudflare packages intentionally track their beta channel; the Vite plugin's v1 stable
+release is not a replacement for v2. The current CLI requires Node.js 26.12.0 or newer on the
+Node.js 26 release line.
 
 `bun run deploy` builds and deploys locally. To validate an existing production build without
 uploading it, run `bun run cf deploy --prebuilt --mode production --dry-run`; CI runs this check

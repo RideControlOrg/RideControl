@@ -34,15 +34,15 @@ function LegalDialog({ children, descriptionId, onClose, open, title, titleId }:
 				aria-describedby={descriptionId}
 				aria-labelledby={titleId}
 				aria-modal="true"
-				className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-2rem)]"
+				className="bg-panel flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-600 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-2rem)]"
 				role="dialog"
 			>
-				<header className="flex shrink-0 items-start justify-between gap-4 border-line border-b px-5 py-4 sm:px-6">
+				<header className="border-line flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
 					<div>
-						<h2 className="font-bold text-2xl" id={titleId}>
+						<h2 className="text-2xl font-bold" id={titleId}>
 							{title}
 						</h2>
-						<p className="mt-1 text-slate-400 text-xs">Effective {EFFECTIVE_DATE}</p>
+						<p className="mt-1 text-xs text-slate-400">Effective {EFFECTIVE_DATE}</p>
 					</div>
 					<button
 						aria-label={`Close ${title.toLowerCase()}`}
@@ -55,7 +55,7 @@ function LegalDialog({ children, descriptionId, onClose, open, title, titleId }:
 					</button>
 				</header>
 				<div
-					className="space-y-5 overflow-y-auto px-5 py-5 text-slate-300 text-sm leading-6 sm:px-6"
+					className="space-y-5 overflow-y-auto px-5 py-5 text-sm leading-6 text-slate-300 sm:px-6"
 					id={descriptionId}
 				>
 					{children}

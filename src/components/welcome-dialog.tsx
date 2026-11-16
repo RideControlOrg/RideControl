@@ -47,7 +47,7 @@ export function WelcomeDialog({
 				aria-describedby="welcome-description"
 				aria-labelledby="welcome-title"
 				aria-modal="true"
-				className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto border border-slate-600 bg-panel p-6 shadow-2xl shadow-black/50 sm:p-8"
+				className="bg-panel max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto border border-slate-600 p-6 shadow-2xl shadow-black/50 sm:p-8"
 				onSubmit={(event) => {
 					event.preventDefault();
 					event.stopPropagation();
@@ -56,7 +56,7 @@ export function WelcomeDialog({
 				role="dialog"
 			>
 				<div className="flex items-start justify-between gap-4">
-					<h2 className="font-bold text-4xl tracking-tight" id="welcome-title">
+					<h2 className="text-4xl font-bold tracking-tight" id="welcome-title">
 						Welcome to RideControl.xyz
 					</h2>
 					<button
@@ -70,7 +70,7 @@ export function WelcomeDialog({
 				</div>
 
 				{testedChromeBrowser ? null : (
-					<p className="mt-5 border border-amber-300/35 bg-amber-300/10 px-4 py-3.5 text-amber-100 text-lg leading-8">
+					<p className="mt-5 border border-amber-300/35 bg-amber-300/10 px-4 py-3.5 text-lg leading-8 text-amber-100">
 						Ride Control is only tested with the latest version of Google Chrome and may
 						not work correctly in other browsers.{' '}
 						<a
@@ -84,15 +84,15 @@ export function WelcomeDialog({
 						.
 					</p>
 				)}
-				<p className="mt-5 text-lg text-slate-300 leading-8" id="welcome-description">
+				<p className="mt-5 text-lg leading-8 text-slate-300" id="welcome-description">
 					Pair your trainer, heart rate monitor, and Zwift Click over Bluetooth, then
 					adjust resistance or shift virtual gears while keeping detailed records of every
 					ride—all from your browser.
 				</p>
-				<p className="mt-4 text-lg text-slate-400 leading-8">
+				<p className="mt-4 text-lg leading-8 text-slate-400">
 					Ride Control is a freely available, open-source GPLv3 application. View the{' '}
 					<a
-						className="font-semibold text-mint underline decoration-mint/40 underline-offset-2 hover:decoration-mint"
+						className="text-mint decoration-mint/40 hover:decoration-mint font-semibold underline underline-offset-2"
 						href="https://github.com/RideControlOrg/RideControl"
 						rel="noreferrer"
 						target="_blank"
@@ -101,14 +101,14 @@ export function WelcomeDialog({
 					</a>
 					.
 				</p>
-				<p className="mt-3 text-lg text-slate-400 leading-8">
+				<p className="mt-3 text-lg leading-8 text-slate-400">
 					Ride Control runs locally, and your ride history stays in your browser unless
 					you explicitly create a public workout card. Its public link contains only the
 					displayed summary stats and workout preview, which are used to generate the card
 					image on demand—not raw ride samples, comments, or profile details. In the
 					future, we plan to offer optional paid cloud storage and synchronization.
 				</p>
-				<p className="mt-3 text-lg text-slate-400 leading-8">
+				<p className="mt-3 text-lg leading-8 text-slate-400">
 					From Sessions, you can download your rides as Strava-compatible FIT files or
 					richer Ride Control TCX files, then upload them to your preferred cycling
 					service.
@@ -119,7 +119,7 @@ export function WelcomeDialog({
 							<label className="inline-flex cursor-pointer items-center gap-3 text-lg text-slate-300">
 								<input
 									checked={field.state.value}
-									className="h-5 w-5 accent-mint"
+									className="accent-mint h-5 w-5"
 									onChange={(event) => field.handleChange(event.target.checked)}
 									type="checkbox"
 								/>
@@ -128,7 +128,7 @@ export function WelcomeDialog({
 						)}
 					</form.Field>
 					<button
-						className="h-13 min-w-44 border border-mint/60 bg-mint/10 px-7 font-bold text-lg text-mint transition hover:border-mint hover:bg-mint/15"
+						className="border-mint/60 bg-mint/10 text-mint hover:border-mint hover:bg-mint/15 h-13 min-w-44 border px-7 text-lg font-bold transition"
 						type="submit"
 					>
 						Get started

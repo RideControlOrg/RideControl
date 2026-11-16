@@ -52,17 +52,17 @@ function SessionHistorySessionRow({
 		<div className="pb-1">
 			<button
 				aria-pressed={selected}
-				className={`relative w-full rounded-lg border px-3 py-2.5 text-left transition ${selected ? 'border-mint/40 bg-mint/10' : 'border-transparent hover:border-line hover:bg-slate-800/50'} ${highlighted ? 'shadow-[0_0_14px_rgba(34,211,238,0.16)] ring-1 ring-cyan-400/70' : ''}`}
+				className={`relative w-full rounded-lg border px-3 py-2.5 text-left transition ${selected ? 'border-mint/40 bg-mint/10' : 'hover:border-line border-transparent hover:bg-slate-800/50'} ${highlighted ? 'shadow-[0_0_14px_rgba(34,211,238,0.16)] ring-1 ring-cyan-400/70' : ''}`}
 				onClick={onSelect}
 				type="button"
 			>
 				<div className="flex items-center justify-between gap-3">
-					<span className="font-semibold text-sm">{formatSessionListTime(session)}</span>
-					<span className="shrink-0 text-slate-500 text-xs">
+					<span className="text-sm font-semibold">{formatSessionListTime(session)}</span>
+					<span className="shrink-0 text-xs text-slate-500">
 						{formatDuration(session.elapsedSeconds)}
 					</span>
 				</div>
-				<p className={`mt-1 text-slate-400 text-xs ${imported ? 'pr-5' : ''}`}>
+				<p className={`mt-1 text-xs text-slate-400 ${imported ? 'pr-5' : ''}`}>
 					{formatDistance(session.distance, speedUnit)}
 					{session.feeling ? ` · ${feelingLabel(session.feeling)}` : null}
 					{session.workoutName ? ` · ${session.workoutName}` : null}
@@ -103,7 +103,7 @@ function SessionHistoryRowContent({
 	if (row.kind === SESSION_HISTORY_ROW_KIND.DATE) {
 		return (
 			<h3
-				className={`px-2 pb-1.5 font-bold text-[10px] text-slate-500 tracking-widest ${index > 0 ? 'pt-4' : ''}`}
+				className={`px-2 pb-1.5 text-[10px] font-bold tracking-widest text-slate-500 ${index > 0 ? 'pt-4' : ''}`}
 			>
 				{row.date.toUpperCase()}
 			</h3>
@@ -208,12 +208,12 @@ export function SessionHistoryList({
 
 	return (
 		<aside
-			className="max-h-64 min-w-0 shrink-0 overflow-y-auto overflow-x-hidden border-line border-b bg-[#12171d] p-3 md:max-h-none md:w-80 md:border-r md:border-b-0"
+			className="border-line max-h-64 min-w-0 shrink-0 overflow-x-hidden overflow-y-auto border-b bg-[#12171d] p-3 md:max-h-none md:w-80 md:border-r md:border-b-0"
 			data-testid="session-list"
 			onScroll={sessionListScroll.onScroll}
 			ref={setSessionListRef}
 		>
-			{error ? <p className="p-3 text-rose-300 text-sm">{error}</p> : null}
+			{error ? <p className="p-3 text-sm text-rose-300">{error}</p> : null}
 			{rows.length > 0 ? (
 				<div
 					className="relative w-full"
@@ -248,7 +248,7 @@ export function SessionHistoryList({
 			) : null}
 			{summaries.length < total ? (
 				<button
-					className="w-full rounded-lg border border-line px-3 py-2 font-semibold text-slate-400 text-xs hover:border-slate-500 hover:text-white"
+					className="border-line w-full rounded-lg border px-3 py-2 text-xs font-semibold text-slate-400 hover:border-slate-500 hover:text-white"
 					onClick={onLoadMore}
 					type="button"
 				>

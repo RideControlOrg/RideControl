@@ -26,11 +26,11 @@ export function KeyboardShortcutsDialog({
 			<section
 				aria-labelledby="keyboard-shortcuts-title"
 				aria-modal="true"
-				className="w-full max-w-md rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/50 sm:p-6"
+				className="bg-panel w-full max-w-md rounded-2xl border border-slate-600 p-5 shadow-2xl shadow-black/50 sm:p-6"
 				role="dialog"
 			>
 				<div className="flex items-start justify-between gap-4">
-					<h2 className="font-bold text-2xl" id="keyboard-shortcuts-title">
+					<h2 className="text-2xl font-bold" id="keyboard-shortcuts-title">
 						{title}
 					</h2>
 					<button
@@ -42,20 +42,20 @@ export function KeyboardShortcutsDialog({
 						×
 					</button>
 				</div>
-				<div className="mt-5 overflow-hidden rounded-xl border border-line bg-[#12171d]">
+				<div className="border-line mt-5 overflow-hidden rounded-xl border bg-[#12171d]">
 					{shortcuts.map((shortcut, index) => (
 						<Fragment key={shortcut.label}>
 							{shortcut.group && shortcut.group !== shortcuts[index - 1]?.group ? (
-								<div className="border-line not-first:border-t bg-slate-800/40 px-3.5 py-2 font-bold text-[10px] text-slate-500 tracking-[.14em]">
+								<div className="border-line bg-slate-800/40 px-3.5 py-2 text-[10px] font-bold tracking-[.14em] text-slate-500 not-first:border-t">
 									{shortcut.group.toUpperCase()}
 								</div>
 							) : null}
-							<div className="flex min-h-12 items-center justify-between gap-5 border-line not-first:border-t px-3.5 py-2.5">
-								<span className="text-slate-300 text-sm">{shortcut.label}</span>
+							<div className="border-line flex min-h-12 items-center justify-between gap-5 px-3.5 py-2.5 not-first:border-t">
+								<span className="text-sm text-slate-300">{shortcut.label}</span>
 								<span className="flex shrink-0 gap-1.5">
 									{shortcut.keys.map((key) => (
 										<kbd
-											className="min-w-8 rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-center font-mono font-semibold text-slate-200 text-xs shadow-sm"
+											className="min-w-8 rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-center font-mono text-xs font-semibold text-slate-200 shadow-sm"
 											key={key}
 										>
 											{key}

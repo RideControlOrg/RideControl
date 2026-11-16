@@ -16,8 +16,8 @@ interface BluetoothReconnectCapability {
 	getDevices?: () => Promise<readonly BluetoothDevice[]>;
 }
 
-const CHROME_USER_AGENT = /\bChrome\//;
-const CHROMIUM_DERIVATIVE_USER_AGENT = /(?:Brave|Edg|OPR|Vivaldi|YaBrowser)\//;
+const CHROME_USER_AGENT = /\bChrome\//u;
+const CHROMIUM_DERIVATIVE_USER_AGENT = /(?:Brave|Edg|OPR|Vivaldi|YaBrowser)\//u;
 
 function browserBrands(browser: BrowserNavigator) {
 	return browser.userAgentData?.brands.map(({ brand }) => brand.toLowerCase()) ?? [];

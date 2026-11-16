@@ -17,7 +17,7 @@ import {
 } from '../lib/app-overlay';
 
 const KEYBOARD_RESIZE_STEP_PX = 32;
-const CLOSE_LABEL_PREFIX = /^Close /;
+const CLOSE_LABEL_PREFIX = /^Close /u;
 
 export function SideTray({
 	children,
@@ -199,7 +199,7 @@ export function SideTray({
 			<section
 				aria-labelledby={labelledBy}
 				aria-modal="true"
-				className={`minimal-surface-scope relative z-10 ml-auto h-full w-full min-w-0 border-line border-l bg-panel transition-transform duration-200 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'} ${panelClassName}`}
+				className={`minimal-surface-scope border-line bg-panel relative z-10 ml-auto h-full w-full min-w-0 border-l transition-transform duration-200 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'} ${panelClassName}`}
 				data-side-tray-width={panelWidth}
 				ref={panel}
 				role="dialog"
@@ -211,7 +211,7 @@ export function SideTray({
 					aria-valuemax={typeof window === 'undefined' ? undefined : window.innerWidth}
 					aria-valuemin={minimumWidth.current}
 					aria-valuenow={panelWidth}
-					className="absolute inset-y-0 left-0 z-30 m-0 hidden h-full w-3 -translate-x-1/2 cursor-col-resize touch-none select-none border-0 bg-transparent sm:block"
+					className="absolute inset-y-0 left-0 z-30 m-0 hidden h-full w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent select-none sm:block"
 					onKeyDown={resizeWithKeyboard}
 					onPointerCancel={finishResize}
 					onPointerDown={startResize}

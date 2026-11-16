@@ -62,9 +62,9 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 		settings
 	);
 	return (
-		<fieldset className="mt-6 space-y-4 border-line border-t pt-5">
-			<legend className="font-bold text-base">Desktop notifications</legend>
-			<p className="text-slate-400 text-sm">
+		<fieldset className="border-line mt-6 space-y-4 border-t pt-5">
+			<legend className="text-base font-bold">Desktop notifications</legend>
+			<p className="text-sm text-slate-400">
 				Short ride updates while you pedal. Changes save immediately in this browser.
 			</p>
 			<label className="flex items-center gap-3 text-sm">
@@ -79,12 +79,12 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 				Enable ride notifications
 			</label>
 			{supported ? null : (
-				<p className="text-slate-400 text-sm">
+				<p className="text-sm text-slate-400">
 					Desktop notifications require a supported browser and HTTPS.
 				</p>
 			)}
 			{permission === 'denied' ? (
-				<p className="text-slate-400 text-sm">
+				<p className="text-sm text-slate-400">
 					Notifications are blocked. Allow notifications in your browser’s site settings,
 					then enable them here.
 				</p>
@@ -92,7 +92,7 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 			<label className="block text-sm">
 				Notify me every
 				<select
-					className="ml-3 border border-line bg-[#10151a] px-3 py-2"
+					className="border-line ml-3 border bg-[#10151a] px-3 py-2"
 					onChange={(event) =>
 						save({ ...settings, intervalMinutes: Number(event.target.value) })
 					}
@@ -117,7 +117,7 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 				<label className="block text-sm">
 					Event name (optional)
 					<input
-						className="mt-2 w-full border border-line bg-[#10151a] px-3 py-2"
+						className="border-line mt-2 w-full border bg-[#10151a] px-3 py-2"
 						disabled={!settings.motivational}
 						maxLength={40}
 						onChange={(event) => save({ ...settings, eventName: event.target.value })}
@@ -129,7 +129,7 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 				<label className="block text-sm">
 					Event date (optional)
 					<input
-						className="mt-2 w-full border border-line bg-[#10151a] px-3 py-2"
+						className="border-line mt-2 w-full border bg-[#10151a] px-3 py-2"
 						disabled={!settings.motivational}
 						max="9999-12-31"
 						onChange={(event) => {
@@ -142,16 +142,16 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 					/>
 				</label>
 			</div>
-			<p className="text-slate-500 text-xs leading-5">
+			<p className="text-xs leading-5 text-slate-500">
 				Add a date to count down in your encouragement. Uses local calendar days; past
 				events return to regular encouragement. Clear the date to remove the countdown.
 			</p>
-			<div className="border border-line p-3">
-				<p className="font-semibold text-sm">Example update</p>
-				<p className="mt-1 whitespace-pre-line text-slate-300 text-sm">{preview}</p>
+			<div className="border-line border p-3">
+				<p className="text-sm font-semibold">Example update</p>
+				<p className="mt-1 text-sm whitespace-pre-line text-slate-300">{preview}</p>
 			</div>
 			<button
-				className="border border-line px-3 py-2 font-semibold text-sm disabled:opacity-50"
+				className="border-line border px-3 py-2 text-sm font-semibold disabled:opacity-50"
 				disabled={!supported || permission !== 'granted' || !settings.enabled}
 				onClick={() => {
 					try {
@@ -168,13 +168,13 @@ export function RideNotificationSettingsPanel({ speedUnit }: { speedUnit: SpeedU
 			>
 				Send test notification
 			</button>
-			<p className="text-slate-500 text-xs leading-5">
+			<p className="text-xs leading-5 text-slate-500">
 				Uses recorded riding time and your display units; pauses do not count. Keep this
 				page open. Notifications close after about 10 seconds; browser and system settings
 				may affect timing or delivery.
 			</p>
 			{error ? (
-				<p className="text-rose-300 text-sm" role="alert">
+				<p className="text-sm text-rose-300" role="alert">
 					{error}
 				</p>
 			) : null}

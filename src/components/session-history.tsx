@@ -56,7 +56,7 @@ function SessionHistoryStatus({ status, total }: { status: string; total: number
 		<p
 			aria-label={`${sessions}${status ? `, ${status}` : ''}`}
 			aria-live="polite"
-			className="max-w-xl truncate text-slate-500 text-xs"
+			className="max-w-xl truncate text-xs text-slate-500"
 			role="status"
 			title={`${sessions}${status ? ` · ${status}` : ''}`}
 		>
@@ -342,7 +342,7 @@ export function SessionHistory({
 	let detail: ReactNode = null;
 	if (loading) {
 		detail = (
-			<div className="grid min-h-64 flex-1 place-items-center text-slate-500 text-sm">
+			<div className="grid min-h-64 flex-1 place-items-center text-sm text-slate-500">
 				Loading session…
 			</div>
 		);
@@ -375,7 +375,7 @@ export function SessionHistory({
 		);
 	} else if (summaries.length > 0) {
 		detail = (
-			<div className="grid min-h-64 flex-1 place-items-center text-slate-500 text-sm">
+			<div className="grid min-h-64 flex-1 place-items-center text-sm text-slate-500">
 				Select a session
 			</div>
 		);
@@ -383,8 +383,8 @@ export function SessionHistory({
 		detail = (
 			<div className="grid min-h-64 flex-1 place-items-center p-6 text-center">
 				<div>
-					<p className="font-bold text-lg">No saved sessions yet</p>
-					<p className="mt-1 max-w-sm text-slate-500 text-sm">
+					<p className="text-lg font-bold">No saved sessions yet</p>
+					<p className="mt-1 max-w-sm text-sm text-slate-500">
 						End a session or import a FIT or TCX file to fill your calendar and build
 						ride statistics.
 					</p>
@@ -406,7 +406,7 @@ export function SessionHistory({
 			>
 				<header className="relative flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 pr-24 pb-0 pl-5 sm:px-5 sm:pt-2 sm:pb-0">
 					<div className="mr-auto flex min-w-0 items-center gap-2">
-						<h2 className="font-bold text-xl" id="session-history-title">
+						<h2 className="text-xl font-bold" id="session-history-title">
 							Sessions
 						</h2>
 						<SessionHistoryStatus status={historyStatus} total={total} />
@@ -426,7 +426,7 @@ export function SessionHistory({
 							type="file"
 						/>
 						<button
-							className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
+							className="border-line h-9 rounded-lg border px-3 text-xs font-semibold text-slate-300 hover:border-cyan-400/60 hover:text-white disabled:cursor-wait disabled:opacity-60"
 							disabled={transferring}
 							onClick={() => importInput.current?.click()}
 							ref={importButton}
@@ -435,7 +435,7 @@ export function SessionHistory({
 							{importing ? 'Importing…' : 'Import FIT/TCX'}
 						</button>
 						<button
-							className="h-9 rounded-lg border border-line px-3 font-semibold text-slate-300 text-xs hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+							className="border-line h-9 rounded-lg border px-3 text-xs font-semibold text-slate-300 hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 							data-testid="download-all-sessions"
 							disabled={transferring || total === 0}
 							onClick={() => {
@@ -451,7 +451,7 @@ export function SessionHistory({
 						</button>
 						<button
 							aria-label="Show history keyboard controls"
-							className="absolute top-2 right-14 grid h-9 w-9 place-items-center rounded-lg font-bold text-slate-400 text-sm hover:bg-slate-700 hover:text-white sm:static"
+							className="absolute top-2 right-14 grid h-9 w-9 place-items-center rounded-lg text-sm font-bold text-slate-400 hover:bg-slate-700 hover:text-white sm:static"
 							onClick={() => {
 								setDeleteConfirmationOpen(false);
 								setHistoryHelpOpen(true);

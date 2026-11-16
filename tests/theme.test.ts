@@ -31,11 +31,11 @@ function cssBlock(selector: string): string {
 }
 
 function cssVariable(block: string, name: string): string {
-	const match = block.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`));
+	const match = block.match(new RegExp(`${name}:\\s*(?<color>#[0-9a-fA-F]{6})`, 'u'));
 	if (!match) {
 		throw new Error(`Missing hexadecimal CSS variable: ${name}`);
 	}
-	return requiredValue(match[1], `value for CSS variable ${name}`);
+	return requiredValue(match.groups?.color, `value for CSS variable ${name}`);
 }
 
 function relativeLuminance(hex: string): number {

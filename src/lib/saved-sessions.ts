@@ -56,7 +56,7 @@ const ENDED_AT_INDEX = 'endedAt';
 const STARTED_AT_INDEX = 'startedAt';
 const SESSION_CONTINUATION_INDEX = 'continuation.journeyId';
 const WORKOUT_SNAPSHOT_INDEX = 'workoutSnapshotId';
-const MERIDIEM_SUFFIX = /\s*(AM|PM)$/i;
+const MERIDIEM_SUFFIX = /\s*(?:AM|PM)$/iu;
 const SESSION_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' });
 const SESSION_IMPORT_FORMATTER = new Intl.DateTimeFormat(undefined, {
 	dateStyle: 'medium',

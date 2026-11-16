@@ -7,7 +7,7 @@ import { WORKOUT_COURSES } from '../src/lib/workouts';
 import type { SavedSession } from '../src/types';
 import { savedSessionFixture as session } from './fixtures/saved-session';
 
-const FIT_FILENAME = /^ride-control-2026-07-18T16-00-00\.000Z-[a-z0-9]+\.fit$/;
+const FIT_FILENAME = /^ride-control-2026-07-18T16-00-00\.000Z-[a-z0-9]+\.fit$/u;
 
 describe('FIT activity files', () => {
 	test('exports a valid indoor cycling activity with Strava-compatible records', async () => {

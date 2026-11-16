@@ -34,9 +34,9 @@ import {
 	xmlText as text,
 } from './xml';
 
-const LINE_BREAK = /\r?\n/;
-const FEELING_NOTE = /^Feeling:\s*(.+)$/i;
-const DESCRIPTION_NOTE_PREFIX = /^(?:Comments|Description):\s*/i;
+const LINE_BREAK = /\r?\n/u;
+const FEELING_NOTE = /^Feeling:\s*(?<feeling>.+)$/iu;
+const DESCRIPTION_NOTE_PREFIX = /^(?:Comments|Description):\s*/iu;
 const VALID_FEELINGS = new Set<SessionFeeling>(['great', 'good', 'okay', 'tough', 'exhausted']);
 
 function dateValue(value: string): number | undefined {
@@ -63,7 +63,7 @@ function notesMetadata(activity: Element): Pick<SavedSession, 'comments' | 'feel
 	for (const line of lines) {
 		const feelingMatch = FEELING_NOTE.exec(line);
 		if (feelingMatch) {
-			const value = feelingMatch[1]?.trim().toLowerCase() as SessionFeeling;
+			const value = feelingMatch.groups?.feeling?.trim().toLowerCase() as SessionFeeling;
 			if (VALID_FEELINGS.has(value)) {
 				feeling = value;
 				continue;
@@ -351,6 +351,7 @@ function parseActivity(activity: Element): SavedSession {
 
 export function parseTcxSessions(contents: string): SavedSession[] {
 	const document = new DOMParser().parseFromString(contents, 'application/xml');
+	// biome-ignore lint/style/useDomQuerySelector: XML documents also come from xmldom, which has no selector API.
 	if (document.getElementsByTagName('parsererror').length > 0) {
 		throw new Error('The TCX file is not valid XML.');
 	}

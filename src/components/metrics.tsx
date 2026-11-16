@@ -13,8 +13,8 @@ function MetricSummary({
 }) {
 	return (
 		<div className={rightAligned ? 'text-right' : undefined}>
-			<p className="font-bold text-[10px] text-slate-500 tracking-[.12em]">{label}</p>
-			<p className="mt-1 font-semibold text-2xl text-white tabular-nums tracking-tight sm:text-3xl">
+			<p className="text-[10px] font-bold tracking-[.12em] text-slate-500">{label}</p>
+			<p className="mt-1 text-2xl font-semibold tracking-tight text-white tabular-nums sm:text-3xl">
 				{value}
 			</p>
 		</div>
@@ -39,18 +39,18 @@ export const Metric = memo(function MetricComponent({
 	icon?: string;
 }) {
 	return (
-		<div className="min-w-0 bg-ink p-3 sm:p-4">
+		<div className="bg-ink min-w-0 p-3 sm:p-4">
 			<div className="flex items-center justify-between">
-				<span className="font-bold text-slate-500 text-xs tracking-[.14em]">{label}</span>
+				<span className="text-xs font-bold tracking-[.14em] text-slate-500">{label}</span>
 				{icon ? (
 					<Icon className={`h-5 w-5 ${metricIconClass(accent)}`} name={icon} />
 				) : null}
 			</div>
 			<div className="mt-3 flex items-baseline gap-2">
-				<span className="font-semibold text-4xl tracking-[-.045em] sm:text-5xl xl:text-6xl">
+				<span className="text-4xl font-semibold tracking-[-.045em] sm:text-5xl xl:text-6xl">
 					{value}
 				</span>
-				<span className="text-slate-400 text-sm">{unit}</span>
+				<span className="text-sm text-slate-400">{unit}</span>
 			</div>
 			<div className={`mt-3 grid grid-cols-2 gap-3 border-t pt-3 ${metricIconClass(accent)}`}>
 				<MetricSummary label="AVG" value={average} />
@@ -79,14 +79,14 @@ export const SmallMetric = memo(function SmallMetricComponent({
 					: 'min-w-0 p-4 sm:p-5'
 			}
 		>
-			<p className="font-bold text-[11px] text-slate-500 tracking-[.12em]">{label}</p>
+			<p className="text-[11px] font-bold tracking-[.12em] text-slate-500">{label}</p>
 			<p
-				className={`mt-1 flex min-w-0 items-baseline gap-1 font-semibold tracking-[-.045em] sm:gap-2 ${large ? 'text-xl sm:text-4xl lg:text-5xl xl:text-6xl min-[420px]:text-2xl' : 'text-lg sm:text-2xl'}`}
+				className={`mt-1 flex min-w-0 items-baseline gap-1 font-semibold tracking-[-.045em] sm:gap-2 ${large ? 'text-xl min-[420px]:text-2xl sm:text-4xl lg:text-5xl xl:text-6xl' : 'text-lg sm:text-2xl'}`}
 			>
 				<span className="min-w-0">{value}</span>
 				{unit ? (
 					<span
-						className={`shrink-0 font-medium text-slate-400 tracking-normal ${large ? 'text-xs sm:text-lg lg:text-xl' : 'text-xs sm:text-sm'}`}
+						className={`shrink-0 font-medium tracking-normal text-slate-400 ${large ? 'text-xs sm:text-lg lg:text-xl' : 'text-xs sm:text-sm'}`}
 					>
 						{unit}
 					</span>
@@ -114,20 +114,20 @@ export const SessionMetric = memo(function SessionMetricComponent({
 	return (
 		<div className="session-detail-metric min-w-0 p-3 sm:p-4">
 			<div className="flex items-center justify-between gap-2">
-				<p className="whitespace-nowrap font-bold text-[9px] text-slate-500 tracking-widest">
+				<p className="text-[9px] font-bold tracking-widest whitespace-nowrap text-slate-500">
 					{label}
 				</p>
 				<Icon className={`h-4 w-4 shrink-0 ${metricIconClass(accent)}`} name={icon} />
 			</div>
 			<div className="mt-3 flex items-baseline gap-2">
-				<span className="font-semibold text-3xl tracking-tight sm:text-4xl">{average}</span>
-				<span className="text-slate-400 text-xs">{unit}</span>
+				<span className="text-3xl font-semibold tracking-tight sm:text-4xl">{average}</span>
+				<span className="text-xs text-slate-400">{unit}</span>
 			</div>
 			<div className="mt-2 flex items-center justify-between gap-3 text-[11px]">
-				<span className="font-bold text-slate-600 tracking-[.08em]">AVG</span>
+				<span className="font-bold tracking-[.08em] text-slate-600">AVG</span>
 				{maximum === undefined ? null : (
 					<span className="pr-1 text-right text-slate-400">
-						<strong className="mr-1 font-bold text-slate-600 tracking-[.08em]">
+						<strong className="mr-1 font-bold tracking-[.08em] text-slate-600">
 							MAX
 						</strong>
 						{maximum}

@@ -99,12 +99,12 @@ function RouteListItem({
 	return (
 		<button
 			aria-pressed={selected}
-			className={`w-full px-4 py-3 text-left outline-none transition ${selected ? 'bg-cyan-400/5 shadow-[inset_2px_0_0_var(--color-cyan-400)]' : 'hover:bg-slate-800/35'}`}
+			className={`w-full px-4 py-3 text-left transition outline-none ${selected ? 'bg-cyan-400/5 shadow-[inset_2px_0_0_var(--color-cyan-400)]' : 'hover:bg-slate-800/35'}`}
 			onClick={onSelect}
 			type="button"
 		>
 			<span
-				className={`block font-semibold text-sm ${selected ? 'text-cyan-200' : 'text-slate-200'}`}
+				className={`block text-sm font-semibold ${selected ? 'text-cyan-200' : 'text-slate-200'}`}
 			>
 				{route.name}
 			</span>
@@ -115,14 +115,14 @@ function RouteListItem({
 					<span aria-hidden="true" />
 				)}
 				<span
-					className="shrink-0 font-semibold text-[9px] text-violet-300 uppercase tracking-wide"
+					className="shrink-0 text-[9px] font-semibold tracking-wide text-violet-300 uppercase"
 					title="Difficulty calculated from distance, climbing, and maximum grade"
 				>
 					{difficulty}
 				</span>
 			</span>
 			{showSeparateLocation ? (
-				<span className="mt-1 block text-[11px] text-slate-400 leading-relaxed">
+				<span className="mt-1 block text-[11px] leading-relaxed text-slate-400">
 					{route.location}
 				</span>
 			) : null}
@@ -215,13 +215,13 @@ function RouteSidebar({
 	const distanceUnit = distanceUnitLabel(speedUnit);
 
 	return (
-		<aside className="flex h-80 shrink-0 flex-col border-line border-b bg-panel lg:h-auto lg:w-72 lg:border-r lg:border-b-0">
+		<aside className="border-line bg-panel flex h-80 shrink-0 flex-col border-b lg:h-auto lg:w-72 lg:border-r lg:border-b-0">
 			<div className="space-y-2 p-3">
 				<label className="sr-only" htmlFor="gpx-search">
 					Search GPX routes
 				</label>
 				<input
-					className="h-10 w-full rounded-lg border border-line bg-[#12171d] px-3 text-slate-100 text-sm outline-none placeholder:text-slate-400 focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/10"
+					className="border-line h-10 w-full rounded-lg border bg-[#12171d] px-3 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/10"
 					id="gpx-search"
 					onChange={(event) => onQueryChange(event.currentTarget.value)}
 					placeholder="Name, place, distance, or difficulty"
@@ -267,7 +267,7 @@ function RouteSidebar({
 						Minimum route distance in {distanceUnit}
 					</label>
 					<input
-						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-200 text-xs outline-none placeholder:text-slate-400 focus:border-cyan-400/70"
+						className="border-line h-9 min-w-0 rounded-lg border bg-[#12171d] px-2 text-xs text-slate-200 outline-none placeholder:text-slate-400 focus:border-cyan-400/70"
 						id="gpx-minimum-distance"
 						min="0"
 						onChange={(event) => onMinimumDistanceChange(event.currentTarget.value)}
@@ -280,7 +280,7 @@ function RouteSidebar({
 						Maximum route distance in {distanceUnit}
 					</label>
 					<input
-						className="h-9 min-w-0 rounded-lg border border-line bg-[#12171d] px-2 text-slate-200 text-xs outline-none placeholder:text-slate-400 focus:border-cyan-400/70"
+						className="border-line h-9 min-w-0 rounded-lg border bg-[#12171d] px-2 text-xs text-slate-200 outline-none placeholder:text-slate-400 focus:border-cyan-400/70"
 						id="gpx-maximum-distance"
 						min="0"
 						onChange={(event) => onMaximumDistanceChange(event.currentTarget.value)}
@@ -335,7 +335,7 @@ function RouteSidebar({
 					</div>
 				) : null}
 				{catalogLoading && !catalog ? (
-					<p className="px-4 py-10 text-center text-slate-400 text-sm" role="status">
+					<p className="px-4 py-10 text-center text-sm text-slate-400" role="status">
 						Loading GPX routes…
 					</p>
 				) : null}
@@ -346,7 +346,7 @@ function RouteSidebar({
 						</p>
 						{catalogError ? (
 							<button
-								className="mt-3 font-semibold text-cyan-400 text-xs hover:text-cyan-200"
+								className="mt-3 text-xs font-semibold text-cyan-400 hover:text-cyan-200"
 								onClick={onRefreshCatalog}
 								type="button"
 							>
@@ -439,12 +439,12 @@ function RoutePreviewDetails({
 	const groupLabel = gpxRouteGroupLabel(route.group, collectionName);
 	const routeContext = [groupLabel, route.location].filter(Boolean).join(' · ');
 	return (
-		<div className="absolute bottom-3 left-3 z-500 w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-slate-600/50 bg-[#10151a]/88 p-3 shadow-black/30 shadow-lg backdrop-blur-sm">
+		<div className="absolute bottom-3 left-3 z-500 w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-slate-600/50 bg-[#10151a]/88 p-3 shadow-lg shadow-black/30 backdrop-blur-sm">
 			<div className="flex items-start gap-3">
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate font-bold text-sm">{route.name}</h3>
+					<h3 className="truncate text-sm font-bold">{route.name}</h3>
 					{routeContext ? (
-						<p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400 leading-relaxed">
+						<p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-slate-400">
 							{routeContext}
 						</p>
 					) : null}
@@ -470,7 +470,7 @@ function RoutePreviewDetails({
 						{importError ? (
 							<span
 								aria-live="assertive"
-								className="mt-1 block text-rose-300 leading-relaxed"
+								className="mt-1 block leading-relaxed text-rose-300"
 								role="alert"
 							>
 								{importError}
@@ -479,7 +479,7 @@ function RoutePreviewDetails({
 					</div>
 				</div>
 				<button
-					className="h-8 shrink-0 rounded-md border border-cyan-300/30 bg-cyan-400/8 px-3 font-semibold text-[11px] text-cyan-200 transition hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-50"
+					className="h-8 shrink-0 rounded-md border border-cyan-300/30 bg-cyan-400/8 px-3 text-[11px] font-semibold text-cyan-200 transition hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-50"
 					disabled={!course || importing || alreadyImported}
 					onClick={onImport}
 					type="button"
@@ -488,7 +488,7 @@ function RoutePreviewDetails({
 				</button>
 			</div>
 			{course ? (
-				<div className="mt-2 border-slate-600/40 border-t pt-2">
+				<div className="mt-2 border-t border-slate-600/40 pt-2">
 					<WorkoutRouteVisualization
 						className="h-14"
 						course={course}
@@ -543,10 +543,10 @@ function RoutePreview({
 			{preview.course ? (
 				<WorkoutRouteMap course={preview.course}>
 					{route?.image ? (
-						<figure className="pointer-events-auto hidden w-72 max-w-full overflow-hidden rounded-lg border border-slate-600/50 bg-[#10151a]/92 shadow-black/30 shadow-lg sm:block">
+						<figure className="pointer-events-auto hidden w-72 max-w-full overflow-hidden rounded-lg border border-slate-600/50 bg-[#10151a]/92 shadow-lg shadow-black/30 sm:block">
 							<button
 								aria-label={`Enlarge ${route.image.alt}`}
-								className="block w-full cursor-zoom-in overflow-hidden focus-visible:outline-2 focus-visible:outline-cyan-300 focus-visible:-outline-offset-2"
+								className="block w-full cursor-zoom-in overflow-hidden focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cyan-300"
 								onClick={() => onExpandImage(route)}
 								type="button"
 							>
@@ -564,7 +564,7 @@ function RoutePreview({
 			) : null}
 			{preview.loading ? (
 				<div
-					className="absolute inset-0 grid place-items-center text-slate-400 text-sm"
+					className="absolute inset-0 grid place-items-center text-sm text-slate-400"
 					role="status"
 				>
 					Loading route…
@@ -573,9 +573,9 @@ function RoutePreview({
 			{preview.error ? (
 				<div className="absolute inset-0 grid place-items-center px-8 text-center">
 					<div>
-						<p className="text-rose-300 text-sm">{preview.error}</p>
+						<p className="text-sm text-rose-300">{preview.error}</p>
 						<button
-							className="mt-3 font-semibold text-cyan-400 text-xs hover:text-cyan-200"
+							className="mt-3 text-xs font-semibold text-cyan-400 hover:text-cyan-200"
 							onClick={preview.retry}
 							type="button"
 						>
@@ -597,7 +597,7 @@ function RoutePreview({
 					speedUnit={speedUnit}
 				/>
 			) : (
-				<div className="absolute inset-0 grid place-items-center px-8 text-center text-slate-400 text-sm">
+				<div className="absolute inset-0 grid place-items-center px-8 text-center text-sm text-slate-400">
 					No prepared route is available for these filters.
 				</div>
 			)}
@@ -655,7 +655,7 @@ function RouteImageLightbox({
 						src={image.url}
 						width="1440"
 					/>
-					<figcaption className="shrink-0 border-slate-700 border-t px-4 py-2 font-semibold text-slate-200 text-xs">
+					<figcaption className="shrink-0 border-t border-slate-700 px-4 py-2 text-xs font-semibold text-slate-200">
 						{routeName}
 					</figcaption>
 				</figure>
@@ -726,7 +726,13 @@ export function GpxBrowserDialog({
 	const { catalog } = catalogRequest;
 	const routes = catalog ? catalog.routes : [];
 	const analyses = catalog ? catalog.analyses : EMPTY_ROUTE_ANALYSES;
-	const groups = useMemo(() => [...new Set(routes.map((route) => route.group))].sort(), [routes]);
+	const groups = useMemo(
+		() =>
+			[...new Set(routes.map((route) => route.group))].sort(
+				(left, right) => Number(left > right) - Number(left < right)
+			),
+		[routes]
+	);
 	const filteredRoutes = useMemo(
 		() =>
 			matchingGpxRoutes(
@@ -869,7 +875,7 @@ export function GpxBrowserDialog({
 			<section
 				aria-labelledby="gpx-browser-title"
 				aria-modal="true"
-				className="absolute inset-4 z-10 flex flex-col overflow-hidden rounded-2xl border border-slate-600 bg-panel shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
+				className="bg-panel absolute inset-4 z-10 flex flex-col overflow-hidden rounded-2xl border border-slate-600 shadow-2xl shadow-black/70 xl:top-6 xl:right-152 xl:bottom-6 xl:left-6"
 				role="dialog"
 			>
 				<header className="flex items-start gap-2 bg-transparent px-4 py-2">
@@ -903,11 +909,11 @@ export function GpxBrowserDialog({
 							/>
 						) : null}
 						{catalog ? (
-							<span className="font-bold text-cyan-300 text-sm tabular-nums">
+							<span className="text-sm font-bold text-cyan-300 tabular-nums">
 								{filteredRoutes.length.toLocaleString()} routes
 							</span>
 						) : null}
-						<p className="text-slate-400 text-xs">
+						<p className="text-xs text-slate-400">
 							{catalog &&
 							selectedProvider?.id === catalog.provider.id &&
 							shouldShowGpxCollectionSelector(selectedProvider)

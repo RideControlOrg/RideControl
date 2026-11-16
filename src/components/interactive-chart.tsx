@@ -13,7 +13,7 @@ import {
 } from '@tanstack/charts';
 import { focusNearestX } from '@tanstack/charts/focus';
 import { focusDisabled } from '@tanstack/charts/focus/disabled';
-import { Chart, type ChartDefinition, type ChartProps } from '@tanstack/react-charts';
+import { Chart, type ChartDefinition, type ChartProps } from '@tanstack/charts/react';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { chartTooltip } from '../lib/chart-tooltip';

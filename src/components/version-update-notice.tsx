@@ -3,12 +3,12 @@ import { useVersionUpdateAvailable } from '../hooks/use-version-update';
 export function VersionUpdateNotice({ onReload }: { onReload: () => void }) {
 	return (
 		<section
-			className="mb-4 flex flex-col gap-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-slate-200 text-sm sm:flex-row sm:items-center"
+			className="mb-4 flex flex-col gap-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-slate-200 sm:flex-row sm:items-center"
 			role="status"
 		>
 			<div className="min-w-0 flex-1">
 				<p className="font-semibold text-white">A new Ride Control version is available.</p>
-				<p className="mt-0.5 text-slate-300 leading-5">
+				<p className="mt-0.5 leading-5 text-slate-300">
 					Reload when convenient to use the latest version.
 				</p>
 			</div>

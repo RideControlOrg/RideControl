@@ -25,15 +25,15 @@ export function GpxImportChoiceDialog({
 			<section
 				aria-labelledby="gpx-import-choice-title"
 				aria-modal="true"
-				className="w-full max-w-lg rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/60 sm:p-6"
+				className="bg-panel w-full max-w-lg rounded-2xl border border-slate-600 p-5 shadow-2xl shadow-black/60 sm:p-6"
 				role="dialog"
 			>
 				<div className="flex items-start justify-between gap-4">
 					<div className="min-w-0">
-						<h2 className="font-bold text-2xl" id="gpx-import-choice-title">
+						<h2 className="text-2xl font-bold" id="gpx-import-choice-title">
 							Import GPX route
 						</h2>
-						<p className="mt-1 truncate text-slate-400 text-sm">{fileName}</p>
+						<p className="mt-1 truncate text-sm text-slate-400">{fileName}</p>
 					</div>
 					<button
 						aria-label="Cancel GPX import"
@@ -44,26 +44,26 @@ export function GpxImportChoiceDialog({
 						×
 					</button>
 				</div>
-				<p className="mt-5 text-slate-300 text-sm leading-relaxed">
+				<p className="mt-5 text-sm leading-relaxed text-slate-300">
 					Enhanced processing removes unusable points, smooths elevation noise and
 					implausible grade spikes, and calculates a more accurate terrain profile. The
 					file is sent securely to the Ride Control Worker for this request and is not
 					stored.
 				</p>
-				<p className="mt-3 text-slate-400 text-xs leading-relaxed">
+				<p className="mt-3 text-xs leading-relaxed text-slate-400">
 					You can keep the file entirely on this device instead. Local processing is less
 					complete but still validates the route and creates the best workout it can.
 				</p>
 				<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 					<button
-						className="rounded-lg px-4 py-2.5 font-semibold text-slate-300 text-sm hover:bg-slate-800 hover:text-white"
+						className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white"
 						onClick={() => onChoose(GPX_IMPORT_PROCESSOR.LOCAL)}
 						type="button"
 					>
 						Process on this device
 					</button>
 					<button
-						className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c]"
+						className="bg-lime text-ink rounded-lg px-5 py-2.5 text-sm font-bold hover:bg-[#e4ff9c]"
 						onClick={() => onChoose(GPX_IMPORT_PROCESSOR.WORKER)}
 						ref={enhancedButtonRef}
 						type="button"
@@ -97,15 +97,15 @@ export function GpxImportResultDialog({
 			<section
 				aria-labelledby="gpx-import-result-title"
 				aria-modal="true"
-				className="w-full max-w-lg rounded-2xl border border-slate-600 bg-panel p-5 shadow-2xl shadow-black/60 sm:p-6"
+				className="bg-panel w-full max-w-lg rounded-2xl border border-slate-600 p-5 shadow-2xl shadow-black/60 sm:p-6"
 				role="dialog"
 			>
 				<div className="flex items-start justify-between gap-4">
 					<div className="min-w-0">
-						<h2 className="font-bold text-2xl" id="gpx-import-result-title">
+						<h2 className="text-2xl font-bold" id="gpx-import-result-title">
 							{course ? 'GPX route imported' : 'GPX import failed'}
 						</h2>
-						<p className="mt-1 truncate text-slate-400 text-sm">{fileName}</p>
+						<p className="mt-1 truncate text-sm text-slate-400">{fileName}</p>
 					</div>
 					<button
 						aria-label="Close GPX import summary"
@@ -120,11 +120,11 @@ export function GpxImportResultDialog({
 					<>
 						<dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 text-sm">
 							<div>
-								<dt className="font-semibold text-slate-500 text-xs">Route</dt>
+								<dt className="text-xs font-semibold text-slate-500">Route</dt>
 								<dd className="mt-1 font-semibold text-white">{course.name}</dd>
 							</div>
 							<div>
-								<dt className="font-semibold text-slate-500 text-xs">Processing</dt>
+								<dt className="text-xs font-semibold text-slate-500">Processing</dt>
 								<dd className="mt-1 font-semibold text-white">
 									{result.processor === GPX_IMPORT_PROCESSOR.WORKER
 										? 'Enhanced Worker'
@@ -132,19 +132,19 @@ export function GpxImportResultDialog({
 								</dd>
 							</div>
 							<div>
-								<dt className="font-semibold text-slate-500 text-xs">Distance</dt>
+								<dt className="text-xs font-semibold text-slate-500">Distance</dt>
 								<dd className="mt-1 font-semibold text-white">
 									{formatDistance(course.distance, speedUnit, 1)}
 								</dd>
 							</div>
 							<div>
-								<dt className="font-semibold text-slate-500 text-xs">Climbing</dt>
+								<dt className="text-xs font-semibold text-slate-500">Climbing</dt>
 								<dd className="mt-1 font-semibold text-white">
 									{formatElevation(course.elevationGain, speedUnit)}
 								</dd>
 							</div>
 							<div>
-								<dt className="font-semibold text-slate-500 text-xs">
+								<dt className="text-xs font-semibold text-slate-500">
 									Route points
 								</dt>
 								<dd className="mt-1 font-semibold text-white">
@@ -152,23 +152,23 @@ export function GpxImportResultDialog({
 								</dd>
 							</div>
 							<div>
-								<dt className="font-semibold text-slate-500 text-xs">Terrain</dt>
+								<dt className="text-xs font-semibold text-slate-500">Terrain</dt>
 								<dd className="mt-1 font-semibold text-white">
 									{workoutDifficultyLabel(course.difficulty)} · up to +
 									{workoutMaximumGrade(course).toFixed(1)}%
 								</dd>
 							</div>
 						</dl>
-						<div className="mt-5 border-line border-t pt-4">
-							<h3 className="font-semibold text-slate-300 text-sm">Import checks</h3>
+						<div className="border-line mt-5 border-t pt-4">
+							<h3 className="text-sm font-semibold text-slate-300">Import checks</h3>
 							{result.warnings.length > 0 ? (
-								<ul className="mt-2 space-y-2 text-amber-200 text-xs leading-relaxed">
+								<ul className="mt-2 space-y-2 text-xs leading-relaxed text-amber-200">
 									{result.warnings.map((warning) => (
 										<li key={warning}>• {warning}</li>
 									))}
 								</ul>
 							) : (
-								<p className="mt-2 text-mint text-xs">
+								<p className="text-mint mt-2 text-xs">
 									No import errors were found.
 								</p>
 							)}
@@ -177,14 +177,14 @@ export function GpxImportResultDialog({
 				) : (
 					<p
 						aria-live="assertive"
-						className="mt-5 rounded-xl border border-rose-400/25 bg-rose-950/25 p-4 text-rose-200 text-sm leading-relaxed"
+						className="mt-5 rounded-xl border border-rose-400/25 bg-rose-950/25 p-4 text-sm leading-relaxed text-rose-200"
 					>
 						{error || 'The file could not be imported.'}
 					</p>
 				)}
 				<div className="mt-6 flex justify-end">
 					<button
-						className="rounded-lg bg-lime px-5 py-2.5 font-bold text-ink text-sm hover:bg-[#e4ff9c]"
+						className="bg-lime text-ink rounded-lg px-5 py-2.5 text-sm font-bold hover:bg-[#e4ff9c]"
 						onClick={onClose}
 						ref={closeButtonRef}
 						type="button"

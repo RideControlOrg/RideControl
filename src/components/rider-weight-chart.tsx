@@ -101,21 +101,21 @@ export function RiderWeightChart({
 		>
 			<div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
 				<div>
-					<p className="font-bold text-[10px] text-slate-500 uppercase tracking-[0.16em]">
+					<p className="text-[10px] font-bold tracking-[0.16em] text-slate-500 uppercase">
 						Current
 					</p>
-					<p className="mt-1 font-bold text-3xl text-slate-100 leading-none">
+					<p className="mt-1 text-3xl leading-none font-bold text-slate-100">
 						{WEIGHT_FORMATTER.format(latest.value)}{' '}
-						<span className="font-normal text-slate-500 text-sm">{unit}</span>
+						<span className="text-sm font-normal text-slate-500">{unit}</span>
 					</p>
 				</div>
 				<div className="text-right">
-					<p className="font-bold text-[10px] text-slate-500 uppercase tracking-[0.16em]">
+					<p className="text-[10px] font-bold tracking-[0.16em] text-slate-500 uppercase">
 						Change
 					</p>
-					<p className="mt-1 font-bold text-lg text-mint leading-none">
+					<p className="text-mint mt-1 text-lg leading-none font-bold">
 						{formattedWeightChange(weightChange)}{' '}
-						<span className="font-normal text-slate-500 text-xs">{unit}</span>
+						<span className="text-xs font-normal text-slate-500">{unit}</span>
 					</p>
 					<p className="mt-1 text-[10px] text-slate-600">since {first.date}</p>
 				</div>
@@ -138,7 +138,7 @@ export function RiderWeightChart({
 				</div>
 			) : (
 				<div className="mt-5 grid min-h-24 place-items-center px-4 text-center">
-					<p className="whitespace-nowrap text-slate-500 text-sm">
+					<p className="text-sm whitespace-nowrap text-slate-500">
 						Save another weight to see your trend.
 					</p>
 				</div>

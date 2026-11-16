@@ -10,7 +10,7 @@ const MULTI_BIKE_PROFILE_VERSION = 2;
 const WEIGHT_HISTORY_PROFILE_VERSION = 3;
 const PROFILE_VERSION = 4;
 const WEIGHT_CORRECTION_WINDOW_MS = 60 * 60 * 1000;
-const BIKE_PURCHASE_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
+const BIKE_PURCHASE_DATE = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u;
 const TEETH_SEPARATOR = /[\s,/]+/u;
 
 export const DEFAULT_RIDER_WEIGHT_KG = 75;
@@ -287,9 +287,9 @@ export function validBikePurchaseDate(value: string): boolean {
 	if (!match) {
 		return false;
 	}
-	const year = Number(match[1]);
-	const month = Number(match[2]);
-	const day = Number(match[3]);
+	const year = Number(match.groups?.year);
+	const month = Number(match.groups?.month);
+	const day = Number(match.groups?.day);
 	const date = new Date(Date.UTC(year, month - 1, day));
 	return (
 		date.getUTCFullYear() === year &&
