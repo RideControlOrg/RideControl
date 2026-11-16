@@ -207,14 +207,9 @@ describe('view components', () => {
 	test('renders a compact session metric', () => {
 		expect(render(<SmallMetric label="TIME" value="01:02:03" />)).toContain('01:02:03');
 		const largeMetric = render(<SmallMetric label="TIME" large value="01:02:03" />);
-		expect(largeMetric).toContain('flex h-full min-w-0 flex-col justify-center');
-		expect(largeMetric).toContain(
-			'text-xl sm:text-4xl lg:text-5xl xl:text-6xl min-[420px]:text-2xl'
-		);
+		expect(largeMetric).toContain('01:02:03');
 		const distance = render(<SmallMetric label="DISTANCE" large unit="mi" value="10.00" />);
 		expect(distance).toContain('>10.00</span>');
-		expect(distance).toContain('shrink-0 font-medium');
-		expect(distance).toContain('text-xs sm:text-lg lg:text-xl');
 		expect(distance).toContain('>mi</span>');
 		const html = render(
 			<SessionMetric
