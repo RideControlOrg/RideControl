@@ -13,28 +13,28 @@ Control your indoor bike trainer from Google Chrome. No account required; your r
 
 *Demo data; ride paused.*
 
-<details>
+<details open>
 <summary>Profile and desktop notification settings</summary>
 
 ![Profile settings with five-minute ride updates and a customizable event countdown](docs/images/profile.png)
 
 </details>
 
-<details>
+<details open>
 <summary>Device pairing</summary>
 
 ![Pairing controls for a smart trainer, heart-rate monitor, and Zwift Click V2](docs/images/pairing.png)
 
 </details>
 
-<details>
+<details open>
 <summary>Sessions calendar</summary>
 
 ![Sessions calendar populated with eight synthetic demo rides, showing selected ride metrics and charts](docs/images/sessions.png)
 
 </details>
 
-<details>
+<details open>
 <summary>Sessions list</summary>
 
 ![Sessions list with eight synthetic demo rides and the selected ride's metrics and charts](docs/images/sessions-list.png)
@@ -43,7 +43,7 @@ Control your indoor bike trainer from Google Chrome. No account required; your r
 
 </details>
 
-<details>
+<details open>
 <summary>Sessions statistics</summary>
 
 ![Statistics for eight synthetic demo rides, including all-time totals, personal bests, and weekly trends](docs/images/sessions-statistics.png)
@@ -52,7 +52,7 @@ Control your indoor bike trainer from Google Chrome. No account required; your r
 
 </details>
 
-<details>
+<details open>
 <summary>Tour de France route</summary>
 
 Tour de France 2026, Stage 6: Pau–Gavarnie-Cèdre, in the route browser.
